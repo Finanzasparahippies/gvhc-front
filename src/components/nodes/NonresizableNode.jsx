@@ -18,6 +18,7 @@ const NonResizableNode = ({ data }) => {
     };
 
     return (
+        console.log(data),
         <div
             style={{
                 padding: 10,
@@ -47,13 +48,13 @@ const NonResizableNode = ({ data }) => {
                             objectFit: 'cover', // Asegura que la imagen ocupe el nodo completo
                         }}
                     />
-                ) :  data.response_type === 'Text' && data.image ? (
+                ) :  data.response_type === 'Text' && data.image_url ? (
                     <>
                         <p className="italic mt-2 max-w-[200px] flex text-center text-gray-700 mb-5">
                             {data.answerText}
                         </p>
                     <img
-                        src={data.image}
+                        src={data.image_url}
                         alt="Node related"
                         style={{
                             width: '100%',
