@@ -38,7 +38,25 @@ const NonResizableNode = ({ data }) => {
                 }}
             >
                 <strong>{data.label}</strong>
-                {data.response_type === 'Image' && data.image ? (
+                {data.response_type === 'Process' && data.image ? (
+                    <>
+                        <p className="italic mt-2 text-center text-gray-700">
+                            {data.answerText}
+                        </p>
+                        <img
+                            src={data.image}
+                            alt="Process"
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                borderRadius: '8px',
+                                marginTop: '10px',
+                            }}
+                        />
+                    </>
+                ) :
+                data.response_type === 'Image' && data.image ? (
                     <img
                         src={data.image}
                         alt="Node related"
@@ -48,13 +66,13 @@ const NonResizableNode = ({ data }) => {
                             objectFit: 'cover', // Asegura que la imagen ocupe el nodo completo
                         }}
                     />
-                ) :  data.response_type === 'Text' && data.image_url ? (
+                ) :  data.response_type === 'Text' && data.image ? (
                     <>
                         <p className="italic mt-2 max-w-[200px] flex text-center text-gray-700 mb-5">
                             {data.answerText}
                         </p>
                     <img
-                        src={data.image_url}
+                        src={data.image}
                         alt="Node related"
                         style={{
                             width: '100%',
