@@ -16,8 +16,8 @@ import useGridDistribution from '../hooks/useGridDistribution';
 
 import APIvs from '../utils/APIvs';
 import { SearchBar } from './searchBar/SearchBar';
-// import NoteNode from './nodes/NoteNode'; // Importa el nuevo nodo
-import ResizableNodeSelected from './nodes/ResizableNodeSelected';
+import NoteNode from './nodes/NoteNode'; // Importa el nuevo nodo
+import ResizableNodeSelected from './nodes/CustomResizableNode';
 import NonresizableNode from './nodes/NonresizableNode';
 import CustomEdge from './nodes/CustomEdges';
 import {TooltipNode, AnnotationNode}  from './nodes';
@@ -30,6 +30,7 @@ const nodeTypes = {
   Slide,
   TooltipNode,
   AnnotationNode,
+  NoteNode,
 };
 
 const edgeTypes = {
@@ -43,7 +44,13 @@ const ReactFlowComponent = () => {
 
   const { fitView } = useReactFlow();
 
-  
+  const onNodeChange = (id, newValue) => {
+    setNodes((nds) =>
+      nds.map((node) =>
+        node.id === id ? { ...node, data: { ...node.data, note: newValue } } : node
+      )
+    );
+  };  
 
   const distributeNodesInGrid = (nodes, nodesPerRow = 5, xGap = 200, yGap = 150) => {
     return nodes.map((node, index) => {
@@ -218,6 +225,7 @@ const fetchNodes = useCallback(async (searchQuery = '') => {
   });
 };
 
+
 return (
   <>
     <SearchBar query={query} setQuery={setQuery} setNodes={setNodes} fetchNodes={fetchNodes} />
@@ -237,8 +245,20 @@ return (
         style={{ border: '2px solid #ccc' }}
       >
         <Controls />
-        <MiniMap nodeColor="#000" style={{ width: 150, height: 80 }} />
-        <Background color="#ddd" variant={BackgroundVariant.Cross} gap={12} />
+        <MiniMap
+          nodeColor={(node) => {
+            switch (node.type) {
+              case 'ResizableNodeSelected':
+                return '#0070f3';
+              case 'NoteNode':
+                return '#f39c12';
+              default:
+                return '#ddd';
+            }
+          }}
+          style={{ width: 150, height: 80 }}
+        />        
+      <Background color="#ddd" variant={BackgroundVariant.Cross} gap={12} />
       </ReactFlow>
       <div className="mt-4">
         <ZoomSlider />
