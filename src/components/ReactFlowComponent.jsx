@@ -16,6 +16,7 @@ import useGridDistribution from '../hooks/useGridDistribution';
 
 import APIvs from '../utils/APIvs';
 import { SearchBar } from './searchBar/SearchBar';
+// import NoteNode from './nodes/NoteNode'; // Importa el nuevo nodo
 import ResizableNodeSelected from './nodes/ResizableNodeSelected';
 import NonresizableNode from './nodes/NonresizableNode';
 import CustomEdge from './nodes/CustomEdges';
