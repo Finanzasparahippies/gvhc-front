@@ -14,10 +14,11 @@ import '@xyflow/react/dist/style.css';
 import { ZoomSlider } from './Slides';
 import useGridDistribution from '../hooks/useGridDistribution';
 
+import { useNotes } from '../utils/NotesContext';
 import APIvs from '../utils/APIvs';
 import { SearchBar } from './searchBar/SearchBar';
-import NoteNode from './nodes/NoteNode'; // Importa el nuevo nodo
-import ResizableNodeSelected from './nodes/CustomResizableNode';
+import CustomResizableNode from './nodes/NotesNode'; // Importa el nuevo nodo
+import NotesNode from './nodes/NotesNode';
 import NonresizableNode from './nodes/NonresizableNode';
 import CustomEdge from './nodes/CustomEdges';
 import {TooltipNode, AnnotationNode}  from './nodes';
@@ -25,12 +26,12 @@ import {TooltipNode, AnnotationNode}  from './nodes';
 import { Slide, slidesToElements } from './Slides';
 
 const nodeTypes = {
-  ResizableNodeSelected,
+  CustomResizableNode,
+  NotesNode,
   NonresizableNode,
   Slide,
   TooltipNode,
   AnnotationNode,
-  NoteNode,
 };
 
 const edgeTypes = {
@@ -41,6 +42,7 @@ const ReactFlowComponent = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [query, setQuery] = useState('');
+  const { notes, updateNote } = useNotes();
 
   const { fitView } = useReactFlow();
 
@@ -51,6 +53,10 @@ const ReactFlowComponent = () => {
       )
     );
   };  
+
+  const handleNodeChange = (nodeId, newNote) => {
+    updateNote(nodeId, newNote); // Guardar nota en el contexto y localStorage
+  };
 
   const distributeNodesInGrid = (nodes, nodesPerRow = 5, xGap = 200, yGap = 150) => {
     return nodes.map((node, index) => {
@@ -69,57 +75,65 @@ const ReactFlowComponent = () => {
     });
   };
 
-const fetchNodes = useCallback(async (searchQuery = '') => {
-  const url = searchQuery ? `/answers/search/?query=${searchQuery}` : '/answers/faqs/';
-  const pinnedNodes = JSON.parse(localStorage.getItem('pinnedNodes')) || [];
-
-  try {
-    const response = await APIvs.get(url);
-    console.log('Response:', response);
-    const data = response.data.results || [];
-    const apiNodes = [];
-    const apiEdges = [];
-
-
+  const fetchNodes = useCallback(async (searchQuery = '') => {
+    const url = searchQuery ? `/answers/search/?query=${searchQuery}` : '/answers/faqs/';
+    const pinnedNodes = JSON.parse(localStorage.getItem('pinnedNodes')) || [];
+    const savedNotes = JSON.parse(localStorage.getItem('agentNotes')) || {};
+  
+    try {
+      const response = await APIvs.get(url);
+      console.log('Response:', response);
+      const data = response.data.results || [];
+      const apiNodes = [];
+      const apiEdges = [];
+  
       data.forEach((faq) => {
         const uniqueId = `faq-${faq.id}`;
-        const isPinned = pinnedNodes.some((node) => node.id === uniqueId);
-
+        const isPinned = pinnedNodes.some((pinnedNode) => pinnedNode.id === uniqueId);
+  
+        // Construye las propiedades del nodo antes de usar `node`
+        const nodeData = {
+          label: faq.question || 'No Title',
+          answerText: faq.answers[0]?.answer_text || 'No Content',
+          template: faq.answers[0]?.template || '',
+          image: faq.answers[0]?.image_url || null,
+          response_type: faq.response_type,
+          keywords: faq.keywords || [],
+          note: savedNotes[uniqueId] || '', // Accede correctamente a las notas guardadas
+          onChange: (newNote) => handleNodeChange(uniqueId, newNote),
+        };
+  
+        const nodeStyle = {
+          border: isPinned ? '2px solid red' : '2px solid black',
+          backgroundColor: '#fff',
+          borderRadius: 8,
+        };
+  
+        // Define el objeto `node` completamente
         const node = {
           id: uniqueId,
           type: faq.answers[0]?.node_type || 'NonresizableNode',
-          position: { x: 0, y: 0 }, // Será ajustado después
-          data: {
-            label: faq.question || 'No Title',
-            answerText: faq.answers[0]?.answer_text || 'No Content',
-            template: faq.answers[0]?.template || '',
-            image: faq.answers[0]?.image_url || null,
-            response_type: faq.response_type,
-            keywords: faq.keywords || [],
-          },
+          position: { x: 0, y: 0 },
+          data: nodeData,
+          style: nodeStyle,
           pinned: isPinned,
-          style: {
-            border: isPinned ? '2px solid red' : '2px solid black',
-            backgroundColor: '#fff',
-            borderRadius: 8,
-          },
         };
-
+  
         apiNodes.push(node);
-
+  
         if (faq.slides?.length) {
           const { nodes: slideNodes, edges: slideEdges } = slidesToElements(faq.id, faq.slides);
           apiNodes.push(...slideNodes);
           apiEdges.push(...slideEdges);
         }
-
+  
         if (faq.answers[0]?.steps?.length) {
           faq.answers[0].steps.forEach((step, index) => {
             const stepNodeId = `faq-${faq.id}-step-${index}`;
             apiNodes.push({
               id: stepNodeId,
               type: 'NonresizableNode',
-              position: { x: 0, y: 0 }, // Será ajustado más adelante
+              position: { x: 0, y: 0 },
               data: {
                 label: `Step ${step.number}` || 'No Title',
                 answerText: step.text || 'No Content',
@@ -133,8 +147,7 @@ const fetchNodes = useCallback(async (searchQuery = '') => {
                 borderRadius: 8,
               },
             });
-
-            // Conexión desde el nodo principal al primer step
+  
             if (index === 0) {
               apiEdges.push({
                 id: `${uniqueId}->${stepNodeId}`,
@@ -143,8 +156,7 @@ const fetchNodes = useCallback(async (searchQuery = '') => {
                 type: 'smoothstep',
               });
             }
-
-            // Conexión entre los steps
+  
             if (index > 0) {
               const previousStepNodeId = `faq-${faq.id}-step-${index - 1}`;
               apiEdges.push({
@@ -157,22 +169,23 @@ const fetchNodes = useCallback(async (searchQuery = '') => {
           });
         }
       });
-
-      // Aplica el nuevo layout
+  
+      // Distribuye los nodos y actualiza el estado
       const distributedNodes = distributeNodesInGrid(apiNodes, 8, 700, 1000);
-        setNodes(distributedNodes);
-        setEdges(apiEdges);
-
-        setTimeout(() => {
-            fitView({ padding: 0.1 });
-        }, 0);
-
-        return distributedNodes; // Devuelve los nodos para validar si hay resultados
+      setNodes(distributedNodes);
+      setEdges(apiEdges);
+  
+      setTimeout(() => {
+        fitView({ padding: 0.1 });
+      }, 0);
+  
+      return distributedNodes; // Devuelve los nodos para validar si hay resultados
     } catch (error) {
-        console.error('Error fetching nodes:', error);
-        return [];
+      console.error('Error fetching nodes:', error);
+      return [];
     }
-}, []);
+  }, []);
+  
 
 
   useEffect(() => {
@@ -248,10 +261,10 @@ return (
         <MiniMap
           nodeColor={(node) => {
             switch (node.type) {
-              case 'ResizableNodeSelected':
+              case 'NonresizableNode':
                 return '#0070f3';
               case 'NoteNode':
-                return '#f39c12';
+                return '#f39';
               default:
                 return '#ddd';
             }

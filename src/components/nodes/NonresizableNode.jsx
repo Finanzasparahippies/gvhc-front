@@ -6,6 +6,8 @@ const NonResizableNode = ({ data }) => {
     const [imageSize, setImageSize] = useState({ width: 'auto', height: 'auto' });
     const [editableTemplate, setEditableTemplate] = useState(data.template || '');
     const [isRememberOpen, setIsRememberOpen] = useState(false);
+    const [note, setNote] = useState(data.note || ''); // Estado para la nota
+
 
     const handleCopy = () => {
         navigator.clipboard.writeText(editableTemplate)
@@ -17,8 +19,12 @@ const NonResizableNode = ({ data }) => {
         setEditableTemplate(event.target.value);
     };
 
+    const clearTemplate = () => {
+        setEditableTemplate(data.template); // Limpia el estado local
+        data.onChange(data.id, { template: '' }); // Sincroniza ambos
+    };
+
     return (
-        console.log(data),
         <div
             style={{
                 padding: 10,
@@ -110,15 +116,39 @@ const NonResizableNode = ({ data }) => {
                             "
                         />
                         <div className="flex flex-col items-center mt-4">
-                            <button onClick={handleCopy} className="relative group flex items-center justify-center">
+                            <div className="flex flex-row justify-around w-full text-center">
+                            <button onClick={handleCopy} className="relative group items-center justify-center">
                                 <RxClipboardCopy
                                     size={30}
                                     className="transition-transform duration-200 transform group-hover:scale-110 group-hover:text-blue-500 mb-5"
-                                />
+                                    />
                                 <span className="absolute bottom-10 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                                     Copy now
                                 </span>
                             </button>
+                            <button
+                        onClick={clearTemplate}
+                        className="
+                        mt-3
+                        mb-5
+                        py-2 px-4
+                        bg-red-500
+                        text-white
+                        font-semibold
+                        rounded-lg
+                        shadow-md
+                        hover:bg-red-600
+                        focus:outline-none
+                        focus:ring-2
+                        focus:ring-red-400
+                        focus:ring-opacity-75
+                        transition
+                        duration-300
+                        "
+                        >
+                        Limpiar Template
+                    </button>
+                </div>
                             <div className="w-full text-center mt-2">
                                 <div
                                     className={`absolute bottom-0 left-0 w-full ${
