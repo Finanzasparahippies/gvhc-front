@@ -43,6 +43,8 @@ const ReactFlowComponent = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [query, setQuery] = useState('');
   const { notes, updateNote } = useNotes();
+  const [draggingEnabled, setDraggingEnabled] = useState(true); // Controlar el arrastre dinámicamente
+  
 
   const { fitView } = useReactFlow();
 
@@ -100,6 +102,7 @@ const ReactFlowComponent = () => {
           response_type: faq.response_type,
           keywords: faq.keywords || [],
           note: savedNotes[uniqueId] || '', // Accede correctamente a las notas guardadas
+          setDraggingEnabled,
           onChange: (newNote) => handleNodeChange(uniqueId, newNote),
         };
   
@@ -241,7 +244,12 @@ const ReactFlowComponent = () => {
 
 return (
   <>
-    <SearchBar query={query} setQuery={setQuery} setNodes={setNodes} fetchNodes={fetchNodes} />
+<SearchBar
+    query={query}
+    setQuery={setQuery}
+    setNodes={setNodes}
+    fetchNodes={fetchNodes}
+/>
     <div className="mt-10" style={{ width: '100vw', height: 'calc(100vh - 350px)' }}>
       <ReactFlow
         nodes={nodes}
@@ -254,7 +262,7 @@ return (
         fitView
         maxZoom={2}
         minZoom={0.2}
-        nodesDraggable={true}
+        nodesDraggable={draggingEnabled}
         style={{ border: '2px solid #ccc' }}
       >
         <Controls />
@@ -273,9 +281,6 @@ return (
         />        
       <Background color="#ddd" variant={BackgroundVariant.Cross} gap={12} />
       </ReactFlow>
-      <div className="mt-4">
-        <ZoomSlider />
-      </div>
       <div className="save-restore">
         <button onClick={handleSave}>Guardar</button>
         <button onClick={handleRestore}>Restaurar</button>

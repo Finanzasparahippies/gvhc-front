@@ -1,18 +1,44 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 
 const NoteNode = ({ id, data }) => {
-  const [note, setNote] = useState(data.note || ''); // Estado para la nota
+    const [note, setNote] = useState(data.note || ''); // Estado para la nota
+    const [noteHistory, setNoteHistory] = useState([]); 
 
-    const handleNoteChange = (e) => {
-        setNote(e.target.value);
-        data.onChange(id, e.target.value); // Actualiza el estado del nodo en ReactFlow
+    const handleNoteChange = (event) => {
+        const updatedNote = event.target.value;
+        setNoteHistory((prev) => [...prev, note]); // Agregar el valor actual al historial
+        setNote(updatedNote);
+        data.onChange(data.id, { note: updatedNote });
     };
 
     const clearNote = () => {
-        setNote(''); // Limpia el estado local
-        data.onChange(id, ''); // Notifica al componente padre
+        setNoteHistory((prev) => [...prev, note]); // Agregar el valor actual al historial
+        setNote(''); // Limpia la nota
+        data.onChange(data.id, { note: '' });
     };
+
+    const undoNote = () => {
+        if (noteHistory.length > 0) {
+            const lastNote = noteHistory[noteHistory.length - 1];
+            setNote(lastNote); // Restaura el valor anterior
+            setNoteHistory((prev) => prev.slice(0, -1)); // Elimina el último del historial
+            data.onChange(data.id, { note: lastNote });
+        }
+    };
+
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            if (event.ctrlKey && event.key === 'z') {
+                event.preventDefault();
+                undoNote();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [noteHistory]);
 
     return (
         <div className="p-4 h-[600px] w-[350px] border rounded bg-yellow-100 shadow-lg flex flex-col">
@@ -22,6 +48,8 @@ const NoteNode = ({ id, data }) => {
         <textarea
             value={note}
             onChange={handleNoteChange}
+            onMouseEnter={() => data.setDraggingEnabled(false)} // Deshabilitar arrastre
+            onMouseLeave={() => data.setDraggingEnabled(true)}  // Rehabilitar arrastre
             placeholder="Escribe tu nota aquí..."
             className="flex-grow w-full h-[480px] p-2 text-sm border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
         />

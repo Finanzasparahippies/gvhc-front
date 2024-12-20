@@ -6,8 +6,8 @@ const NonResizableNode = ({ data }) => {
     const [imageSize, setImageSize] = useState({ width: 'auto', height: 'auto' });
     const [editableTemplate, setEditableTemplate] = useState(data.template || '');
     const [isRememberOpen, setIsRememberOpen] = useState(false);
-    const [note, setNote] = useState(data.note || ''); // Estado para la nota
-
+    const [templateHistory, setTemplateHistory] = useState([]); 
+    
 
     const handleCopy = () => {
         navigator.clipboard.writeText(editableTemplate)
@@ -16,13 +16,39 @@ const NonResizableNode = ({ data }) => {
     };
 
     const handleTemplateChange = (event) => {
-        setEditableTemplate(event.target.value);
+        const updatedTemplate = event.target.value;
+        setTemplateHistory((prev) => [...prev, editableTemplate]); // Agregar el valor actual al historial
+        setEditableTemplate(updatedTemplate);
+        data.onChange(data.id, { template: updatedTemplate });
     };
 
     const clearTemplate = () => {
+        setTemplateHistory((prev) => [...prev, editableTemplate]); // Agregar el valor actual al historial
         setEditableTemplate(data.template); // Limpia el estado local
-        data.onChange(data.id, { template: '' }); // Sincroniza ambos
+        data.onChange(data.id, { template: '' });
     };
+
+    const undoTemplate = () => {
+        if (templateHistory.length > 0) {
+            const lastTemplate = templateHistory[templateHistory.length - 1];
+            setEditableTemplate(lastTemplate); // Restaura el valor anterior
+            setTemplateHistory((prev) => prev.slice(0, -1)); // Elimina el último del historial
+            data.onChange(data.id, { template: lastTemplate });
+        }
+    };
+
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            if (event.ctrlKey && event.key === 'z') {
+                event.preventDefault(); // Evitar comportamiento predeterminado
+                undoTemplate(); // Restaurar el template
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [templateHistory]);
 
     return (
         <div
@@ -92,6 +118,8 @@ const NonResizableNode = ({ data }) => {
                         <textarea
                             value={editableTemplate}
                             onChange={handleTemplateChange}
+                            onMouseEnter={() => data.setDraggingEnabled(false)} // Deshabilitar arrastre
+                            onMouseLeave={() => data.setDraggingEnabled(true)}  // Rehabilitar arrastre
                             className="
                                 nowheel
                                 w-full
@@ -132,7 +160,7 @@ const NonResizableNode = ({ data }) => {
                         mt-3
                         mb-5
                         py-2 px-4
-                        bg-red-500
+                        bg-orange-600
                         text-white
                         font-semibold
                         rounded-lg
@@ -146,7 +174,7 @@ const NonResizableNode = ({ data }) => {
                         duration-300
                         "
                         >
-                        Limpiar Template
+                        Clear Template
                     </button>
                 </div>
                             <div className="w-full text-center mt-2">

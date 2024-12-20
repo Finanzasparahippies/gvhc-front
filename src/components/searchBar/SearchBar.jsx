@@ -1,28 +1,30 @@
 import { useState } from 'react';
 import { FiSearch } from 'react-icons/fi';
 
-export const SearchBar = ({ query, setQuery, fetchNodes }) => {
+export const SearchBar = ({ query, setQuery, setNodes, fetchNodes }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [results, setResults] = useState([]);
     const [noResults, setNoResults] = useState(false);
 
-    const handleSearch = () => {
+    const handleSearch = async () => {
         setIsLoading(true);
-        fetchNodes(query)
-            .then((results) => {
-                setResults(results);
-                setNoResults(results.length === 0);
-                setIsLoading(false);
-            })
-            .catch((error) => {
-                console.error('Error en la búsqueda:', error);
-                setIsLoading(false);
-            });
+        try {
+            const fetchedNodes = await fetchNodes(query); // Obtener nodos coincidentes
+            setNodes(fetchedNodes); // Actualizar ReactFlow con nodos filtrados
+            setResults(fetchedNodes);
+            setNoResults(fetchedNodes.length === 0);
+        } catch (error) {
+            console.error('Error en la búsqueda:', error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const handleClearSearch = () => {
+    const handleClearSearch = async () => {
         setQuery('');
-        fetchNodes(''); // Vuelve a cargar todos los nodos
+        const allNodes = await fetchNodes(''); // Recargar todos los nodos
+        setNodes(allNodes); // Restaurar ReactFlow a su estado inicial
+        setResults([]);
         setNoResults(false);
     };
 
