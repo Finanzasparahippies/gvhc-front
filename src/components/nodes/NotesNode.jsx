@@ -1,9 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 
-const NoteNode = ({ id, data }) => {
+const NoteNode = ({ data }) => {
     const [note, setNote] = useState(data.note || ''); // Estado para la nota
     const [noteHistory, setNoteHistory] = useState([]); 
+    const [panOnDrag, setPanOnDrag] = useState(true); // Controlar el arrastre del fondo
+
+
+    const handleMouseEnter = () => {
+        setPanOnDrag(false); // Deshabilitar el pan al interactuar con el nodo
+    };
+
+    const handleMouseLeave = () => {
+        setPanOnDrag(true); // Deshabilitar el pan al interactuar con el nodo
+    };
 
     const handleNoteChange = (event) => {
         const updatedNote = event.target.value;
@@ -48,8 +58,8 @@ const NoteNode = ({ id, data }) => {
         <textarea
             value={note}
             onChange={handleNoteChange}
-            onMouseEnter={() => data.setDraggingEnabled(false)} // Deshabilitar arrastre
-            onMouseLeave={() => data.setDraggingEnabled(true)}  // Rehabilitar arrastre
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
             placeholder="Escribe tu nota aquí..."
             className="flex-grow w-full h-[480px] p-2 text-sm border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
         />

@@ -7,7 +7,16 @@ const NonResizableNode = ({ data }) => {
     const [editableTemplate, setEditableTemplate] = useState(data.template || '');
     const [isRememberOpen, setIsRememberOpen] = useState(false);
     const [templateHistory, setTemplateHistory] = useState([]); 
-    
+    const [panOnDrag, setPanOnDrag] = useState(true); // Controlar el arrastre del fondo
+
+
+    const handleMouseEnter = () => {
+        setPanOnDrag(false); // Deshabilitar el pan al interactuar con el nodo
+    };
+
+    const handleMouseLeave = () => {
+        setPanOnDrag(true); // Deshabilitar el pan al interactuar con el nodo
+    };
 
     const handleCopy = () => {
         navigator.clipboard.writeText(editableTemplate)
@@ -118,8 +127,8 @@ const NonResizableNode = ({ data }) => {
                         <textarea
                             value={editableTemplate}
                             onChange={handleTemplateChange}
-                            onMouseEnter={() => data.setDraggingEnabled(false)} // Deshabilitar arrastre
-                            onMouseLeave={() => data.setDraggingEnabled(true)}  // Rehabilitar arrastre
+                            onMouseEnter={handleMouseEnter}
+                            onMouseLeave={handleMouseLeave}
                             className="
                                 nowheel
                                 w-full
