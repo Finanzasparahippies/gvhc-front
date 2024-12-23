@@ -1,18 +1,26 @@
 import { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 
-const NoteNode = ({ data }) => {
+const NoteNode = ({ id, data }) => {
     const [note, setNote] = useState(data.note || ''); // Estado para la nota
     const [noteHistory, setNoteHistory] = useState([]); 
-    const [panOnDrag, setPanOnDrag] = useState(true); // Controlar el arrastre del fondo
-
 
     const handleMouseEnter = () => {
-        setPanOnDrag(false); // Deshabilitar el pan al interactuar con el nodo
+        if (data.setPanOnDrag) {
+            data.setPanOnDrag(true); // Habilita el pan si el nodo no está pineado
+        }
     };
 
     const handleMouseLeave = () => {
-        setPanOnDrag(true); // Deshabilitar el pan al interactuar con el nodo
+        if (data.setPanOnDrag) {
+            data.setPanOnDrag(false); // Deshabilita el pan si el nodo no está pineado
+        } 
+    };
+
+    const handleNodeClick = () => {
+        if (data.setPanOnDrag) {
+          data.setPanOnDrag(false); // Deshabilita el pan si el nodo está pineado
+        }
     };
 
     const handleNoteChange = (event) => {
@@ -51,7 +59,11 @@ const NoteNode = ({ data }) => {
     }, [noteHistory]);
 
     return (
-        <div className="p-4 h-[600px] w-[350px] border rounded bg-yellow-100 shadow-lg flex flex-col">
+        <div 
+            className="p-4 h-[600px] w-[350px] border rounded bg-yellow-100 shadow-lg flex flex-col"
+            style={{ border: data.pinned ? '2px solid red' : '2px solid black' }}
+            onClick={handleNodeClick}
+        >
         <strong className="block mb-2 text-lg font-bold text-gray-700">
             Nota de llamada
         </strong>
@@ -61,7 +73,7 @@ const NoteNode = ({ data }) => {
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             placeholder="Escribe tu nota aquí..."
-            className="flex-grow w-full h-[480px] p-2 text-sm border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-grow nowheel w-full h-[480px] p-2 text-sm border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <button
             onClick={clearNote}
