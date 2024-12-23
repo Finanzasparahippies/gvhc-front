@@ -44,8 +44,6 @@ const ReactFlowComponent = () => {
   const [query, setQuery] = useState('');
   const { notes, updateNote } = useNotes();
   const [panOnDrag, setPanOnDrag] = useState(true); // Controla el pan dinámicamente
-  
-
   const { fitView } = useReactFlow();
 
   const onNodeChange = (id, newValue) => {
@@ -68,18 +66,20 @@ const ReactFlowComponent = () => {
       return {
         ...node,
         position: {
-          x: col * xGap, 
-          y: row * yGap, 
+          x: col * xGap,
+          y: row * yGap,
         },
-        // Asegúrate de que `draggable` esté habilitado correctamente
-        draggable: !node.data?.pinned, // Only draggable if not pinned
+        draggable: !node.data?.pinned, // Solo arrastrable si no está pineado
         data: {
           ...node.data,
-          setPanOnDrag, // Passing setPanOnDrag to nodes
+          setPanOnDrag: (isEnabled) => {
+            if (!node.data?.pinned) setPanOnDrag(isEnabled);
+          }, // Controla panOnDrag de forma dinámica
         },
       };
     });
   };
+  
 
   const fetchNodes = useCallback(async (searchQuery = '') => {
     const url = searchQuery ? `/answers/search/?query=${searchQuery}` : '/answers/faqs/';
@@ -125,7 +125,6 @@ const ReactFlowComponent = () => {
           data: nodeData,
           style: nodeStyle,
           pinned: isPinned,
-          draggable: !isPinned, // Controla el arrastre
         };
   
         apiNodes.push(node);
@@ -227,35 +226,38 @@ const ReactFlowComponent = () => {
  // Manejar clic en nodo (fijar o desfijar)
  const handleNodeClick = useCallback(
   (event, node) => {
-    event.stopPropagation();
+    event.stopPropagation(); // Evita que el evento clic se propague más allá del nodo
 
     setNodes((currentNodes) =>
       currentNodes.map((n) => {
         if (n.id === node.id) {
-          const isPinned = !n.data.pinned;
+          const isPinned = !n.data.pinned; // Alterna el estado pineado
           return {
             ...n,
             data: {
               ...n.data,
-              pinned: isPinned,
+              pinned: isPinned, // Actualiza el estado pineado
             },
             style: {
               ...n.style,
-              border: isPinned ? '2px solid red' : '2px solid black',
+              border: isPinned ? '2px solid red' : '2px solid black', // Cambia el borde
             },
-            draggable: !isPinned,
+            draggable: !isPinned, // Deshabilita arrastre si está pineado
           };
         }
-        return n;
+        return n; // Retorna nodos sin cambios
       })
     );
 
-    // Actualiza localStorage
-    const pinnedNodes = nodes.filter((n) => n.data?.pinned);
-    localStorage.setItem('pinnedNodes', JSON.stringify(pinnedNodes));
+    // Actualiza el almacenamiento local para mantener persistencia
+    setTimeout(() => {
+      const pinnedNodes = nodes.filter((n) => n.data?.pinned);
+      localStorage.setItem('pinnedNodes', JSON.stringify(pinnedNodes));
+    }, 0);
   },
   [nodes]
 );
+
 
 
 

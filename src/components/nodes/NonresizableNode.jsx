@@ -9,12 +9,13 @@ const NonResizableNode = ({ data }) => {
     const [templateHistory, setTemplateHistory] = useState([]); // Historial de plantillas
     const [note, setNote] = useState(data.note || ''); // Estado para la nota
 
-    const handleNodeClick = () => {
-        if (data.setPanOnDrag) {
-            data.setPanOnDrag(!false); // Deshabilita el pan si el nodo está pineado
-        }
-    };
-
+    const handleMouseEnter = () => {
+        if (data.setPanOnDrag) data.setPanOnDrag(false);
+      };
+    
+      const handleMouseLeave = () => {
+        if (data.setPanOnDrag) data.setPanOnDrag(true);
+      };
 
     const handleCopy = () => {
         navigator.clipboard.writeText(editableTemplate)
@@ -121,11 +122,12 @@ const NonResizableNode = ({ data }) => {
                         />
                     </>
                 ) :  data.template ? (
-                    <>
+                    <div
+                        onMouseEnter={handleMouseEnter}
+                        onMouseLeave={handleMouseLeave}>
                         <textarea
                             value={editableTemplate}
                             onChange={handleTemplateChange}
-                            onClick={handleNodeClick}
                             className="
                                 nowheel
                                 w-full
@@ -207,7 +209,7 @@ const NonResizableNode = ({ data }) => {
                                 )}
                             </div>
                         </div>
-                    </>
+                    </div>
                 ) : (
                     <div
                         className="

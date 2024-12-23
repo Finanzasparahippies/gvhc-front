@@ -6,22 +6,13 @@ const NoteNode = ({ id, data }) => {
     const [noteHistory, setNoteHistory] = useState([]); 
 
     const handleMouseEnter = () => {
-        if (data.setPanOnDrag) {
-            data.setPanOnDrag(true); // Habilita el pan si el nodo no está pineado
-        }
-    };
+        if (data.setPanOnDrag) data.setPanOnDrag(false); // Deshabilita pan al interactuar con el nodo
+      };
+    
+      const handleMouseLeave = () => {
+        if (data.setPanOnDrag) data.setPanOnDrag(true); // Habilita pan al salir del nodo
+      };
 
-    const handleMouseLeave = () => {
-        if (data.setPanOnDrag) {
-            data.setPanOnDrag(false); // Deshabilita el pan si el nodo no está pineado
-        } 
-    };
-
-    const handleNodeClick = () => {
-        if (data.setPanOnDrag) {
-          data.setPanOnDrag(false); // Deshabilita el pan si el nodo está pineado
-        }
-    };
 
     const handleNoteChange = (event) => {
         const updatedNote = event.target.value;
@@ -62,7 +53,8 @@ const NoteNode = ({ id, data }) => {
         <div 
             className="p-4 h-[600px] w-[350px] border rounded bg-yellow-100 shadow-lg flex flex-col"
             style={{ border: data.pinned ? '2px solid red' : '2px solid black' }}
-            onClick={handleNodeClick}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
         >
         <strong className="block mb-2 text-lg font-bold text-gray-700">
             Nota de llamada
@@ -70,8 +62,6 @@ const NoteNode = ({ id, data }) => {
         <textarea
             value={note}
             onChange={handleNoteChange}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
             placeholder="Escribe tu nota aquí..."
             className="flex-grow nowheel w-full h-[480px] p-2 text-sm border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
