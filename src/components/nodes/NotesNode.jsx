@@ -5,13 +5,13 @@ const NoteNode = ({ id, data }) => {
     const [note, setNote] = useState(data.note || ''); // Estado para la nota
     const [noteHistory, setNoteHistory] = useState([]); 
 
-    const handleMouseEnter = () => {
+    const handleOnPinned = () => {
         if (data.setPanOnDrag) data.setPanOnDrag(false); // Deshabilita pan al interactuar con el nodo
-      };
-    
-      const handleMouseLeave = () => {
-        if (data.setPanOnDrag) data.setPanOnDrag(true); // Habilita pan al salir del nodo
-      };
+        };
+        
+        const handleOffOPinned = () => {
+            if (data.setPanOnDrag) data.setPanOnDrag(true); // Habilita pan al salir del nodo
+        };
 
 
     const handleNoteChange = (event) => {
@@ -53,8 +53,7 @@ const NoteNode = ({ id, data }) => {
         <div 
             className="p-4 h-[600px] w-[350px] border rounded bg-yellow-100 shadow-lg flex flex-col"
             style={{ border: data.pinned ? '2px solid red' : '2px solid black' }}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
+            onClick={handleOnPinned}
         >
         <strong className="block mb-2 text-lg font-bold text-gray-700">
             Nota de llamada

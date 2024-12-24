@@ -80,6 +80,32 @@ const ReactFlowComponent = () => {
     });
   };
   
+  const togglePinNode = (nodeId) => {
+    setNodes((currentNodes) =>
+        currentNodes.map((node) =>
+            node.id === nodeId
+                ? {
+                      ...node,
+                      data: {
+                          ...node.data,
+                          pinned: !node.data.pinned,
+                      },
+                      style: {
+                          ...node.style,
+                          border: !node.data.pinned ? '2px solid red' : '2px solid black',
+                      },
+                      draggable: node.data.pinned, // Cambia la capacidad de arrastrar
+                  }
+                : node
+        )
+    );
+
+    // Actualiza los nodos "pineados" en localStorage
+    setTimeout(() => {
+        const pinnedNodes = nodes.filter((n) => n.data?.pinned);
+        localStorage.setItem('pinnedNodes', JSON.stringify(pinnedNodes));
+    }, 0);
+};
 
   const fetchNodes = useCallback(async (searchQuery = '') => {
     const url = searchQuery ? `/answers/search/?query=${searchQuery}` : '/answers/faqs/';
@@ -107,6 +133,7 @@ const ReactFlowComponent = () => {
           keywords: faq.keywords || [],
           note: savedNotes[uniqueId] || '', // Accede correctamente a las notas guardadas
           pinned: isPinned,
+          onPinToggle: togglePinNode, // Pasa la función al nodo
           setPanOnDrag,
           onChange: (newNote) => handleNodeChange(uniqueId, newNote),
         };
