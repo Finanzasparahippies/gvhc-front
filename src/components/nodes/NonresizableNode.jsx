@@ -9,12 +9,14 @@ const NonResizableNode = ({ data }) => {
     const [isRememberOpen, setIsRememberOpen] = useState(false);
     const [templateHistory, setTemplateHistory] = useState([]); // Historial de plantillas
 
-    const handleTogglePin = (e) => {
-        e.stopPropagation(); // Evita que el evento clic se propague más allá del ícono
-        if (data.onPinToggle) {
-            data.onPinToggle(data.id); // Llama a la función de alternar pin
-        }
-    };
+    console.log(data);
+    const handleOnPinned = () => {
+        if (data.setPanOnDrag) data.pinned(true);
+        };
+        
+    const handleOffPinned = () => {
+            if (data.setPanOnDrag) data.setPanOnDrag(true);
+        };
 
     const handleCopy = () => {
         navigator.clipboard.writeText(editableTemplate)
@@ -121,75 +123,73 @@ const NonResizableNode = ({ data }) => {
                         />
                     </>
                 ) :  data.template ? (
-                    <div className="relative">
-    {data.pinned && (
-        <AiTwotonePushpin
-            size={30}
-            onClick={handleTogglePin}
-            className="absolute top-0 right-0 text-red-500 transition-transform duration-200 transform hover:scale-110 cursor-pointer"
-        />
-    )}
-    <textarea
-        value={editableTemplate}
-        onChange={handleTemplateChange}
-        className="
-            nowheel
-            w-full
-            max-w-xs
-            h-72
-            resize-none
-            p-3
-            mt-2
-            rounded-lg
-            shadow-md
-            focus:shadow-lg
-            focus:outline-none
-            border
-            border-gray-300
-            focus:border-blue-400
-            text-gray-800
-            placeholder-gray-400
-            bg-white
-            transition
-            duration-200
-            ease-in-out
-        "
-    />
-    <div className="flex flex-col items-center mt-4">
-        <div className="flex flex-row justify-around w-full text-center">
-            <button onClick={handleCopy} className="relative group items-center justify-center">
-                <RxClipboardCopy
-                    size={30}
-                    className="transition-transform duration-200 transform group-hover:scale-110 group-hover:text-blue-500 mb-5"
-                />
-                <span className="absolute bottom-10 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                    Copy now
-                </span>
-            </button>
-            <button
-                onClick={clearTemplate}
-                className="
-                mt-3
-                mb-5
-                py-2 px-4
-                bg-orange-600
-                text-white
-                font-semibold
-                rounded-lg
-                shadow-md
-                hover:bg-red-600
-                focus:outline-none
-                focus:ring-2
-                focus:ring-red-400
-                focus:ring-opacity-75
-                transition
-                duration-300
-                "
-            >
-                Clear Template
-            </button>
-        </div>
-    </div>
+                    <div
+                        onClick={handleOnPinned}
+                    >
+                        <AiTwotonePushpin
+                            size={30}
+                            className="absolute top-0 right-0 text-blue-500 transition-transform duration-200 transform hover:scale-110"
+                        />
+                        <textarea
+                            value={editableTemplate}
+                            onChange={handleTemplateChange}
+                            className="
+                                nowheel
+                                w-full
+                                max-w-xs
+                                h-72
+                                resize-none
+                                p-3
+                                mt-2
+                                rounded-lg
+                                shadow-md
+                                focus:shadow-lg
+                                focus:outline-none
+                                border
+                                border-gray-300
+                                focus:border-blue-400
+                                text-gray-800
+                                placeholder-gray-400
+                                bg-white
+                                transition
+                                duration-200
+                                ease-in-out
+                            "
+                        />
+                        <div className="flex flex-col items-center mt-4">
+                            <div className="flex flex-row justify-around w-full text-center">
+                            <button onClick={handleCopy} className="relative group items-center justify-center">
+                                <RxClipboardCopy
+                                    size={30}
+                                    className="transition-transform duration-200 transform group-hover:scale-110 group-hover:text-blue-500 mb-5"
+                                    />
+                                <span className="absolute bottom-10 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                                    Copy now
+                                </span>
+                            </button>
+                            <button
+                        onClick={clearTemplate}
+                        className="
+                        mt-3
+                        mb-5
+                        py-2 px-4
+                        bg-orange-600
+                        text-white
+                        font-semibold
+                        rounded-lg
+                        shadow-md
+                        hover:bg-red-600
+                        focus:outline-none
+                        focus:ring-2
+                        focus:ring-red-400
+                        focus:ring-opacity-75
+                        transition
+                        duration-300
+                        "
+                        >
+                        Clear Template
+                    </button>
+                </div>
                             <div className="w-full text-center mt-2">
                                 <div
                                     className={`absolute bottom-0 left-0 w-full ${
@@ -214,6 +214,7 @@ const NonResizableNode = ({ data }) => {
                                 )}
                             </div>
                         </div>
+                    </div>
                 ) : (
                     <div
                         className="
