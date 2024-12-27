@@ -8,15 +8,12 @@ const NonResizableNode = ({ data }) => {
     const [editableTemplate, setEditableTemplate] = useState(data.template || '');
     const [isRememberOpen, setIsRememberOpen] = useState(false);
     const [templateHistory, setTemplateHistory] = useState([]); // Historial de plantillas
+    const [ isPinned, setIsPinned ] = useState(false);
 
-    console.log(data);
-    const handleOnPinned = () => {
-        if (data.setPanOnDrag) data.pinned(true);
-        };
-        
-    const handleOffPinned = () => {
-            if (data.setPanOnDrag) data.setPanOnDrag(true);
-        };
+    const handlePinned = () => {    
+        data.onChange(data.id, { pinned: !data.pinned });
+        setIsPinned(!isPinned);
+    };
 
     const handleCopy = () => {
         navigator.clipboard.writeText(editableTemplate)
@@ -124,19 +121,22 @@ const NonResizableNode = ({ data }) => {
                     </>
                 ) :  data.template ? (
                     <div
-                        onClick={handleOnPinned}
+                        onClick={handlePinned}
                     >
-                        <AiTwotonePushpin
-                            size={30}
-                            className="absolute top-0 right-0 text-blue-500 transition-transform duration-200 transform hover:scale-110"
-                        />
+                        {isPinned && (
+                            <div className="">
+                                <AiTwotonePushpin
+                                    className="absolute top-0 right-0 text-blue-500 transition-transform duration-200 transform hover:scale-110"
+                                    size={30}
+                                />
+                                </div>
+                                )}
                         <textarea
                             value={editableTemplate}
                             onChange={handleTemplateChange}
                             className="
                                 nowheel
-                                w-full
-                                max-w-xs
+                                w-[350px]
                                 h-72
                                 resize-none
                                 p-3
