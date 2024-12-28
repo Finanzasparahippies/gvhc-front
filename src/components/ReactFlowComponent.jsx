@@ -14,6 +14,7 @@ import '@xyflow/react/dist/style.css';
 import { ZoomSlider } from './Slides';
 import useGridDistribution from '../hooks/useGridDistribution';
 
+import CustomAttribution from './CustomAttribution';
 import { useNotes } from '../utils/NotesContext';
 import APIvs from '../utils/APIvs';
 import { SearchBar } from './searchBar/SearchBar';
@@ -82,30 +83,31 @@ const ReactFlowComponent = () => {
   
   const togglePinNode = (nodeId) => {
     setNodes((currentNodes) =>
-        currentNodes.map((node) =>
-            node.id === nodeId
-                ? {
-                      ...node,
-                      data: {
-                          ...node.data,
-                          pinned: !node.data.pinned,
-                      },
-                      style: {
-                          ...node.style,
-                          border: !node.data.pinned ? '2px solid red' : '2px solid black',
-                      },
-                      draggable: node.data.pinned, // Cambia la capacidad de arrastrar
-                  }
-                : node
-        )
+      currentNodes.map((node) =>
+        node.id === nodeId
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                pinned: !node.data.pinned,
+              },
+              draggable: !node.data.pinned, // Cambia el estado de draggable dinámicamente
+              style: {
+                ...node.style,
+                border: !node.data.pinned ? '2px solid red' : '2px solid black',
+              },
+            }
+          : node
+      )
     );
-
-    // Actualiza los nodos "pineados" en localStorage
+  
+    // Actualiza el almacenamiento local para mantener la persistencia
     setTimeout(() => {
-        const pinnedNodes = nodes.filter((n) => n.data?.pinned);
-        localStorage.setItem('pinnedNodes', JSON.stringify(pinnedNodes));
+      const pinnedNodes = nodes.filter((n) => n.data?.pinned);
+      localStorage.setItem('pinnedNodes', JSON.stringify(pinnedNodes));
     }, 0);
-};
+  };
+  
 
   const fetchNodes = useCallback(async (searchQuery = '') => {
     const url = searchQuery ? `/answers/search/?query=${searchQuery}` : '/answers/faqs/';
@@ -114,7 +116,7 @@ const ReactFlowComponent = () => {
   
     try {
       const response = await APIvs.get(url);
-      console.log('Response:', response);
+      // console.log('Response:', response);
       const data = response.data.results || [];
       const apiNodes = [];
       const apiEdges = [];
@@ -149,6 +151,7 @@ const ReactFlowComponent = () => {
           id: uniqueId,
           type: faq.answers[0]?.node_type || 'NonresizableNode',
           position: { x: 0, y: 0 },
+          draggable: !isPinned,
           data: nodeData,
           style: nodeStyle,
           pinned: isPinned,
@@ -286,32 +289,45 @@ const ReactFlowComponent = () => {
 );
 
 
-
+useEffect(() => {
+  console.log('Nodes:', nodes);
+  console.log('Edges:', edges);
+}, [nodes, edges]);
 
 
 
 return (
-  <>
+<>
 <SearchBar
     query={query}
     setQuery={setQuery}
     setNodes={setNodes}
     fetchNodes={fetchNodes}
 />
-    <div className="mt-10" style={{ width: '100vw', height: 'calc(100vh - 350px)' }}>
+    <div className="mt-10" style={{ width: '100vw', height: 'calc(100vh - 150px)' }}>
       <ReactFlow
+        attributionPosition='top-left'
         nodes={nodes}
         edges={edges}
         onConnect={onConnect}
         onNodesChange={onNodesChange}
         onNodeClick={handleNodeClick}
+        onlyRenderVisibleElements={true}
+        colorMode='system'
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
         maxZoom={2}
         minZoom={0.2}
         panOnDrag={panOnDrag}
-        style={{ border: '2px solid #ccc' }}
+        style={{ 
+          border: '2px solid #005c', 
+          borderRadius: 8, 
+          height: '100%', 
+          width: '100%',
+          backgroundColor: '#f0f9ff',
+          boxShadow: '0 0 100px rgba(0, 0, 0, 0.1)',
+        }}
       >
         <Controls />
         <MiniMap
@@ -319,16 +335,17 @@ return (
             switch (node.type) {
               case 'NonresizableNode':
                 return '#0070f3';
-              case 'NoteNode':
-                return '#f39';
-              default:
-                return '#ddd';
-            }
-          }}
+                case 'NotesNode':
+                  return '#f39';
+                  default:
+                    return '#ddd';
+                  }
+                }}
           style={{ width: 150, height: 80 }}
         />        
-      <Background color="#ddd" variant={BackgroundVariant.Cross} gap={12} />
+      <Background color="#60605F" variant={BackgroundVariant.Cross} gap={12} />
       </ReactFlow>
+      <CustomAttribution />
       <div className="save-restore">
         <button onClick={handleSave}>Guardar</button>
         <button onClick={handleRestore}>Restaurar</button>

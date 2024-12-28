@@ -4,15 +4,20 @@ import { Handle, Position } from '@xyflow/react';
 const NoteNode = ({ id, data }) => {
     const [note, setNote] = useState(data.note || ''); // Estado para la nota
     const [noteHistory, setNoteHistory] = useState([]); 
+    const [ isPinned, setIsPinned ] = useState(false);
 
-    const handleOnPinned = () => {
-        if (data.setPanOnDrag) data.setPanOnDrag(false); // Deshabilita pan al interactuar con el nodo
-        };
-        
-        const handleOffOPinned = () => {
-            if (data.setPanOnDrag) data.setPanOnDrag(true); // Habilita pan al salir del nodo
-        };
+    const handleMouseEnter = () => {
+        if (data.setPanOnDrag) data.setPanOnDrag(false); // Deshabilita pan
+    };
 
+    const handleMouseLeave = () => {
+        if (data.setPanOnDrag) data.setPanOnDrag(true); // Habilita pan
+    };
+
+    const handlePinned = () => {    
+        data.onChange(data.id, { pinned: !data.pinned });
+        setIsPinned(!isPinned);
+    };
 
     const handleNoteChange = (event) => {
         const updatedNote = event.target.value;
@@ -53,7 +58,9 @@ const NoteNode = ({ id, data }) => {
         <div 
             className="p-4 h-[600px] w-[350px] border rounded bg-yellow-100 shadow-lg flex flex-col"
             style={{ border: data.pinned ? '2px solid red' : '2px solid black' }}
-            onClick={handleOnPinned}
+            onClick={handlePinned}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
         >
         <strong className="block mb-2 text-lg font-bold text-gray-700">
             Nota de llamada

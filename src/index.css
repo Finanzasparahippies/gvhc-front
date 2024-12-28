@@ -3,5 +3,17 @@
 @tailwind utilities;
 
 body {
-    background-color: #F3F3F3;
-}
+    background: rgb(174, 190, 189);
+    background: linear-gradient(0deg, rgba(174,190,160,1) 0%, rgb(69, 70, 69) 79%);}
+
+.react-flow__attribution {
+      display: none; /* Oculta el default */
+    }
+
+.custom-attribution {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 12px;
+    color: gray;
+    }

@@ -9,6 +9,26 @@ const NonResizableNode = ({ data }) => {
     const [isRememberOpen, setIsRememberOpen] = useState(false);
     const [templateHistory, setTemplateHistory] = useState([]); // Historial de plantillas
     const [ isPinned, setIsPinned ] = useState(false);
+    const [isHovered, setIsHovered] = useState(false); // Controla el hover
+    const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+    const handleMouseMove = (event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setMousePosition({
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top,
+        });
+    };
+
+    const handleMouseEnter = () => {
+        if (data.setPanOnDrag) data.setPanOnDrag(false); // Deshabilita pan
+        setIsHovered(true);
+    };
+
+    const handleMouseLeave = () => {
+        if (data.setPanOnDrag) data.setPanOnDrag(true); // Habilita pan
+        setIsHovered(false);
+    };
 
     const handlePinned = () => {    
         data.onChange(data.id, { pinned: !data.pinned });
@@ -121,15 +141,40 @@ const NonResizableNode = ({ data }) => {
                     </>
                 ) :  data.template ? (
                     <div
+                    className="relative group"
+                        style={{
+                            width: "200px",
+                            height: "150px",
+                            position: "relative",
+                            overflow: "hidden",
+                            border: "2px solid #ddd",
+                            borderRadius: "8px",
+                            backgroundColor: "#fff",
+                        }}
                         onClick={handlePinned}
+                        onMouseEnter={handleMouseEnter}
+                        onMouseLeave={handleMouseLeave}
+                        onMouseMove={handleMouseMove}
                     >
                         {isPinned && (
                             <div className="">
                                 <AiTwotonePushpin
-                                    className="absolute top-0 right-0 text-blue-500 transition-transform duration-200 transform hover:scale-110"
+                                    className="absolute top-0 right-0 text-red-500 transition-transform duration-200 transform hover:scale-110"
                                     size={30}
                                 />
                                 </div>
+                                )}
+                                {isHovered && (
+                                    <div
+                                        className="absolute w-32 h-32 rounded-full border-2 border-blue-400 pointer-events-none"
+                                        style={{
+                                            top: mousePosition.y - 64, // Ajusta la posición al centro
+                                            left: mousePosition.x - 64,
+                                            backgroundImage: `url(${data.image})`,
+                                            backgroundSize: "200%",
+                                            backgroundPosition: `${mousePosition.x * 2}px ${mousePosition.y * 2}px`,
+                                        }}
+                                    />
                                 )}
                         <textarea
                             value={editableTemplate}
