@@ -31,16 +31,16 @@ const NonResizableNode = ({ data }) => {
         setIsHovered(false);
     };
 
-    // const handlePinned = () => {    
-    //     data.onChange(data.id, { pinned: !data.pinned });
-    //     setIsPinned(!isPinned);
-    // };
+    const handlePinned = (event) => {
+            event.stopPropagation(); 
+            data.onPinToggle(data.id); 
+        };
 
     const handleCopy = () => {
         navigator.clipboard.writeText(editableTemplate)
             .then(() => alert('Plantilla copiada al portapapeles'))
             .catch(err => console.error('Error al copiar la plantilla:', err));
-    };
+        };
 
     const handleTemplateChange = (event) => {
         const updatedTemplate = event.target.value || '';
@@ -145,10 +145,7 @@ const NonResizableNode = ({ data }) => {
                     </>
                 ) :  data.template ? (
                     <div
-                        onClick={(event) => {
-                            event.stopPropagation(); // Evita que el evento clic se propague más allá del nodo
-                            data.onPinToggle(data.id); // Llama a togglePinNode
-                        }}
+                        onClick={handlePinned}
                     >
                         {isPinned && (
                             <div className="">

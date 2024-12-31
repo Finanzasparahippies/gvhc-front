@@ -301,7 +301,7 @@ useEffect(() => {
 
 return (
 <>
-    <div className="w-100vw" style={{ width: '100vw', height: '100vh' }}>
+    <div style={{ width: '100vw', height: 'calc(100vh - 120px)' }}>
     <ColorPicker onChangeColor={setBackgroundColor} />
     <SearchBar
             query={query}
@@ -334,7 +334,6 @@ return (
       >
         <Controls
           showFitView={true}
-          style={{ position: 'absolute', bottom: -5, left: 1290 }}
         />
         <MiniMap
           nodeColor={(node) => {
