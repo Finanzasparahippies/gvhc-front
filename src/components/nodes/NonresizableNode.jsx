@@ -31,10 +31,10 @@ const NonResizableNode = ({ data }) => {
         setIsHovered(false);
     };
 
-    const handlePinned = () => {    
-        data.onChange(data.id, { pinned: !data.pinned });
-        setIsPinned(!isPinned);
-    };
+    // const handlePinned = () => {    
+    //     data.onChange(data.id, { pinned: !data.pinned });
+    //     setIsPinned(!isPinned);
+    // };
 
     const handleCopy = () => {
         navigator.clipboard.writeText(editableTemplate)
@@ -145,19 +145,22 @@ const NonResizableNode = ({ data }) => {
                     </>
                 ) :  data.template ? (
                     <div
+                        onClick={(event) => {
+                            event.stopPropagation(); // Evita que el evento clic se propague más allá del nodo
+                            data.onPinToggle(data.id); // Llama a togglePinNode
+                        }}
                     >
                         {isPinned && (
                             <div className="">
                                 <AiTwotonePushpin
                                     className="absolute top-0 right-0 text-red-500 transition-transform duration-200 transform hover:scale-110"
                                     size={30}
-                                />
+                                    />
                                 </div>
                                 )}
                         <textarea
                             value={editableTemplate}
                             onChange={handleTemplateChange}
-                            onClick={handlePinned}
                             onMouseEnter={handleMouseEnter}
                             onMouseLeave={handleMouseLeave}
                             onMouseMove={handleMouseMove}
