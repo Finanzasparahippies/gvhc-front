@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 body {
-    background: rgb(174, 190, 189);
-    background: linear-gradient(0deg, rgba(174,190,160,1) 0%, rgb(69, 70, 69) 79%);}
+    background-color: #333030;
+}
 
 .react-flow__attribution {
       display: none; /* Oculta el default */
@@ -17,3 +17,7 @@ body {
     font-size: 12px;
     color: gray;
     }
+
+.react-flow__controls-button {
+    background: none !important;
+}

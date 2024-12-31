@@ -19,6 +19,7 @@ const NonResizableNode = ({ data }) => {
             y: event.clientY - rect.top,
         });
     };
+    
 
     const handleMouseEnter = () => {
         if (data.setPanOnDrag) data.setPanOnDrag(false); // Deshabilita pan
@@ -42,11 +43,14 @@ const NonResizableNode = ({ data }) => {
     };
 
     const handleTemplateChange = (event) => {
-        const updatedTemplate = event.target.value;
-        setTemplateHistory((prev) => [...prev, editableTemplate]); // Agregar el valor actual al historial
+        const updatedTemplate = event.target.value || '';
+        setTemplateHistory((prev) => [...prev, editableTemplate]);
         setEditableTemplate(updatedTemplate);
-        data.onChange(data.id, { template: updatedTemplate });
+        if (data.onChange) {
+            data.onChange(data.id, { template: updatedTemplate });
+        }
     };
+    
 
     const clearTemplate = () => {
         setTemplateHistory((prev) => [...prev, editableTemplate]); // Agregar el valor actual al historial
@@ -141,20 +145,6 @@ const NonResizableNode = ({ data }) => {
                     </>
                 ) :  data.template ? (
                     <div
-                    className="relative group"
-                        style={{
-                            width: "200px",
-                            height: "150px",
-                            position: "relative",
-                            overflow: "hidden",
-                            border: "2px solid #ddd",
-                            borderRadius: "8px",
-                            backgroundColor: "#fff",
-                        }}
-                        onClick={handlePinned}
-                        onMouseEnter={handleMouseEnter}
-                        onMouseLeave={handleMouseLeave}
-                        onMouseMove={handleMouseMove}
                     >
                         {isPinned && (
                             <div className="">
@@ -164,21 +154,13 @@ const NonResizableNode = ({ data }) => {
                                 />
                                 </div>
                                 )}
-                                {isHovered && (
-                                    <div
-                                        className="absolute w-32 h-32 rounded-full border-2 border-blue-400 pointer-events-none"
-                                        style={{
-                                            top: mousePosition.y - 64, // Ajusta la posición al centro
-                                            left: mousePosition.x - 64,
-                                            backgroundImage: `url(${data.image})`,
-                                            backgroundSize: "200%",
-                                            backgroundPosition: `${mousePosition.x * 2}px ${mousePosition.y * 2}px`,
-                                        }}
-                                    />
-                                )}
                         <textarea
                             value={editableTemplate}
                             onChange={handleTemplateChange}
+                            onClick={handlePinned}
+                            onMouseEnter={handleMouseEnter}
+                            onMouseLeave={handleMouseLeave}
+                            onMouseMove={handleMouseMove}
                             className="
                                 nowheel
                                 w-[350px]

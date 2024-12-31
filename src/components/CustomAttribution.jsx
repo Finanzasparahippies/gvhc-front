@@ -1,6 +1,6 @@
 
 const CustomAttribution = () => (
-    <div className="absolute top-[125px] left-3">
+    <div className="absolute top-[50px] left-3">
         <a
             href="https://myapps.gvhc.org/Citrix/MyAppsWeb/"
             target="_blank"

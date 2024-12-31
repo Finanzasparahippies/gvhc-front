@@ -29,7 +29,7 @@ export const SearchBar = ({ query, setQuery, setNodes, fetchNodes }) => {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center mt-8">
+        <div className="flex flex-col items-center justify-center mb-5 mt-5">
             <div className="relative w-80 h-12 text-gray-700">
                 <input
                     type="text"

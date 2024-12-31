@@ -23,6 +23,7 @@ import NotesNode from './nodes/NotesNode';
 import NonresizableNode from './nodes/NonresizableNode';
 import CustomEdge from './nodes/CustomEdges';
 import {TooltipNode, AnnotationNode}  from './nodes';
+import ColorPicker from './ColorPicker';
 
 import { Slide, slidesToElements } from './Slides';
 
@@ -46,6 +47,8 @@ const ReactFlowComponent = () => {
   const { notes, updateNote } = useNotes();
   const [panOnDrag, setPanOnDrag] = useState(true); // Controla el pan dinámicamente
   const { fitView } = useReactFlow();
+  const [backgroundColor, setBackgroundColor] = useState("#ddd");
+
 
   const onNodeChange = (id, newValue) => {
     setNodes((nds) =>
@@ -298,13 +301,14 @@ useEffect(() => {
 
 return (
 <>
-<SearchBar
-    query={query}
-    setQuery={setQuery}
-    setNodes={setNodes}
-    fetchNodes={fetchNodes}
-/>
-    <div className="mt-10" style={{ width: '100vw', height: 'calc(100vh - 150px)' }}>
+    <div className="w-100vw" style={{ width: '100vw', height: '100vh' }}>
+    <ColorPicker onChangeColor={setBackgroundColor} />
+    <SearchBar
+            query={query}
+            setQuery={setQuery}
+            setNodes={setNodes}
+            fetchNodes={fetchNodes}
+        />
       <ReactFlow
         attributionPosition='top-left'
         nodes={nodes}
@@ -326,10 +330,12 @@ return (
           height: '100%', 
           width: '100%',
           backgroundColor: '#f0f9ff',
-          boxShadow: '0 0 100px rgba(0, 0, 0, 0.1)',
         }}
       >
-        <Controls />
+        <Controls
+          showFitView={true}
+          style={{ position: 'absolute', bottom: -5, left: 1290 }}
+        />
         <MiniMap
           nodeColor={(node) => {
             switch (node.type) {
@@ -341,9 +347,9 @@ return (
                     return '#ddd';
                   }
                 }}
-          style={{ width: 150, height: 80 }}
+          style={{ width: 150, height: 100 }}
         />        
-      <Background color="#60605F" variant={BackgroundVariant.Cross} gap={12} />
+      <Background color={backgroundColor} variant={BackgroundVariant.Cross} gap={12} />
       </ReactFlow>
       <CustomAttribution />
       <div className="save-restore">
