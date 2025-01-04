@@ -22,7 +22,7 @@ import CustomResizableNode from './nodes/NotesNode'; // Importa el nuevo nodo
 import NotesNode from './nodes/NotesNode';
 import NonresizableNode from './nodes/NonresizableNode';
 import CustomEdge from './nodes/CustomEdges';
-import {TooltipNode, AnnotationNode}  from './nodes';
+import {TooltipNode}  from './nodes';
 import ColorPicker from './ColorPicker';
 
 import { Slide, slidesToElements } from './Slides';
@@ -33,7 +33,6 @@ const nodeTypes = {
   NonresizableNode,
   Slide,
   TooltipNode,
-  AnnotationNode,
 };
 
 const edgeTypes = {
@@ -257,7 +256,7 @@ const ReactFlowComponent = () => {
   
 
  // Manejar clic en nodo (fijar o desfijar)
- const handleNodeClick = useCallback(
+const handleNodeClick = useCallback(
   (event, node) => {
     event.stopPropagation(); // Evita que el evento clic se propague más allá del nodo
 
