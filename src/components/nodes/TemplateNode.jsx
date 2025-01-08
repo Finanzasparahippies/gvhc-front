@@ -2,6 +2,9 @@ import { memo, useEffect, useState } from 'react';
 
 import { RxClipboardCopy } from "react-icons/rx";
 import { AiTwotonePushpin } from "react-icons/ai";
+import Swal from 'sweetalert2';
+import 'sweetalert2/dist/sweetalert2.min.css';
+
 
 const TemplateNode = ({ data }) => {
 
@@ -9,9 +12,10 @@ const TemplateNode = ({ data }) => {
     const [templateHistory, setTemplateHistory] = useState([]); 
     const [isHovered, setIsHovered] = useState(false); // Controla el hover
     const [isRememberOpen, setIsRememberOpen] = useState(false); // Controla el estado de la nota
-    
+    const [ isPinned, setIsPinned ] = useState(false);
 
-     const handleMouseEnter = () => {
+
+        const handleMouseEnter = () => {
             if (data.setPanOnDrag) data.setPanOnDrag(false); // Deshabilita pan
             setIsHovered(true);
         };
@@ -28,9 +32,31 @@ const TemplateNode = ({ data }) => {
     
         const handleCopy = () => {
             navigator.clipboard.writeText(editableTemplate)
-                .then(() => alert('Plantilla copiada al portapapeles'))
-                .catch(err => console.error('Error al copiar la plantilla:', err));
-            };
+            .then(() => {
+                Swal.fire({
+                    title: '¡Copiado!',
+                    text: 'La plantilla ha sido copiada al portapapeles.',
+                    icon: 'success',
+                    timer: 2000, // Se cierra automáticamente después de 2 segundos
+                    timerProgressBar: true, // Muestra una barra de progreso
+                    showConfirmButton: false, // Oculta el botón de confirmación
+                    position: 'top-end', // Posición en la esquina superior derecha
+                    toast: true, // Modo toast para un diseño más limpio
+                });
+            })
+            .catch(() => {
+                Swal.fire({
+                    title: 'Error',
+                    text: 'No se pudo copiar la plantilla.',
+                    icon: 'error',
+                    timer: 2000,
+                    timerProgressBar: true,
+                    showConfirmButton: false,
+                    position: 'top-end',
+                    toast: true,
+                });
+            });
+        };
     
         const handleTemplateChange = (event) => {
             const updatedTemplate = event.target.value || '';
@@ -57,12 +83,25 @@ const TemplateNode = ({ data }) => {
             }
         };
 
+        useEffect(() => {
+            const handleKeyDown = (event) => {
+                if (event.ctrlKey && event.key === 'z') {
+                    event.preventDefault(); // Evitar comportamiento predeterminado
+                    undoTemplate(); // Restaurar el template
+                }
+            };
+            window.addEventListener('keydown', handleKeyDown);
+            return () => {
+                window.removeEventListener('keydown', handleKeyDown);
+            };
+        }, [templateHistory]);
+    
 
     return (
         <div
                         onClick={handlePinned}
                     >
-                        {isPinned && (
+                        {data.pinned && (
                             <div className="">
                                 <AiTwotonePushpin
                                     className="
@@ -90,7 +129,7 @@ const TemplateNode = ({ data }) => {
                                 h-72
                                 resize-none
                                 p-3
-                                mt-2
+                                mt-5
                                 rounded-lg
                                 shadow-md
                                 focus:shadow-lg
