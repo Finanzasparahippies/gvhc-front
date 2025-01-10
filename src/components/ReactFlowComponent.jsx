@@ -46,7 +46,7 @@ const ReactFlowComponent = () => {
   const { notes, updateNote } = useNotes();
   const [panOnDrag, setPanOnDrag] = useState(true); // Controla el pan dinámicamente
   const { fitView } = useReactFlow();
-  const [backgroundColor, setBackgroundColor] = useState("#ddd");
+  const [backgroundColor, setBackgroundColor] = useState("#f0f9ff");
 
 
   const onNodeChange = (id, newValue) => {

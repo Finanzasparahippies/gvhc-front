@@ -62,9 +62,19 @@ const NonResizableNode = ({ data }) => {
                             objectFit: 'cover', // Asegura que la imagen ocupe el nodo completo
                         }}
                     />
-                ) :  data.response_type === 'Text' && data.image ? (
+                ) : data.response_type === 'Image' && data.excel_file ? (
+                    <img
+                        src={data.image}
+                        alt="Node related"
+                        style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover', // Asegura que la imagen ocupe el nodo completo
+                        }}
+                    />
+                ) : data.response_type === 'Text' && data.image ? (
                     <>
-                        <p className="italic mt-2 max-w-[200px] flex text-center text-gray-700 mb-5">
+                        <p className="italic mt-6 max-w-[200px] flex text-center text-gray-700 mb-5">
                             {data.answerText}
                         </p>
                     <img
