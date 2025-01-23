@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-    baseURL: 'http://127.0.0.1:8000/api',
+    baseURL: 'https://gvhc-backend.onrender.com',
     headers: {
         'Content-Type': 'application/json',
     }
@@ -29,7 +29,7 @@ API.interceptors.response.use(
             const refresh = localStorage.getItem('refresh_token');
             if (refresh) {
                 try {
-                    const response = await axios.post('http://127.0.0.1:8000/api/token/refresh/', { refresh });
+                    const response = await axios.post('https://gvhc-backend.onrender.com/api/token/refresh/', { refresh });
                     localStorage.setItem('access_token', response.data.access);
                     originalRequest.headers.Authorization = `Bearer ${response.data.access}`;
                     return axios(originalRequest);
