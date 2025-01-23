@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import ReactFlow, { MiniMap, Controls, Background } from 'react-flow-renderer';
+import ReactFlow, { MiniMap, Controls, Background } from 'reactflow';
 import APIvs from '../../utils/APIvs';
 import { SearchBar } from '../searchBar/SearchBar';
 
