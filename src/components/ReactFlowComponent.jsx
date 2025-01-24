@@ -112,7 +112,7 @@ const ReactFlowComponent = () => {
   
 
   const fetchNodes = useCallback(async (searchQuery = '') => {
-    const url = searchQuery ? `/answers/search/?query=${searchQuery}` : '/answers/faqs/';
+    const url = searchQuery ? `api/answers/search/?query=${searchQuery}` : '/api/answers/faqs/';
     const pinnedNodes = JSON.parse(localStorage.getItem('pinnedNodes')) || [];
     const savedNotes = JSON.parse(localStorage.getItem('agentNotes')) || {};
   
