@@ -6,6 +6,20 @@ const NonResizableNode = ({ data }) => {
 
     const [imageSize, setImageSize] = useState({ width: 'auto', height: 'auto' });
 
+    useEffect(() => {
+        if (data.image) {
+            const img = new Image();
+            img.onload = () => {
+                const aspectRatio = img.width / img.height;
+                const maxDimension = 750; // Tamaño máximo del nodo
+                const width = aspectRatio >= 1 ? maxDimension : maxDimension * aspectRatio;
+                const height = aspectRatio >= 1 ? maxDimension / aspectRatio : maxDimension;
+                setImageSize({ width, height });
+            };
+            img.src = data.image;
+        }
+    }, [data.image]);
+
     return (
         <div
             style={{

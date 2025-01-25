@@ -61,8 +61,9 @@ const ReactFlowComponent = () => {
     updateNote(nodeId, newNote); // Guardar nota en el contexto y localStorage
   };
 
-  const distributeNodesInGrid = (nodes, nodesPerRow = 5, xGap = 200, yGap = 150) => {
+  const distributeNodesInGrid = (nodes, nodesPerRow, xGap, yGap ) => {
     return nodes.map((node, index) => {
+
       const row = Math.floor(index / nodesPerRow);
       const col = index % nodesPerRow;
   
@@ -72,12 +73,12 @@ const ReactFlowComponent = () => {
           x: col * xGap,
           y: row * yGap,
         },
-        draggable: !node.data?.pinned, // Solo arrastrable si no está pineado
+        draggable: !node.data?.pinned, 
         data: {
           ...node.data,
           setPanOnDrag: (isEnabled) => {
             if (!node.data?.pinned) setPanOnDrag(isEnabled);
-          }, // Controla panOnDrag de forma dinámica
+          }, 
         },
       };
     });
@@ -112,7 +113,7 @@ const ReactFlowComponent = () => {
   
 
   const fetchNodes = useCallback(async (searchQuery = '') => {
-    const url = searchQuery ? `api/answers/search/?query=${searchQuery}` : '/api/answers/faqs/';
+    const url = searchQuery ? `/api/answers/search/?query=${searchQuery}` : '/api/answers/faqs/';
     const pinnedNodes = JSON.parse(localStorage.getItem('pinnedNodes')) || [];
     const savedNotes = JSON.parse(localStorage.getItem('agentNotes')) || {};
   
@@ -211,7 +212,7 @@ const ReactFlowComponent = () => {
       });
   
       // Distribuye los nodos y actualiza el estado
-      const distributedNodes = distributeNodesInGrid(apiNodes, 8, 700, 1000);
+      const distributedNodes = distributeNodesInGrid(apiNodes, 8, 800, 1000);
       setNodes(distributedNodes);
       setEdges(apiEdges);
   
