@@ -7,6 +7,17 @@ import LoginPage from './views/LoginPage';
 import PrivateRoute from './components/routes/PrivateRoute';
 
 const App = () => {
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetch('https://gvhc-backend.onrender.com/')
+          .then(response => console.log('Manteniendo activo:', response.status))
+          .catch(error => console.error('Error manteniendo activo:', error));
+  }, 600000); // 10 minutos
+
+    return () => clearInterval(interval);
+  }, []);
+  
   return (
     <NotesProvider>
         <ReactFlowProvider>
