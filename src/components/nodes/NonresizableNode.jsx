@@ -49,22 +49,38 @@ const NonResizableNode = ({ data }) => {
                     `
                     }>{data.label}</strong>
                 {data.response_type === 'Process' && data.image ? (
-                    <>
-                        <p className="italic mt-2 text-center text-gray-700">
-                            {data.answerText}
+                    <div className="relative">
+                        <p className="
+                        absolute
+                        top-2
+                        left-0
+                        w-full
+                        bg-black
+                        bg-opacity-60
+                        text-white
+                        italic
+                        text-center
+                        rounded-t-lg
+                        ">
+                            {data.answerText.split('\n').map((line, index) => (
+                                <span key={index} className="block">{line}<br /></span>
+                            ))}
                         </p>
+
+                        {/* Imagen */}
                         <img
                             src={data.image}
                             alt="Process"
+                            className="rounded-lg"
                             style={{
                                 width: '100%',
                                 height: '100%',
                                 objectFit: 'cover',
                                 borderRadius: '8px',
-                                marginTop: '10px',
+                                marginTop: '22px',
                             }}
                         />
-                    </>
+                    </div>
                 ) :
                 data.response_type === 'Image' && data.image ? (
                     <img
