@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { ReactFlowComponent } from './components/';
 import logo from './assets/img/logo.png';
 import { ReactFlowProvider } from '@xyflow/react';
@@ -17,7 +18,7 @@ const App = () => {
 
     return () => clearInterval(interval);
   }, []);
-  
+
   return (
     <NotesProvider>
         <ReactFlowProvider>
