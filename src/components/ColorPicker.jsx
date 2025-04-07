@@ -11,7 +11,7 @@ const ColorPicker = ({ onChangeColor }) => {
     };
 
     return (
-        <div className="absolute left-[550px] top-6 items-center">
+        <div className="absolute xl:left-[450px] lg:left-[400] md:left-[200px] sm:left-[100px] top-6 items-center">
             <input
                 id="colorPicker"
                 type="color"

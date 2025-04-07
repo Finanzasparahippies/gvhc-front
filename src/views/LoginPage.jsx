@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import logo from '../assets/img/logo.png'
 
 const LoginPage = () => {
     const [username, setUsername] = useState('');
@@ -28,29 +29,36 @@ const LoginPage = () => {
     
 
     return (
-        <div className="login-container">
-            <h2>Iniciar Sesión</h2>
-            {error && <p style={{ color: 'red' }}>{error}</p>}
-            <form onSubmit={handleSubmit}>
-                <div>
+        <div className="max-w-[400px] my-[50px] mx-auto p-5 border-solid border border-gray-300 rounded-lg bg-slate-100">
+            <img src={logo}alt="logo" />
+            {/* <h2>Iniciar Sesión</h2> */}
+            {error && <p className='text-red-700 font-semibold border border-red-600 bg-red-300 pl-1'>{error}</p>}
+            <form
+                className='block font-bold'
+                onSubmit={handleSubmit}>
+                <div className='mb-4'>
                     <label>Usuario:</label>
                     <input
+                        className='bg-slate-300 rounded-md focus:bg-white selection:bg-white w-full p-2'
                         type="text"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         required
                     />
                 </div>
-                <div>
+                <div className='mb-4'>
                     <label>Contraseña:</label>
                     <input
+                        className='bg-slate-300 rounded-md focus:bg-white selection:bg-white w-full p-2'
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
                     />
                 </div>
-                <button type="submit">Iniciar Sesión</button>
+                <button 
+                    className='bg-green-400 cursor-pointer p-3 w-full hover:bg-green-600'
+                    type="submit">Iniciar Sesión</button>
             </form>
         </div>
     );

@@ -301,7 +301,10 @@ useEffect(() => {
 
 return (
 <>
-    <div style={{ width: '100vw', height: 'calc(100vh - 120px)' }}>
+    <div
+      className='w-screen'
+      style={{ height: 'calc(100vh - 120px)' }}
+      >
     <ColorPicker onChangeColor={setBackgroundColor} />
     <SearchBar
             query={query}

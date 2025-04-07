@@ -20,12 +20,10 @@ import {
             <BaseEdge id={id} path={edgePath} />
                 <EdgeLabelRenderer>
                     <button
+                        className='absolute pointer-events-auto nodrag nopan'
                         style={{
-                        position: 'absolute',
-                        transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-                        pointerEvents: 'all',
+                            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`
                         }}
-                        className="nodrag nopan"
                         onClick={() => {
                         setEdges((es) => es.filter((e) => e.id !== id));
                         }}
