@@ -57,7 +57,7 @@ const LoginPage = () => {
                     />
                 </div>
                 <button 
-                    className='bg-green-400 cursor-pointer p-3 w-full hover:bg-green-600'
+                    className='bg-green-400 cursor-pointer p-3 w-full hover:bg-green-600 rounded-md'
                     type="submit">Iniciar Sesión</button>
             </form>
         </div>

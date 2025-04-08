@@ -7,6 +7,7 @@ const NonResizableNode = ({ data }) => {
     const [imageSize, setImageSize] = useState({ width: 'auto', height: 'auto' });
 
     useEffect(() => {
+        console.log(data)
         if (data.image) {
             const img = new Image();
             img.onload = () => {
@@ -22,46 +23,16 @@ const NonResizableNode = ({ data }) => {
 
     return (
         <div
-            style={{
-                padding: 10,
-                width: imageSize.width,
-                height: imageSize.height,
-                overflow: 'hidden', // Oculta contenido fuera de los límites
-                position: 'relative', // Necesario para los handles
-            }}
+            className={`relative p-3 w-${imageSize.width} h-${imageSize.height} overflow-hidden`}
         >
             <Handle type="target" position={Position.TopLeft} />
             <div
-                style={{
-                    textAlign: 'center',
-                    width: '100%',
-                    height: '100%',
-                    overflow: 'hidden', // Oculta cualquier contenido que se salga del nodo
-                }}
+                className='text-center w-full h-full overflow-hidden'
             >
-                <strong className={
-                    `absolute 
-                    top-0 
-                    left-0 
-                    w-full 
-                    h-8
-                    bg-blue-500
-                    `
-                    }>{data.label}</strong>
+                <strong className={`absolute top-0 left-0 w-full h-8 bg-blue-500 mb-5`}>{data.label}</strong>
                 {data.response_type === 'Process' && data.image ? (
                     <div className="relative">
-                        <p className="
-                        absolute
-                        top-2
-                        left-0
-                        w-full
-                        bg-black
-                        bg-opacity-60
-                        text-white
-                        italic
-                        text-center
-                        rounded-t-lg
-                        ">
+                        <p className="absolute top-2 left-0 w-full bg-black bg-opacity-60 text-white italic text-center rounded-t-lg">
                             {data.answerText.split('\n').map((line, index) => (
                                 <span key={index} className="block">{line}<br /></span>
                             ))}
@@ -71,14 +42,7 @@ const NonResizableNode = ({ data }) => {
                         <img
                             src={data.image}
                             alt="Process"
-                            className="rounded-lg"
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                                borderRadius: '8px',
-                                marginTop: '22px',
-                            }}
+                            className="rounded-lg w-full h-full object-cover mt-5"
                         />
                     </div>
                 ) :
@@ -86,11 +50,7 @@ const NonResizableNode = ({ data }) => {
                     <img
                         src={data.image}
                         alt="Node related"
-                        style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover', // Asegura que la imagen ocupe el nodo completo
-                        }}
+                        className='w-full h-full object-cover mx-auto my-auto'
                     />
                 ) : data.response_type === 'Image' && data.excel_file ? (
                     <img
@@ -110,11 +70,7 @@ const NonResizableNode = ({ data }) => {
                     <img
                         src={data.image}
                         alt="Node related"
-                        style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover', // Asegura que la imagen ocupe el nodo completo
-                        }}
+                        className='w-full h-full object-cover mx-auto my-auto'
                         />
                     </>
                 ) :  data.template ? (

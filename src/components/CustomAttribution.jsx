@@ -1,10 +1,10 @@
 
 const CustomAttribution = () => (
-    <div className="absolute hidden left-3 sm:block sm:top-[80px] md:top-[50px]">
+    <div className="hidden left-3 sm:block">
         <a
             href="https://myapps.gvhc.org/Citrix/MyAppsWeb/"
             target="_blank"
-            className="hover:underline text-gray-300 text-sm"
+            className="hover:underline hover:text-yellow-600 text-gray-300 text-sm"
         >
             Golden Valley Health Centers - Citrix
         </a>

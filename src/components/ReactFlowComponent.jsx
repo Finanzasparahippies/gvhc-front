@@ -227,7 +227,12 @@ const ReactFlowComponent = () => {
     }
   }, []);
   
-
+  useEffect(() => {
+          const lastColor = localStorage.getItem('preferedColor')
+          if (lastColor) {
+              setBackgroundColor(lastColor)
+          } 
+      }, [])
 
   useEffect(() => {
     fetchNodes();
@@ -305,13 +310,16 @@ return (
       className='w-screen'
       style={{ height: 'calc(100vh - 120px)' }}
       >
+  <div className='flex flex-row justify-between mx-5 items-center'>
     <ColorPicker onChangeColor={setBackgroundColor} />
     <SearchBar
             query={query}
             setQuery={setQuery}
             setNodes={setNodes}
             fetchNodes={fetchNodes}
-        />
+            />
+    <CustomAttribution />
+    </div>
       <ReactFlow
         attributionPosition='top-left'
         nodes={nodes}
@@ -327,13 +335,7 @@ return (
         maxZoom={2}
         minZoom={0.2}
         panOnDrag={panOnDrag}
-        style={{ 
-          border: '2px solid #005c', 
-          borderRadius: 8, 
-          height: '100%', 
-          width: '100%',
-          backgroundColor: '#f0f9ff',
-        }}
+        className='border border-purple-800 rounded-lg w-full h-full bg-slate-200'
       >
         <Controls
           showFitView={true}
@@ -349,11 +351,9 @@ return (
                     return '#ddd';
                   }
                 }}
-          style={{ width: 150, height: 100 }}
         />        
       <Background color={backgroundColor} variant={BackgroundVariant.Cross} gap={12} />
       </ReactFlow>
-      <CustomAttribution />
       <div className="save-restore">
         <button onClick={handleSave}>Guardar</button>
         <button onClick={handleRestore}>Restaurar</button>
