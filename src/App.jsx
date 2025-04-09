@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { ReactFlowComponent } from './components/';
-import logo from './assets/img/logo.png';
 import { ReactFlowProvider } from '@xyflow/react';
 import { NotesProvider } from './utils/NotesContext';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
@@ -11,12 +10,12 @@ const App = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      fetch('https://gvhc-backend.onrender.com/')
+      fetch('https://gvhc-backend.onrender.com/api/ping')
           .then(response => console.log('Manteniendo activo:', response.status))
           .catch(error => console.error('Error manteniendo activo:', error));
   }, 600000); // 10 minutos
 
-    return () => clearInterval(interval);
+    return () => clearInterval(interval)
   }, []);
 
   return (
