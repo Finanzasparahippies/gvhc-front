@@ -10,8 +10,8 @@ const App = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      fetch('https://gvhc-backend.onrender.com/api/ping')
-          .then(response => console.log('Manteniendo activo:', response.status))
+      fetch('https://gvhc-backend.onrender.com')
+          .then(response => console.log('Manteniendo activo:', response))
           .catch(error => console.error('Error manteniendo activo:', error));
   }, 600000); // 10 minutos
 
