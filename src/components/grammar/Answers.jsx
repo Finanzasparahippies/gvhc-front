@@ -12,14 +12,14 @@ const Answers = () => {
             const response = await APIvs.get(`/answers/search/?query=${query}`);
             const data = response.data;
 
-            console.log("Search API response data:", data); // Ver datos de respuesta
+            // console.log("Search API response data:", data);
 
             const nodes = data.map((faq, index) => ({
                 id: `faq-${faq.id}`,
                 data: { label: faq.question || "Pregunta no disponible" }, // Asignar texto de respaldo
                 position: { x: (index % 5) * 250, y: Math.floor(index / 5) * 150 },
             }));
-            console.log("Generated nodes from search:", nodes);
+            // console.log("Generated nodes from search:", nodes);
 
             const edges = data.flatMap(faq =>
                 faq.answers?.flatMap(answer =>
@@ -33,7 +33,7 @@ const Answers = () => {
                     }))
                 )
             );
-            console.log("Generated edges from search:", edges);
+            // console.log("Generated edges from search:", edges);
 
             setElements([...nodes, ...edges]);
         } catch (error) {
@@ -45,14 +45,14 @@ const Answers = () => {
         APIvs.get('/answers/faqs/')
             .then((response) => {
                 const data = response.data;
-                console.log("Initial API response data:", data); // Ver datos iniciales
+                // console.log("Initial API response data:", data); // Ver datos iniciales
 
                 const nodes = data.map((answer, index) => ({
                     id: `faq-${answer.id}`,
                     data: { label: answer.answer_text || "Respuesta no disponible" }, // Asignar texto de respaldo
                     position: { x: (index % 5) * 250, y: Math.floor(index / 5) * 150 },
                 }));
-                console.log("Generated nodes on initial load:", nodes);
+                // console.log("Generated nodes on initial load:", nodes);
 
                 const edges = data.flatMap(answer =>
                     (answer.connections || []).map(connection => ({
@@ -64,7 +64,7 @@ const Answers = () => {
                         style: { stroke: '#3182CE', strokeWidth: 2 },
                     }))
                 );
-                console.log("Generated edges on initial load:", edges);
+                // console.log("Generated edges on initial load:", edges);
 
                 setElements([...nodes, ...edges]);
             })
@@ -72,7 +72,7 @@ const Answers = () => {
     }, []);
 
     useEffect(() => {
-        console.log("Final elements array:", elements);
+        // console.log("Final elements array:", elements);
     }, [elements]);
 
     return (

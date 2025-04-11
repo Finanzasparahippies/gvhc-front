@@ -61,6 +61,26 @@ const ReactFlowComponent = () => {
     updateNote(nodeId, newNote); // Guardar nota en el contexto y localStorage
   };
 
+  const handleNodeDragStop = (event, node) => {
+    console.log('🟢 Nodo soltado', node);
+
+    const id = node.id.replace('faq-', '');
+    const originalNode = nodes.find((n) => n.id === node.id);
+  
+    if (
+      originalNode?.position.x !== node.position.x ||
+      originalNode?.position.y !== node.position.y
+    ) {
+      API.patch(`/api/faqs/${id}/`, {
+        pos_x: node.position.x,
+        pos_y: node.position.y,
+      })
+      .then((res) => console.log('Posición actualizada'))
+      .catch((err) => console.error(err));
+    }
+  };
+  
+
   const distributeNodesInGrid = (nodes, nodesPerRow, xGap, yGap ) => {
     return nodes.map((node, index) => {
 
@@ -119,12 +139,13 @@ const ReactFlowComponent = () => {
   
     try {
       const response = await APIvs.get(url);
-      // console.log('Response:', response);
+      console.log('Response:', response);
       const data = response.data.results || [];
       const apiNodes = [];
       const apiEdges = [];
   
       data.forEach((faq) => {
+        console.log('FAQ recibido:', faq);  // 👈 Agrega esta línea para inspeccionar qué campos llegan
         const uniqueId = `faq-${faq.id}`;
         const isPinned = pinnedNodes.some((pinnedNode) => pinnedNode.id === uniqueId);
   
@@ -296,14 +317,6 @@ const handleNodeClick = useCallback(
   [nodes]
 );
 
-
-useEffect(() => {
-  console.log('Nodes:', nodes);
-  console.log('Edges:', edges);
-}, [nodes, edges]);
-
-
-
 return (
 <>
     <div
@@ -327,6 +340,7 @@ return (
         onConnect={onConnect}
         onNodesChange={onNodesChange}
         onNodeClick={handleNodeClick}
+        onNodeDragStop={handleNodeDragStop}
         onlyRenderVisibleElements={true}
         colorMode='system'
         nodeTypes={nodeTypes}

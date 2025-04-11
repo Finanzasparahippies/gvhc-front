@@ -5,6 +5,7 @@ import { NotesProvider } from './utils/NotesContext';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './views/LoginPage';
 import PrivateRoute from './components/routes/PrivateRoute';
+import { SupervisorComponent } from './components/SupervisorComponent';
 
 const App = () => {
 
@@ -30,6 +31,14 @@ const App = () => {
                       element={
                           <PrivateRoute>
                             <ReactFlowComponent/>
+                          </PrivateRoute>
+                    }
+                />
+                <Route
+                      path="/supervisors"
+                      element={
+                          <PrivateRoute>
+                            <SupervisorComponent/>
                           </PrivateRoute>
                     }
                 />

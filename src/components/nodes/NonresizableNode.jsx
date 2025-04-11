@@ -7,7 +7,6 @@ const NonResizableNode = ({ data }) => {
     const [imageSize, setImageSize] = useState({ width: 'auto', height: 'auto' });
 
     useEffect(() => {
-        console.log(data)
         if (data.image) {
             const img = new Image();
             img.onload = () => {
