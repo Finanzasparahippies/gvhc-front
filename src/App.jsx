@@ -6,6 +6,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import LoginPage from './views/LoginPage';
 import PrivateRoute from './components/routes/PrivateRoute';
 import { SupervisorComponent } from './components/SupervisorComponent';
+import TabsComponent from './components/tabRender/tabComponent';  // Importa el nuevo componente de pestañas
+
 
 const App = () => {
 
@@ -30,7 +32,7 @@ const App = () => {
                       path="/dashboard"
                       element={
                           <PrivateRoute>
-                            <ReactFlowComponent/>
+                            <TabsComponent/>
                           </PrivateRoute>
                     }
                 />

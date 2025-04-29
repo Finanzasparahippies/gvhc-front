@@ -39,7 +39,7 @@ const edgeTypes = {
   CustomEdge,
 };
 
-const ReactFlowComponent = () => {
+export const ReactFlowComponent = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [query, setQuery] = useState('');
@@ -47,7 +47,6 @@ const ReactFlowComponent = () => {
   const [panOnDrag, setPanOnDrag] = useState(true); // Controla el pan dinámicamente
   const { fitView } = useReactFlow();
   const [backgroundColor, setBackgroundColor] = useState("#000");
-
 
   const onNodeChange = (id, newValue) => {
     setNodes((nds) =>
@@ -71,7 +70,7 @@ const ReactFlowComponent = () => {
       originalNode?.position.x !== node.position.x ||
       originalNode?.position.y !== node.position.y
     ) {
-      API.patch(`/api/faqs/${id}/`, {
+      APIvs.patch(`/api/faqs/${id}/`, {
         pos_x: node.position.x,
         pos_y: node.position.y,
       })
