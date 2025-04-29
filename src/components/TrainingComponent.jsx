@@ -33,19 +33,27 @@ export const TrainingComponent = () => {
 
     try {
       // Realiza una petición POST al backend con el archivo y la fecha
-      const response = await APIvs.post('/api/reports/procesar/', formData,{
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })
+      const response = await fetch('http://localhost:8000/api/reports/procesar/', {
+        method: 'POST',
+        body: formData
+      });
 
       // Verifica si la respuesta es exitosa
       if (!response.ok) {
         throw new Error('Error al procesar el archivo');
       }
 
-      setResultados(response.data.resultados);  // Asume que los resultados vienen en un campo `resultados`
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'reporte_formateado.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
       setError(null);  // Limpiar el error si la petición fue exitosa
+      setResultados(null);  
     } catch (err) {
       setError(err.message);
       setResultados(null);
