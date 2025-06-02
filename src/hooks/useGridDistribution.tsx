@@ -1,5 +1,19 @@
 import { useMemo } from 'react';
 
+type Node = {
+    id: string;
+    label?: string;
+    [key: string]: any;
+}
+
+type PositionedNode = Node & {
+    position: {
+        x: number;
+        y: number;
+    };
+    draggable: boolean;
+};
+
 /**
  * Hook para distribuir nodos en una cuadrícula.
  * @param {Array} nodes - Lista de nodos a distribuir.
@@ -8,7 +22,9 @@ import { useMemo } from 'react';
  * @param {number} yGap - Espaciado vertical entre nodos.
  * @returns {Array} Nodos con posiciones ajustadas.
  */
-const useGridDistribution = (nodes, nodesPerRow = 5, xGap = 200, yGap = 150) => {
+
+
+const useGridDistribution = (nodes: Node[], nodesPerRow: number = 5, xGap: number = 200, yGap: number = 150 ): PositionedNode[] => {
     const distributedNodes = useMemo(() => {
         return nodes.map((node, index) => {
         const row = Math.floor(index / nodesPerRow);

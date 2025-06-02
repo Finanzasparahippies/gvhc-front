@@ -14,6 +14,7 @@ import {
   Edge,
   Connection,
   OnConnect,
+  OnNodeDrag,
   OnNodesChange,
   NodeMouseHandler,
 } from '@xyflow/react';
@@ -33,7 +34,8 @@ import {
 } from '../components/nodes'; 
 import ColorPicker from './ColorPicker';
 import { Slide, slidesToElements, ZoomSlider, loadSlidesFromAPI } from '../components/Slides';
-import axios, { AxiosResponse, AxiosError }  from 'axios';
+import axios from 'axios';
+import type { AxiosResponse } from 'axios';
 
 type FAQStep = {
   number: number;
@@ -76,6 +78,7 @@ type CustomNodeData = {
     steps: [];
     template: string;
   }
+  type: string;
   label: string;
   answerText: string;
   template: string;
@@ -84,6 +87,7 @@ type CustomNodeData = {
   keywords: string[];
   note: string;
   pinned: boolean;
+  draggable: boolean;
   onPinToggle: (id: string) => void;
   setPanOnDrag: (enabled: boolean) => void;
   onChange: (newNote: string) => void;
@@ -124,7 +128,7 @@ export const ReactFlowComponent = () => {
     updateNote(nodeId, newNote); // Guardar nota en el contexto y localStorage
   };
 
-  const handleNodeDragStop = (event: MouseEvent | TouchEvent, node: CustomNodeData): void => {
+  const handleNodeDragStop: OnNodeDrag = (event, node) => {
     console.log('🟢 Nodo soltado', node);
 
     const id = node.id.replace('faq-', '');
@@ -199,10 +203,10 @@ export const ReactFlowComponent = () => {
     const agentNotes = storedAgentNotes ? JSON.parse(storedAgentNotes) : [];
   
     try {
-      const response: typeof AxiosResponse = await API.get(url);
+      const response: AxiosResponse = await API.get(url);
       console.log('Response:', response);
       const data = response.data.results || [];
-      const apiNodes: Node[] = [];
+      const apiNodes: Node<CustomNodeData>[] = [];
       const apiEdges: Edge[] = [];
   
       data.forEach((faq: { id: any; answers: { steps: any[]; }[]; data: any; question: any; response_type: any; keywords: any; slides: string | any[]; }) => {
@@ -217,7 +221,7 @@ export const ReactFlowComponent = () => {
         };
   
         // Construye las propiedades del nodo antes de usar `node`
-        const nodeData: CustomNode = {
+        const nodeData: CustomNodeData = {
           id: uniqueId,
           type: faq.answers[0]?.node_type || 'NonResizableNode',
           position: { x: 0, y: 0 },
@@ -396,7 +400,7 @@ return (
         onConnect={onConnect}
         onNodesChange={onNodesChange}
         onNodeClick={handleNodeClick}
-        onNodeDragStop={handleNodeDragStop}
+        onNodeDrag={handleNodeDragStop}
         onlyRenderVisibleElements={true}
         colorMode='system'
         nodeTypes={nodeTypes}

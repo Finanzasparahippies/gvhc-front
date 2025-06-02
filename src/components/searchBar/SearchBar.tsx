@@ -1,12 +1,42 @@
-import { useState, ChangeEvent, KeyboardEvent } from 'react';
+import React, { useState, ChangeEvent, KeyboardEvent } from 'react';
 import { FiSearch } from 'react-icons/fi';
 import { Node } from '@xyflow/react'
 
+type CustomNodeData = {
+    id: string,
+    position: {
+        x: number;
+        y: number
+    };
+    data:{
+        answer_text:string;
+        connections:[];
+        id: number;
+        image: string;
+        image_url: string;
+        node_type: string;
+        relevance: number;
+        steps: [];
+        template: string;
+    }
+    label: string;
+    answerText: string;
+    template: string;
+    image: string | null;
+    response_type?: string;
+    keywords: string[];
+    note: string;
+    pinned: boolean;
+    onPinToggle: (id: string) => void;
+    setPanOnDrag: (enabled: boolean) => void;
+    onChange: (newNote: string) => void;
+};
+
 interface SearchBarProps {
     query: string;
-    setQuery: (query: string) => void;
-    setNodes: (nodes: Node[]) => void;
-    fetchNodes: (query: string) => Promise<Node[]>;
+    setQuery: React.Dispatch<React.SetStateAction<string>>;
+    setNodes: React.Dispatch<React.SetStateAction<Node<CustomNodeData>[]>>;  // Aquí es donde debes usar el tipo correcto
+    fetchNodes: (query: string) => Promise<Node<CustomNodeData>[]>;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, setNodes, fetchNodes }) => {
