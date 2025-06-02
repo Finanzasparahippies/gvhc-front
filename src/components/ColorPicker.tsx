@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { ChangeEvent, useEffect, useState } from "react";
 
+interface ColorPickerProps {
+    onChangeColor: (color: string) => void;
+}
 
-const ColorPicker = ({ onChangeColor }) => {
-    const [selectedColor, setSelectedColor] = useState("#ddd");
+const ColorPicker: React.FC<ColorPickerProps> = ({ onChangeColor }) => {
+    const [selectedColor, setSelectedColor] = useState<string>("#ddd");
 
-    const handleColorChange = (event) => {
+    const handleColorChange = (event: ChangeEvent<HTMLInputElement>) => {
         const newColor = event.target.value;
         setSelectedColor(newColor);
         onChangeColor(newColor);

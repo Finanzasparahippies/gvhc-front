@@ -1,5 +1,5 @@
 
-const slidesToElements = (faqId, slides) => {
+export const slidesToElements = (faqId, slides) => {
     const nodes = [];
     const edges = [];
 

@@ -6,7 +6,7 @@ import APIvs from '../../utils/APIvs';
 import '@xyflow/react/dist/style.css';
 
 // Función para cargar nodos desde la API
-const loadSlidesFromAPI = async () => {
+export const loadSlidesFromAPI = async () => {
     const response = await APIvs.get('/answers/faqs/');
     const slides = {};
 

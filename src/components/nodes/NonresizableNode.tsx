@@ -2,9 +2,27 @@ import { memo, useEffect, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import TemplateNode from './TemplateNode';
 
-const NonResizableNode = ({ data }) => {
+interface NodeData {
+    label: string;
+    response_type: 'Process' | 'Image' | 'Text';
+    image?: string;
+    excel_file?: string;
+    answerText?: string;
+    template?: string;
+    id: string;
+    setPanOnDrag?: (value: boolean) => void;
+    onChange?: (id: string, value: { template: string }) => void;
+    onPinToggle: (id: string) => void;
+    pinned?: boolean;
+}
 
-    const [imageSize, setImageSize] = useState({ width: 'auto', height: 'auto' });
+interface NonResizableNodeProps {
+    data: NodeData;
+}
+
+export const NonResizableNode: React.FC<NonResizableNodeProps> = ({ data }) => {
+
+    const [imageSize, setImageSize] = useState<{ width: number | string; height: number | string}>({ width: 'auto', height: 'auto' });
 
     useEffect(() => {
         if (data.image) {
@@ -22,9 +40,9 @@ const NonResizableNode = ({ data }) => {
 
     return (
         <div
-            className={`relative p-3 w-${imageSize.width} h-${imageSize.height} overflow-hidden`}
+            style={{ width: imageSize.width, height: imageSize.height }}
         >
-            <Handle type="target" position={Position.TopLeft} />
+            <Handle type="target" position={Position.Top} />
             <div
                 className='text-center w-full h-full overflow-hidden'
             >
@@ -32,7 +50,7 @@ const NonResizableNode = ({ data }) => {
                 {data.response_type === 'Process' && data.image ? (
                     <div className="relative">
                         <p className="absolute top-2 left-0 w-full bg-black bg-opacity-60 text-white italic text-center rounded-t-lg">
-                            {data.answerText.split('\n').map((line, index) => (
+                            {data.answerText?.split('\n').map((line, index) => (
                                 <span key={index} className="block">{line}<br /></span>
                             ))}
                         </p>

@@ -1,12 +1,13 @@
 import { memo } from 'react';
 import {
+    EdgeProps,
     BaseEdge,
     EdgeLabelRenderer,
     getStraightPath,
     useReactFlow,
     } from '@xyflow/react';
     
-    function CustomEdge({ id, sourceX, sourceY, targetX, targetY }) {
+    export const CustomEdge: React.FC<EdgeProps> = ({ id, sourceX, sourceY, targetX, targetY }) => {
         const { setEdges } = useReactFlow();
         const [edgePath, labelX, labelY] = getStraightPath({
         sourceX,
@@ -14,6 +15,10 @@ import {
         targetX,
         targetY,
         });
+
+        const handleDelete = () => {
+            setEdges((edges) => edges.filter((e) => e.id !== id));
+        };
     
         return (
         <>
@@ -24,9 +29,7 @@ import {
                         style={{
                             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`
                         }}
-                        onClick={() => {
-                        setEdges((es) => es.filter((e) => e.id !== id));
-                        }}
+                        onClick={ handleDelete }
                     >
                         delete
                     </button>

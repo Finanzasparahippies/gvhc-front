@@ -1,10 +1,18 @@
-import { useState } from 'react';
+import { useState, ChangeEvent, KeyboardEvent } from 'react';
 import { FiSearch } from 'react-icons/fi';
+import { Node } from '@xyflow/react'
 
-export const SearchBar = ({ query, setQuery, setNodes, fetchNodes }) => {
-    const [isLoading, setIsLoading] = useState(false);
-    const [results, setResults] = useState([]);
-    const [noResults, setNoResults] = useState(false);
+interface SearchBarProps {
+    query: string;
+    setQuery: (query: string) => void;
+    setNodes: (nodes: Node[]) => void;
+    fetchNodes: (query: string) => Promise<Node[]>;
+}
+
+export const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, setNodes, fetchNodes }) => {
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [results, setResults] = useState<Node[]>([]);
+    const [noResults, setNoResults] = useState<boolean>(false);
 
     const handleSearch = async () => {
         setIsLoading(true);
@@ -27,6 +35,13 @@ export const SearchBar = ({ query, setQuery, setNodes, fetchNodes }) => {
         setResults([]);
         setNoResults(false);
     };
+
+    const handleChange = (e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value);
+
+    const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') handleSearch();
+    };
+
 
     return (
         <div className="flex flex-col items-center justify-center mb-5 mt-5">

@@ -1,24 +1,31 @@
-import {useState} from 'react'
-import APIvs from '../utils/APIvs';
+import {useState, ChangeEvent, FormEvent} from 'react'
+import API from '../utils/API';
+
+interface ResultadosResponse {
+  'Total llamadas' : number;
+  'Total llamadas atendidas': number;
+  'AHT': number;
+}
 
 export const TrainingComponent = () => {
-  const [archivo, setArchivo] = useState(null);
-  const [fecha, setFecha] = useState('');
-  const [resultados, setResultados] = useState(null);
-  const [error, setError] = useState(null);
+  const [archivo, setArchivo] = useState<File | null>(null);
+  const [fecha, setFecha] = useState<string>('');
+  const [resultados, setResultados] = useState<ResultadosResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Handler para el cambio en el archivo
-  const handleFileChange = (e) => {
-    setArchivo(e.target.files[0]);
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null; 
+    setArchivo( file );
   };
 
   // Handler para el cambio en la fecha
-  const handleFechaChange = (e) => {
+  const handleFechaChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFecha(e.target.value);
   };
 
   // Enviar el archivo al backend
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     // Verifica que se haya seleccionado un archivo y una fecha
@@ -33,17 +40,16 @@ export const TrainingComponent = () => {
 
     try {
       // Realiza una petición POST al backend con el archivo y la fecha
-      const response = await fetch('http://localhost:8000/api/reports/procesar/', {
-        method: 'POST',
-        body: formData
-      });
+      const response = await API.post<Blob>('/api/reports/procesar/', formData,
+        {
+          responseType: 'blob',
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
 
-      // Verifica si la respuesta es exitosa
-      if (!response.ok) {
-        throw new Error('Error al procesar el archivo');
-      }
-
-      const blob = await response.blob();
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -54,8 +60,9 @@ export const TrainingComponent = () => {
 
       setError(null);  // Limpiar el error si la petición fue exitosa
       setResultados(null);  
-    } catch (err) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const mensajeError = err instanceof Error ? err.message : 'Error desconocido'
+      setError(mensajeError);
       setResultados(null);
     }
   };
@@ -108,7 +115,7 @@ export const TrainingComponent = () => {
           <ul className="space-y-2 text-gray-700">
             <li><strong>Total llamadas:</strong> {resultados['Total llamadas']}</li>
             <li><strong>Total llamadas atendidas:</strong> {resultados['Total llamadas atendidas']}</li>
-            <li><strong>TMO:</strong> {resultados['TMO']}</li>
+            <li><strong>AHT:</strong> {resultados['AHT']}</li>
           </ul>
         </div>
       )}

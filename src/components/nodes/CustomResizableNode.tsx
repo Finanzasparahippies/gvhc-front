@@ -1,7 +1,16 @@
 import React, { memo } from 'react';
 import { FiMapPin } from 'react-icons/fi'; // Ícono para el pin
 
-const CustomResizableNode = ({ data }) => {
+interface CustomResiseNodeProps {
+  data: {
+    pinned: boolean;
+    note?: string;
+    onChange: (newNote: string) => void;
+    onTogglePin?: () => void;
+  }
+}
+
+export const CustomResizableNode: React.FC<CustomResiseNodeProps> = ({ data }) => {
   return (
     <div
       className={`relative bg-white border ${

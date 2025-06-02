@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import API from '../../utils/API'; // Asegúrate de que API incluye el token en los headers
+import API from '../../utils/API';
 
 const loadingMessages = [
     'Preparando la experiencia...🚀',
@@ -10,12 +10,16 @@ const loadingMessages = [
     'Solo un poquito más...⏰',
 ];
 
-const PrivateRoute = ({ children }) => {
-    
-    const [isAuthenticated, setIsAuthenticated] = useState(null);
-    const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+interface PrivateRouteProps {
+    children: ReactNode;
+}
 
-    const isLoading = ( ) => {
+const PrivateRoute = ({ children }: PrivateRouteProps): JSX.Element => {
+    
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+    const [loadingMessageIndex, setLoadingMessageIndex] = useState<number>(0);
+
+    const isLoading = (): JSX.Element => {
         return (
             <div className="flex flex-col items-center justify-center h-screen">
                 <div className="flex items-center space-x-4 animate-pulse">
@@ -78,11 +82,13 @@ const PrivateRoute = ({ children }) => {
         checkToken();
     }, []);
 
-    if (isAuthenticated === null) {
-        return (isLoading());
-    }
+        if (isAuthenticated === null) {
+            return (isLoading());
+        }
 
-    return isAuthenticated ? children : <Navigate to="/login" />;
+        return isAuthenticated ? 
+            <>{children}</> : 
+            <Navigate to="/login" />;
 };
 
 export default PrivateRoute;

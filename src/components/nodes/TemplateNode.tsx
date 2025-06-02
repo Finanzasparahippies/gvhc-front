@@ -1,43 +1,55 @@
-import { memo, useEffect, useState } from 'react';
-
+import { memo, useEffect, useState, MouseEvent, ChangeEvent } from 'react';
 import { RxClipboardCopy } from "react-icons/rx";
 import { AiTwotonePushpin } from "react-icons/ai";
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
+interface TemplateNodeData {
+    id: string;
+    template?: string;
+    answerText?: string;
+    pinned?: boolean;
+    setPanOnDrag?: (enabled: boolean) => void;
+    onPinToggle: (id: string) => void;
+    onChange?: (id: string, data: { template: string }) => void;
+}
 
-const TemplateNode = ({ data }) => {
+interface TemplateNodeProps {
+    data: TemplateNodeData;
+}
 
-    const [editableTemplate, setEditableTemplate] = useState(data.template || '');
-    const [templateHistory, setTemplateHistory] = useState([]); 
-    const [isHovered, setIsHovered] = useState(false); // Controla el hover
-    const [isRememberOpen, setIsRememberOpen] = useState(false); // Controla el estado de la nota
-    const [ isPinned, setIsPinned ] = useState(false);
+export const TemplateNode: React.FC<TemplateNodeProps> = ({ data }) => {
+
+    const [editableTemplate, setEditableTemplate] = useState<string>(data.template || '');
+    const [undoStack, setUndoStack] = useState<string[]>([]);
+    const [redoStack, setRedoStack] = useState<string[]>([]);
+    const [isHovered, setIsHovered] = useState<boolean>(false); 
+    const [isRememberOpen, setIsRememberOpen] = useState<boolean>(false); 
 
 
-        const handleMouseEnter = () => {
-            if (data.setPanOnDrag) data.setPanOnDrag(false); // Deshabilita pan
-            setIsHovered(true);
+        const handleMouseEnter = (): void => {
+            data.setPanOnDrag?.(false);
+                setIsHovered(true);
         };
     
-        const handleMouseLeave = () => {
-            if (data.setPanOnDrag) data.setPanOnDrag(true); // Habilita pan
-            setIsHovered(false);
+        const handleMouseLeave = (): void => {
+            data.setPanOnDrag?.(true);
+                setIsHovered(false);
         };
     
-        const handlePinned = (event) => {
-                event.stopPropagation(); 
+        const handlePinned = (event: MouseEvent<HTMLDivElement>): void => {
+            event.stopPropagation(); 
                 data.onPinToggle(data.id); 
             };
     
-        const handleCopy = () => {
+        const handleCopy = (): void => {
             navigator.clipboard.writeText(editableTemplate)
             .then(() => {
                 Swal.fire({
                     title: '¡Copiado!',
                     text: 'La plantilla ha sido copiada al portapapeles.',
                     icon: 'success',
-                    timer: 2000, // Se cierra automáticamente después de 2 segundos
+                    timer: 2500, // Se cierra automáticamente después de 2.5 segundos
                     timerProgressBar: true, // Muestra una barra de progreso
                     showConfirmButton: false, // Oculta el botón de confirmación
                     position: 'top-end', // Posición en la esquina superior derecha
@@ -49,7 +61,7 @@ const TemplateNode = ({ data }) => {
                     title: 'Error',
                     text: 'No se pudo copiar la plantilla.',
                     icon: 'error',
-                    timer: 2000,
+                    timer: 2500,
                     timerProgressBar: true,
                     showConfirmButton: false,
                     position: 'top-end',
@@ -58,44 +70,98 @@ const TemplateNode = ({ data }) => {
             });
         };
     
-        const handleTemplateChange = (event) => {
-            const updatedTemplate = event.target.value || '';
-            setTemplateHistory((prev) => [...prev, editableTemplate]);
-            setEditableTemplate(updatedTemplate);
-            if (data.onChange) {
-                data.onChange(data.id, { template: updatedTemplate });
-            }
+        const handleTemplateChange = (event: ChangeEvent<HTMLTextAreaElement>): void => {
+            const updatedTemplate = event.target.value;
+                setUndoStack((prev) => [...prev, editableTemplate]); // Guardamos el estado actual
+                setRedoStack([]); // Limpiamos el redo porque hay un nuevo cambio                
+                setEditableTemplate(updatedTemplate);
+                data.onChange?.(data.id, { template: updatedTemplate });
         };
         
     
         const clearTemplate = () => {
-            setTemplateHistory((prev) => [...prev, editableTemplate]); // Agregar el valor actual al historial
-            setEditableTemplate(data.template); // Limpia el estado local
-            data.onChange(data.id, { template: '' });
+            setRedoStack((prev) => [...prev, editableTemplate]);
+            setEditableTemplate(data.template || '');
+            data.onChange?.(data.id, { template: '' });
         };
     
-        const undoTemplate = () => {
-            if (templateHistory.length > 0) {
-                const lastTemplate = templateHistory[templateHistory.length - 1];
-                setEditableTemplate(lastTemplate); // Restaura el valor anterior
-                setTemplateHistory((prev) => prev.slice(0, -1)); // Elimina el último del historial
-                data.onChange(data.id, { template: lastTemplate });
+        const undoTemplate = (): void => {
+            if (undoStack.length > 0) {
+                const last = undoStack[undoStack.length - 1];
+                setRedoStack((prev) => [ ...prev, editableTemplate]);
+                setUndoStack((prev) => prev.slice(0, -1));
+                setEditableTemplate(last); // Restaura el valor anterior
+                data.onChange?.(data.id, { template: last });
+            }
+        };
+        
+        const redoTemplate = (): void => {
+            if (redoStack.length > 0) {
+                const last = redoStack[redoStack.length - 1];
+                setUndoStack((prev) => [...prev, editableTemplate])
+                setRedoStack((prev) => prev.slice(0, +1)); // Suma el último del historial
+                setEditableTemplate(last); // Restaura el valor anterior
+                data.onChange?.(data.id, { template: last });
             }
         };
 
         useEffect(() => {
-            const handleKeyDown = (event) => {
+            const handleKeyDown = (event: KeyboardEvent) => {
                 if (event.ctrlKey && event.key === 'z') {
-                    event.preventDefault(); // Evitar comportamiento predeterminado
-                    undoTemplate(); // Restaurar el template
+                event.preventDefault();
+                undoTemplate();
+                } else if (event.ctrlKey && event.key === 'y') {
+                event.preventDefault();
+                redoTemplate();
                 }
             };
+
             window.addEventListener('keydown', handleKeyDown);
             return () => {
                 window.removeEventListener('keydown', handleKeyDown);
             };
-        }, [templateHistory]);
+        }, [undoStack, redoStack, editableTemplate]);
     
+        useEffect(() => { 
+            const textarea = document.getElementById(`templateArea-${data.id}`) as HTMLTextAreaElement | null;
+            if (!textarea) return;
+
+            const handleClick = (): void => {
+                const value = textarea.value;
+                const cursorPos = textarea.selectionStart;
+
+                const regex = /\*{3}/g;
+                let match;
+                let selectedMatch: { start: number; end: number } | null = null;
+
+                while ((match = regex.exec(value)) !== null) {
+                    const start = match.index;
+                    const end = start + 3;
+
+                    if (cursorPos >= start && cursorPos <= end) {
+                        selectedMatch = { start, end };
+                        break;
+                    }
+                }
+
+                if (selectedMatch) {
+                    const replacement = prompt("Ingresa el valor para reemplazar ***:");
+                    if (replacement !== null) {
+                        const newText =
+                            value.slice(0, selectedMatch.start) +
+                            replacement +
+                            value.slice(selectedMatch.end);
+
+                        setEditableTemplate(newText);
+                        setRedoStack((prev) => [...prev, editableTemplate]);
+                        data.onChange?.(data.id, { template: newText });
+                    }
+                }
+            };
+
+            textarea.addEventListener('click', handleClick);
+            return () => textarea.removeEventListener('click', handleClick);
+        }, [editableTemplate, data]);
 
     return (
         <div
@@ -119,6 +185,7 @@ const TemplateNode = ({ data }) => {
                                 </div>
                                 )}
                         <textarea
+                            id={`templateArea-${data.id}`} 
                             value={editableTemplate}
                             onChange={handleTemplateChange}
                             onMouseEnter={handleMouseEnter}

@@ -9,28 +9,90 @@ import {
   useEdgesState,
   addEdge,
   useReactFlow,
+  Node,
+  XYPosition,
+  Edge,
+  Connection,
+  OnConnect,
+  OnNodesChange,
+  NodeMouseHandler,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { ZoomSlider } from './Slides';
 import useGridDistribution from '../hooks/useGridDistribution';
 
 import CustomAttribution from './CustomAttribution';
 import { useNotes } from '../utils/NotesContext';
-import APIvs from '../utils/APIvs';
+import API from '../utils/API';
 import { SearchBar } from './searchBar/SearchBar';
-import CustomResizableNode from './nodes/NotesNode'; // Importa el nuevo nodo
-import NotesNode from './nodes/NotesNode';
-import NonresizableNode from './nodes/NonresizableNode';
-import CustomEdge from './nodes/CustomEdges';
-import {TooltipNode}  from './nodes';
+import { 
+  CustomResizableNode,
+  NoteNode,
+  NonResizableNode,
+  CustomEdge,
+  TooltipNode
+} from '../components/nodes'; 
 import ColorPicker from './ColorPicker';
+import { Slide, slidesToElements, ZoomSlider, loadSlidesFromAPI } from '../components/Slides';
+import axios, { AxiosResponse, AxiosError }  from 'axios';
 
-import { Slide, slidesToElements } from './Slides';
+type FAQStep = {
+  number: number;
+  text: string;
+  image_url: string | null;
+  keywords?: string[];
+};
+
+type Answer = {
+  answer_text: string;
+  template?: string;
+  image_url?: string | null;
+  node_type?: string;
+  steps?: FAQStep[];
+};
+
+type FAQ = {
+  id: number;
+  question: string;
+  response_type?: string;
+  keywords?: string[];
+  answers: Answer[];
+  slides?: any[]; // Define mejor si tienes estructura
+};
+
+type CustomNodeData = {
+  id: string,
+  position: {
+    x: number;
+    y: number
+  };
+  data:{
+    answer_text:string;
+    connections:[];
+    id: number;
+    image: string;
+    image_url: string;
+    node_type: string;
+    relevance: number;
+    steps: [];
+    template: string;
+  }
+  label: string;
+  answerText: string;
+  template: string;
+  image: string | null;
+  response_type?: string;
+  keywords: string[];
+  note: string;
+  pinned: boolean;
+  onPinToggle: (id: string) => void;
+  setPanOnDrag: (enabled: boolean) => void;
+  onChange: (newNote: string) => void;
+};
 
 const nodeTypes = {
   CustomResizableNode,
-  NotesNode,
-  NonresizableNode,
+  NoteNode,
+  NonResizableNode,
   Slide,
   TooltipNode,
 };
@@ -40,15 +102,17 @@ const edgeTypes = {
 };
 
 export const ReactFlowComponent = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<CustomNodeData>>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [query, setQuery] = useState('');
   const { notes, updateNote } = useNotes();
   const [panOnDrag, setPanOnDrag] = useState(true); // Controla el pan dinámicamente
   const { fitView } = useReactFlow();
-  const [backgroundColor, setBackgroundColor] = useState("#000");
+  const [backgroundColor, setBackgroundColor] = useState<string>("#000");
+  const storedPinnedNodes = localStorage.getItem('pinnedNodes');
+  const storedAgentNotes = localStorage.getItem('agentNotes');
 
-  const onNodeChange = (id, newValue) => {
+  const onNodeChange = (id: string, newValue: string) => {
     setNodes((nds) =>
       nds.map((node) =>
         node.id === id ? { ...node, data: { ...node.data, note: newValue } } : node
@@ -56,54 +120,52 @@ export const ReactFlowComponent = () => {
     );
   };  
 
-  const handleNodeChange = (nodeId, newNote) => {
+  const handleNodeChange = (nodeId: string, newNote: string) => {
     updateNote(nodeId, newNote); // Guardar nota en el contexto y localStorage
   };
 
-  const handleNodeDragStop = (event, node) => {
+  const handleNodeDragStop = (event: MouseEvent | TouchEvent, node: CustomNodeData): void => {
     console.log('🟢 Nodo soltado', node);
 
     const id = node.id.replace('faq-', '');
-    const originalNode = nodes.find((n) => n.id === node.id);
+    const originalNode = nodes.find((n: Node<CustomNodeData>) => n.id === node.id);
   
     if (
       originalNode?.position.x !== node.position.x ||
       originalNode?.position.y !== node.position.y
     ) {
-      APIvs.patch(`/api/faqs/${id}/`, {
+      API.patch(`/api/faqs/${id}/`, {
         pos_x: node.position.x,
         pos_y: node.position.y,
       })
-      .then((res) => console.log('Posición actualizada'))
-      .catch((err) => console.error(err));
+      .then((res: any) => console.log('Posición actualizada'))
+      .catch((err: any) => console.error(err));
     }
   };
   
 
-  const distributeNodesInGrid = (nodes, nodesPerRow, xGap, yGap ) => {
+  const distributeNodesInGrid = (nodes: Node<CustomNodeData>[], nodesPerRow: number, xGap: number, yGap: number ): Node<CustomNodeData>[] => {
     return nodes.map((node, index) => {
-
       const row = Math.floor(index / nodesPerRow);
       const col = index % nodesPerRow;
-  
-      return {
-        ...node,
-        position: {
-          x: col * xGap,
-          y: row * yGap,
-        },
-        draggable: !node.data?.pinned, 
-        data: {
-          ...node.data,
-          setPanOnDrag: (isEnabled) => {
-            if (!node.data?.pinned) setPanOnDrag(isEnabled);
-          }, 
-        },
-      };
+        return {
+          ...node,
+          position: {
+            x: col * xGap,
+            y: row * yGap,
+          },
+          draggable: !node.data?.pinned, 
+          data: {
+            ...node.data,
+            setPanOnDrag: (isEnabled: boolean) => {
+              if (!node.data?.pinned) setPanOnDrag(isEnabled);
+            }, 
+          },
+        };
     });
   };
   
-  const togglePinNode = (nodeId) => {
+  const togglePinNode = (nodeId: string) => {
     setNodes((currentNodes) =>
       currentNodes.map((node) =>
         node.id === nodeId
@@ -133,54 +195,49 @@ export const ReactFlowComponent = () => {
 
   const fetchNodes = useCallback(async (searchQuery = '') => {
     const url = searchQuery ? `/api/answers/search/?query=${searchQuery}` : '/api/answers/faqs/';
-    const pinnedNodes = JSON.parse(localStorage.getItem('pinnedNodes')) || [];
-    const savedNotes = JSON.parse(localStorage.getItem('agentNotes')) || {};
+    const pinnedNodes = storedPinnedNodes ? JSON.parse(storedPinnedNodes) : [] ;
+    const agentNotes = storedAgentNotes ? JSON.parse(storedAgentNotes) : [];
   
     try {
-      const response = await APIvs.get(url);
+      const response: typeof AxiosResponse = await API.get(url);
       console.log('Response:', response);
       const data = response.data.results || [];
-      const apiNodes = [];
-      const apiEdges = [];
+      const apiNodes: Node[] = [];
+      const apiEdges: Edge[] = [];
   
-      data.forEach((faq) => {
+      data.forEach((faq: { id: any; answers: { steps: any[]; }[]; data: any; question: any; response_type: any; keywords: any; slides: string | any[]; }) => {
         console.log('FAQ recibido:', faq);  // 👈 Agrega esta línea para inspeccionar qué campos llegan
         const uniqueId = `faq-${faq.id}`;
         const isPinned = pinnedNodes.some((pinnedNode) => pinnedNode.id === uniqueId);
-  
-        // Construye las propiedades del nodo antes de usar `node`
-        const nodeData = {
-          label: faq.question || 'No Title',
-          answerText: faq.answers[0]?.answer_text || 'No Content',
-          template: faq.answers[0]?.template || '',
-          image: faq.answers[0]?.image_url || null,
-          response_type: faq.response_type,
-          keywords: faq.keywords || [],
-          note: savedNotes[uniqueId] || '', // Accede correctamente a las notas guardadas
-          pinned: isPinned,
-          onPinToggle: togglePinNode, // Pasa la función al nodo
-          setPanOnDrag,
-          onChange: (newNote) => handleNodeChange(uniqueId, newNote),
-        };
-  
+
         const nodeStyle = {
           border: isPinned ? '2px solid red' : '2px solid black',
           backgroundColor: '#fff',
           borderRadius: 8,
         };
   
-        // Define el objeto `node` completamente
-        const node = {
+        // Construye las propiedades del nodo antes de usar `node`
+        const nodeData: CustomNode = {
           id: uniqueId,
-          type: faq.answers[0]?.node_type || 'NonresizableNode',
+          type: faq.answers[0]?.node_type || 'NonResizableNode',
           position: { x: 0, y: 0 },
           draggable: !isPinned,
-          data: nodeData,
-          style: nodeStyle,
+          data: faq.data,
+          label: faq.question || 'No Title',
+          answerText: faq.answers[0]?.answer_text || 'No Content',
+          template: faq.answers[0]?.template || '',
+          image: faq.answers[0]?.image_url || null,
+          response_type: faq.response_type,
+          keywords: faq.keywords || [],
+          note: agentNotes[uniqueId] || '', // Accede correctamente a las notas guardadas
           pinned: isPinned,
+          style: nodeStyle,
+          onPinToggle: togglePinNode, // Pasa la función al nodo
+          setPanOnDrag,
+          onChange: (newNote: string) => handleNodeChange(uniqueId, newNote),
         };
   
-        apiNodes.push(node);
+        apiNodes.push(nodeData);
   
         if (faq.slides?.length) {
           const { nodes: slideNodes, edges: slideEdges } = slidesToElements(faq.id, faq.slides);
@@ -232,7 +289,7 @@ export const ReactFlowComponent = () => {
       });
   
       // Distribuye los nodos y actualiza el estado
-      const distributedNodes = distributeNodesInGrid(apiNodes, 8, 800, 1000);
+      const distributedNodes: Node<CustomNode>[] = distributeNodesInGrid(apiNodes, 8, 800, 1000);
       setNodes(distributedNodes);
       setEdges(apiEdges);
   

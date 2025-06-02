@@ -1,7 +1,14 @@
 import { memo } from 'react';
 import { NodeToolbar } from '@xyflow/react';
 
-const TooltipNode = ({ data }) => {
+interface TooltipNodeProps {
+    data: {
+        label: string;
+        tooltip: string;
+    };
+}
+
+export const TooltipNode: React.FC<TooltipNodeProps> = ({ data }) => {
     return (
         <div className="relative group">
         <div className="node-tooltip border p-2 rounded-md bg-white shadow-md">

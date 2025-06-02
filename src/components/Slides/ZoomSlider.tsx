@@ -1,7 +1,7 @@
 import * as Slider from '@radix-ui/react-slider';
 import { useReactFlow } from '@xyflow/react';
 
-const ZoomSlider = () => {
+export const ZoomSlider = () => {
     const { zoomIn, zoomOut, viewport } = useReactFlow(); 
 
     return (

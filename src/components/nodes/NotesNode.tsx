@@ -1,24 +1,37 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 
-const NoteNode = ({ data }) => {
-    const [note, setNote] = useState(data.note || ''); // Estado para la nota
-    const [noteHistory, setNoteHistory] = useState([]); 
+interface NoteNodeData {
+    id: string;
+    note?: string;
+    pinned?: boolean;
+    setPanOnDrag?: (value: boolean) => void;
+    onPinToggle?: (id: string) => void;
+    onChange: (id: string, data: { note: string }) => void;
+}
+
+interface NoteNodeProps {
+    data: NoteNodeData;   
+}
+
+export const NoteNode: React.FC<NoteNodeProps> = ({ data }) => {
+    const [note, setNote] = useState<string>(data.note || ''); // Estado para la nota
+    const [noteHistory, setNoteHistory] = useState<string[]>([]); 
 
     const handleMouseEnter = () => {
-        if (data.setPanOnDrag) data.setPanOnDrag(false); // Deshabilita pan
+        data.setPanOnDrag?.(false);
     };
 
     const handleMouseLeave = () => {
-        if (data.setPanOnDrag) data.setPanOnDrag(true); // Habilita pan
+        data.setPanOnDrag?.(true)
     };
 
-    const handlePinned = (event) => {
+    const handlePinned = (event: React.MouseEvent<HTMLDivElement>): void => {
         event.stopPropagation(); // Evita propagar el clic
-        if (data.onPinToggle) data.onPinToggle(data.id); // Llama al manejador del componente principal
+        data.onPinToggle?.(data.id);
     };
 
-    const handleNoteChange = (event) => {
+    const handleNoteChange = (event: React.ChangeEvent<HTMLTextAreaElement>): void => {
         const updatedNote = event.target.value;
         setNoteHistory((prev) => [...prev, note]); // Agregar el valor actual al historial
         setNote(updatedNote);
@@ -30,28 +43,6 @@ const NoteNode = ({ data }) => {
         setNote(''); // Limpia la nota
         data.onChange(data.id, { note: '' });
     };
-
-    const undoNote = () => {
-        if (noteHistory.length > 0) {
-            const lastNote = noteHistory[noteHistory.length - 1];
-            setNote(lastNote); // Restaura el valor anterior
-            setNoteHistory((prev) => prev.slice(0, -1)); // Elimina el último del historial
-            data.onChange(data.id, { note: lastNote });
-        }
-    };
-
-    useEffect(() => {
-        const handleKeyDown = (event) => {
-            if (event.ctrlKey && event.key === 'z') {
-                event.preventDefault();
-                undoNote();
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [noteHistory]);
 
     return (
         <>
