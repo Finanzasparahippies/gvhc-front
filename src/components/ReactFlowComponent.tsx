@@ -35,7 +35,6 @@ import {
 import ColorPicker from './ColorPicker';
 import { Slide, slidesToElements, ZoomSlider, loadSlidesFromAPI } from '../components/Slides';
 import axios from 'axios';
-import type { AxiosResponse } from 'axios';
 
 type FAQStep = {
   number: number;
@@ -55,42 +54,43 @@ type Answer = {
 type FAQ = {
   id: number;
   question: string;
+  position: {
+    x: number;
+    y: number;
+  };
   response_type?: string;
   keywords?: string[];
   answers: Answer[];
   slides?: any[]; // Define mejor si tienes estructura
 };
 
-type CustomNodeData = {
-  id: string,
+type PinnedNodeInfo = { id: string; data?: { pinned?: boolean } /* o lo que sea que guardes */ };
+
+type NodePayload = {
+  // Datos del FAQ/Answer original
+  id: number | string; // El ID de la Faq del backend
+  NodeType: string;
   position: {
     x: number;
-    y: number
+    y: number;
   };
-  data:{
-    answer_text:string;
-    connections:[];
-    id: number;
-    image: string;
-    image_url: string;
-    node_type: string;
-    relevance: number;
-    steps: [];
-    template: string;
-  }
-  type: string;
-  label: string;
-  answerText: string;
-  template: string;
-  image: string | null;
-  response_type?: string;
-  keywords: string[];
-  note: string;
-  pinned: boolean;
   draggable: boolean;
-  onPinToggle: (id: string) => void;
-  setPanOnDrag: (enabled: boolean) => void;
-  onChange: (newNote: string) => void;
+  questionText: string; // Vendría de Faq.question
+  answerText?: string; // Vendría de Answer.answer_text
+  template?: string; // Vendría de Answer.template
+  imageUrl?: string | null; // Vendría de Answer.image (serializada como URL)
+  response_type?: string; // Nombre del ResponseType de la Faq
+  keywords?: string[]; // De Faq.keywords
+  steps?: FAQStep[]; // De Answer.steps
+
+  // Estado y callbacks manejados por React Flow o tu componente
+  note?: string;
+  pinned?: boolean;
+  // Callbacks que tus nodos customizados podrían necesitar invocar:
+  onPinToggle?: (nodeId: string) => void;
+  onChangeNote?: (nodeId: string, newNote: string) => void;
+  // setPanOnDrag es más global, pero si un nodo específico debe controlarlo, podría ir aquí.
+  // setPanOnDrag?: (enabled: boolean) => void;
 };
 
 const nodeTypes = {
@@ -106,7 +106,7 @@ const edgeTypes = {
 };
 
 export const ReactFlowComponent = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<CustomNodeData>>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodePayload>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [query, setQuery] = useState('');
   const { notes, updateNote } = useNotes();
@@ -132,7 +132,7 @@ export const ReactFlowComponent = () => {
     console.log('🟢 Nodo soltado', node);
 
     const id = node.id.replace('faq-', '');
-    const originalNode = nodes.find((n: Node<CustomNodeData>) => n.id === node.id);
+    const originalNode = nodes.find((n: Node<NodePayload>) => n.id === node.id);
   
     if (
       originalNode?.position.x !== node.position.x ||
@@ -148,7 +148,7 @@ export const ReactFlowComponent = () => {
   };
   
 
-  const distributeNodesInGrid = (nodes: Node<CustomNodeData>[], nodesPerRow: number, xGap: number, yGap: number ): Node<CustomNodeData>[] => {
+  const distributeNodesInGrid = (nodes: Node<NodePayload>[], nodesPerRow: number, xGap: number, yGap: number ): Node<NodePayload>[] => {
     return nodes.map((node, index) => {
       const row = Math.floor(index / nodesPerRow);
       const col = index % nodesPerRow;
@@ -199,20 +199,21 @@ export const ReactFlowComponent = () => {
 
   const fetchNodes = useCallback(async (searchQuery = '') => {
     const url = searchQuery ? `/api/answers/search/?query=${searchQuery}` : '/api/answers/faqs/';
-    const pinnedNodes = storedPinnedNodes ? JSON.parse(storedPinnedNodes) : [] ;
+    const pinnedNodes: PinnedNodeInfo[] = storedPinnedNodes ? JSON.parse(storedPinnedNodes) : [] ;
     const agentNotes = storedAgentNotes ? JSON.parse(storedAgentNotes) : [];
   
     try {
-      const response: AxiosResponse = await API.get(url);
+      const response = await API.get<{results: FAQ[]}>(url);
       console.log('Response:', response);
-      const data = response.data.results || [];
-      const apiNodes: Node<CustomNodeData>[] = [];
+      const data: FAQ[] = response.data.results || [];
+      const apiNodes: Node<NodePayload>[] = [];
       const apiEdges: Edge[] = [];
   
-      data.forEach((faq: { id: any; answers: { steps: any[]; }[]; data: any; question: any; response_type: any; keywords: any; slides: string | any[]; }) => {
+      data.forEach((faq: FAQ) => {
         console.log('FAQ recibido:', faq);  // 👈 Agrega esta línea para inspeccionar qué campos llegan
         const uniqueId = `faq-${faq.id}`;
         const isPinned = pinnedNodes.some((pinnedNode) => pinnedNode.id === uniqueId);
+        const firstAnswer = faq.answers[0];
 
         const nodeStyle = {
           border: isPinned ? '2px solid red' : '2px solid black',
@@ -221,26 +222,30 @@ export const ReactFlowComponent = () => {
         };
   
         // Construye las propiedades del nodo antes de usar `node`
-        const nodeData: CustomNodeData = {
+        const nodeData: NodePayload = {
           id: uniqueId,
-          type: faq.answers[0]?.node_type || 'NonResizableNode',
+          NodeType: firstAnswer?.node_type || 'NonResizableNode',
           position: { x: 0, y: 0 },
           draggable: !isPinned,
-          data: faq.data,
-          label: faq.question || 'No Title',
-          answerText: faq.answers[0]?.answer_text || 'No Content',
-          template: faq.answers[0]?.template || '',
-          image: faq.answers[0]?.image_url || null,
+          questionText: faq.question || 'No Title',
+          answerText: firstAnswer?.answer_text || 'No Content',
+          template: firstAnswer?.template || '',
+          imageUrl: firstAnswer?.image_url || null,
           response_type: faq.response_type,
           keywords: faq.keywords || [],
+          steps: firstAnswer?.steps,
           note: agentNotes[uniqueId] || '', // Accede correctamente a las notas guardadas
           pinned: isPinned,
-          style: nodeStyle,
           onPinToggle: togglePinNode, // Pasa la función al nodo
-          setPanOnDrag,
-          onChange: (newNote: string) => handleNodeChange(uniqueId, newNote),
+          onChangeNote: (newNote: string) => handleNodeChange(uniqueId, newNote),
         };
-  
+
+        const flowNodeProps: Node<NodePayload> = {
+          id: uniqueId,
+          type: firstAnswer?.node_type || 'NonResizableNode',
+          position: { x: faq.pos_x || 0, y: faq.pos_y || 0},
+        } 
+      
         apiNodes.push(nodeData);
   
         if (faq.slides?.length) {
@@ -293,7 +298,7 @@ export const ReactFlowComponent = () => {
       });
   
       // Distribuye los nodos y actualiza el estado
-      const distributedNodes: Node<CustomNode>[] = distributeNodesInGrid(apiNodes, 8, 800, 1000);
+      const distributedNodes: Node<NodePayload>[] = distributeNodesInGrid(apiNodes, 8, 800, 1000);
       setNodes(distributedNodes);
       setEdges(apiEdges);
   
