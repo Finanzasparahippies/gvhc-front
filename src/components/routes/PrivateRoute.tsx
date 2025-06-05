@@ -16,7 +16,7 @@ interface PrivateRouteProps {
 
 const PrivateRoute = ({ children }: PrivateRouteProps): JSX.Element => {
     
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
     const [loadingMessageIndex, setLoadingMessageIndex] = useState<number>(0);
 
     const isLoading = (): JSX.Element => {
@@ -45,7 +45,7 @@ const PrivateRoute = ({ children }: PrivateRouteProps): JSX.Element => {
                     </svg>
                     <span className="text-xl font-semibold text-green-500">Cargando, por favor espera...</span>
                 </div>
-                {loadingMessages[loadingMessageIndex]}
+                <p className="mt-4 text-gray-600">{loadingMessages[loadingMessageIndex]}</p>
             </div>
         )
     }
@@ -67,19 +67,18 @@ const PrivateRoute = ({ children }: PrivateRouteProps): JSX.Element => {
 
             try {
                 // Verifica el token en el endpoint protegido
-                const response = await API.get('/protected/');
-                if (response.status === 200) {
+                await API.get('/protected/');
                     setIsAuthenticated(true);
-                } else {
-                    setIsAuthenticated(false);
-                }
             } catch (err) {
                 console.error('Error al verificar el token:', err);
                 setIsAuthenticated(false);
             }
         };
-
-        checkToken();
+            const timer = setTimeout(() => {
+                checkToken();
+            }, 500);
+            
+                return () => clearTimeout(timer);
     }, []);
 
         if (isAuthenticated === null) {

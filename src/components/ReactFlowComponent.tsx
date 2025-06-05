@@ -9,7 +9,7 @@ import {
   useEdgesState,
   addEdge,
   useReactFlow,
-  Node,
+  Node as FlowNode,
   XYPosition,
   Edge,
   Connection,
@@ -52,11 +52,13 @@ type Answer = {
 };
 
 type FAQ = {
+  pos_y: number;
+  pos_x: number;
   id: number;
   question: string;
   position: {
-    x: number;
-    y: number;
+    pos_x: number;
+    pos_y: number;
   };
   response_type?: string;
   keywords?: string[];
@@ -71,8 +73,8 @@ type NodePayload = {
   id: number | string; // El ID de la Faq del backend
   NodeType: string;
   position: {
-    x: number;
-    y: number;
+    pos_x: number;
+    pos_y: number;
   };
   draggable: boolean;
   questionText: string; // Vendría de Faq.question
@@ -105,16 +107,47 @@ const edgeTypes = {
   CustomEdge,
 };
 
+const getNodeStyleByType = (responseType?: string) => {
+    switch (responseType) {
+        case 'Image':
+            return {
+                backgroundColor: 'rgba(204, 232, 255, 0.9)', // Un azul claro
+                borderColor: '#007BFF',
+            };
+        case 'Texto':
+            return {
+                backgroundColor: 'rgba(208, 245, 218, 0.9)', // Un verde claro
+                borderColor: '#28A745',
+            };
+        case 'Proceso':
+            return {
+                backgroundColor: 'rgba(255, 236, 204, 0.9)', // Un naranja claro
+                borderColor: '#FFC107',
+            };
+        case 'Note': // Podrías tener un tipo para las notas
+            return {
+                backgroundColor: 'rgba(243, 225, 255, 0.9)', // Un púrpura claro
+                borderColor: '#6F42C1',
+            };
+        default:
+            return {
+                backgroundColor: 'rgba(248, 249, 250, 0.9)', // Un gris claro por defecto
+                borderColor: '#6C757D',
+            };
+    }
+};
+
 export const ReactFlowComponent = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodePayload>>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode<NodePayload>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [query, setQuery] = useState('');
   const { notes, updateNote } = useNotes();
   const [panOnDrag, setPanOnDrag] = useState(true); // Controla el pan dinámicamente
-  const { fitView } = useReactFlow();
+  const { fitView, toObject, setViewport } = useReactFlow();
   const [backgroundColor, setBackgroundColor] = useState<string>("#000");
   const storedPinnedNodes = localStorage.getItem('pinnedNodes');
   const storedAgentNotes = localStorage.getItem('agentNotes');
+
 
   const onNodeChange = (id: string, newValue: string) => {
     setNodes((nds) =>
@@ -124,6 +157,7 @@ export const ReactFlowComponent = () => {
     );
   };  
 
+
   const handleNodeChange = (nodeId: string, newNote: string) => {
     updateNote(nodeId, newNote); // Guardar nota en el contexto y localStorage
   };
@@ -132,7 +166,7 @@ export const ReactFlowComponent = () => {
     console.log('🟢 Nodo soltado', node);
 
     const id = node.id.replace('faq-', '');
-    const originalNode = nodes.find((n: Node<NodePayload>) => n.id === node.id);
+    const originalNode = nodes.find((n: FlowNode<NodePayload>) => n.id === node.id);
   
     if (
       originalNode?.position.x !== node.position.x ||
@@ -148,7 +182,7 @@ export const ReactFlowComponent = () => {
   };
   
 
-  const distributeNodesInGrid = (nodes: Node<NodePayload>[], nodesPerRow: number, xGap: number, yGap: number ): Node<NodePayload>[] => {
+  const distributeNodesInGrid = (nodes: FlowNode<NodePayload>[], nodesPerRow: number, xGap: number, yGap: number ): FlowNode<NodePayload>[] => {
     return nodes.map((node, index) => {
       const row = Math.floor(index / nodesPerRow);
       const col = index % nodesPerRow;
@@ -206,7 +240,7 @@ export const ReactFlowComponent = () => {
       const response = await API.get<{results: FAQ[]}>(url);
       console.log('Response:', response);
       const data: FAQ[] = response.data.results || [];
-      const apiNodes: Node<NodePayload>[] = [];
+      const apiNodes: FlowNode<NodePayload>[] = [];
       const apiEdges: Edge[] = [];
   
       data.forEach((faq: FAQ) => {
@@ -215,17 +249,22 @@ export const ReactFlowComponent = () => {
         const isPinned = pinnedNodes.some((pinnedNode) => pinnedNode.id === uniqueId);
         const firstAnswer = faq.answers[0];
 
+        const typeStyle = getNodeStyleByType(faq.response_type);
+        const borderColor = isPinned ? '#D32F2F' : typeStyle.borderColor; // Un rojo más fuerte para 'pinned'
+
         const nodeStyle = {
-          border: isPinned ? '2px solid red' : '2px solid black',
-          backgroundColor: '#fff',
+          border: `2px solid ${borderColor}`,
+          backgroundColor: typeStyle.backgroundColor,
           borderRadius: 8,
+          boxShadow: isPinned ? '0 0 10px rgba(211, 47, 47, 0.7)' : 'none', // Sombra para resaltar más si está fijado
+
         };
   
         // Construye las propiedades del nodo antes de usar `node`
         const nodeData: NodePayload = {
           id: uniqueId,
           NodeType: firstAnswer?.node_type || 'NonResizableNode',
-          position: { x: 0, y: 0 },
+          position: { pos_x: 0, pos_y: 0 },
           draggable: !isPinned,
           questionText: faq.question || 'No Title',
           answerText: firstAnswer?.answer_text || 'No Content',
@@ -240,13 +279,16 @@ export const ReactFlowComponent = () => {
           onChangeNote: (newNote: string) => handleNodeChange(uniqueId, newNote),
         };
 
-        const flowNodeProps: Node<NodePayload> = {
+        const flowNodeProps: FlowNode<NodePayload> = {
           id: uniqueId,
           type: firstAnswer?.node_type || 'NonResizableNode',
           position: { x: faq.pos_x || 0, y: faq.pos_y || 0},
+          draggable: !isPinned,
+          data: nodeData,
+          style: nodeStyle,
         } 
       
-        apiNodes.push(nodeData);
+        apiNodes.push(flowNodeProps);
   
         if (faq.slides?.length) {
           const { nodes: slideNodes, edges: slideEdges } = slidesToElements(faq.id, faq.slides);
@@ -256,18 +298,30 @@ export const ReactFlowComponent = () => {
   
         if (faq.answers[0]?.steps?.length) {
           faq.answers[0].steps.forEach((step, index) => {
-            const stepNodeId = `faq-${faq.id}-step-${index}`;
+          const stepNodeId = `faq-${faq.id}-step-${index}`;
+          
+          const stepPayload: NodePayload = {
+              id: stepNodeId, // o podrías añadir un originalStepId
+              questionText: `Step ${step.number}: ${step.text.substring(0, 30)}...`, // o solo el texto del paso
+              answerText: step.text,
+              imageUrl: step.image_url,
+              position: { pos_x: 0, pos_y: 0},
+              response_type: faq.response_type, // Heredado
+              keywords: [], // Los Steps del backend no tienen keywords. Define un valor por defecto.
+              steps: firstAnswer?.steps,
+              NodeType: firstAnswer?.node_type || 'NonResizableNode',
+              pinned: isPinned, 
+              draggable: !isPinned,
+              note: agentNotes[uniqueId] || '',
+              onPinToggle: togglePinNode,
+              onChangeNote: handleNodeChange,
+            };
+            
             apiNodes.push({
               id: stepNodeId,
-              type: 'NonresizableNode',
+              type: 'NonResizableNode',
               position: { x: 0, y: 0 },
-              data: {
-                label: `Step ${step.number}` || 'No Title',
-                answerText: step.text || 'No Content',
-                image: step.image_url || null,
-                response_type: faq.response_type,
-                keywords: step.keywords || [],
-              },
+              data: stepPayload,
               style: {
                 border: '2px solid blue',
                 backgroundColor: '#f0f9ff',
@@ -298,7 +352,7 @@ export const ReactFlowComponent = () => {
       });
   
       // Distribuye los nodos y actualiza el estado
-      const distributedNodes: Node<NodePayload>[] = distributeNodesInGrid(apiNodes, 8, 800, 1000);
+      const distributedNodes: FlowNode<NodePayload>[] = distributeNodesInGrid(apiNodes, 8, 800, 1000);
       setNodes(distributedNodes);
       setEdges(apiEdges);
   
@@ -324,13 +378,13 @@ export const ReactFlowComponent = () => {
     fetchNodes();
   }, [fetchNodes]);
 
-  const onConnect = useCallback(
-    (params) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
-  );
+  const onConnect: OnConnect = useCallback(
+  (params: Connection | Edge) => setEdges((eds) => addEdge(params, eds)),
+  [setEdges]
+);
 
   const handleSave = () => {
-    const flow = instance.toObject();
+    const flow = toObject();
     localStorage.setItem('teamleaderFlow', JSON.stringify(flow));
   };  
 
@@ -340,21 +394,22 @@ export const ReactFlowComponent = () => {
       const flow = JSON.parse(savedFlow);
       setNodes(flow.nodes || []);
       setEdges(flow.edges || []);
+      if (flow.viewport) {
       setViewport(flow.viewport || { x: 0, y: 0, zoom: 1 });
-    } else {
+    }} else {
       alert('No hay un flujo guardado');
     }
   };  
   
 
  // Manejar clic en nodo (fijar o desfijar)
-const handleNodeClick = useCallback(
-  (event, node) => {
+const handleNodeClick: NodeMouseHandler<FlowNode<NodePayload>> = useCallback(
+  (event: React.MouseEvent, clickedNode: FlowNode<NodePayload>) => {
     event.stopPropagation(); // Evita que el evento clic se propague más allá del nodo
 
     setNodes((currentNodes) =>
       currentNodes.map((n) => {
-        if (n.id === node.id) {
+        if (n.id === clickedNode.id) {
           const isPinned = !n.data.pinned; // Alterna el estado pineado
           return {
             ...n,

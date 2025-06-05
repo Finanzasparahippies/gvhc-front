@@ -1,25 +1,33 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import logo from '../assets/img/logo.png'
+import { useNavigate } from 'react-router-dom';
+
+type TokenResponse = {
+    access: string;
+    refresh: string;
+};
 
 const LoginPage = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
-    const handleSubmit = async (e) => {
+    const navigate = useNavigate();
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         try {
-            const response = await axios.post('https://gvhc-backend.onrender.com/api/token/', {
+            const response = await axios.post<TokenResponse>('https://gvhc-backend.onrender.com/api/token/', {
                 username,
                 password,
             });
     
             localStorage.setItem('access_token', response.data.access);
             localStorage.setItem('refresh_token', response.data.refresh);
-            window.location.href = '/dashboard';
-        } catch (err) {
-            if (err.response?.status === 400) {
+            navigate('/dashboard');
+        } catch (err: any) {
+            if (err.response?.status === 401) {
                 setError('Credenciales inválidas. Intenta de nuevo.');
             } else {
                 setError('Error en el servidor. Por favor, intenta más tarde.');
