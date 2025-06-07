@@ -30,11 +30,13 @@ import {
   NoteNode,
   NonResizableNode,
   CustomEdge,
-  TooltipNode
+  TooltipNode,
+  QuestionNode
 } from '../components/nodes'; 
 import ColorPicker from './ColorPicker';
 import { Slide, slidesToElements, ZoomSlider, loadSlidesFromAPI } from '../components/Slides';
 import axios from 'axios';
+import { Ansewers } from './grammar';
 
 type FAQStep = {
   number: number;
@@ -44,6 +46,7 @@ type FAQStep = {
 };
 
 type Answer = {
+  id: string;
   answer_text: string;
   template?: string;
   image_url?: string | null;
@@ -82,15 +85,16 @@ type NodePayload = {
   template?: string; // Vendría de Answer.template
   imageUrl?: string | null; // Vendría de Answer.image (serializada como URL)
   response_type?: string; // Nombre del ResponseType de la Faq
+  borderColor?: string;
   keywords?: string[]; // De Faq.keywords
   steps?: FAQStep[]; // De Answer.steps
-
   // Estado y callbacks manejados por React Flow o tu componente
   note?: string;
   pinned?: boolean;
   // Callbacks que tus nodos customizados podrían necesitar invocar:
   onPinToggle?: (nodeId: string) => void;
-  onChangeNote?: (nodeId: string, newNote: string) => void;
+  onChange?: (nodeId: string, newNote: string) => void;
+  onTemplateChange?: ( nodeId: string, newTemplate: string) => void
   // setPanOnDrag es más global, pero si un nodo específico debe controlarlo, podría ir aquí.
   // setPanOnDrag?: (enabled: boolean) => void;
 };
@@ -101,6 +105,7 @@ const nodeTypes = {
   NonResizableNode,
   Slide,
   TooltipNode,
+  QuestionNode
 };
 
 const edgeTypes = {
@@ -114,12 +119,12 @@ const getNodeStyleByType = (responseType?: string) => {
                 backgroundColor: 'rgba(204, 232, 255, 0.9)', // Un azul claro
                 borderColor: '#007BFF',
             };
-        case 'Texto':
+        case 'Text':
             return {
                 backgroundColor: 'rgba(208, 245, 218, 0.9)', // Un verde claro
                 borderColor: '#28A745',
             };
-        case 'Proceso':
+        case 'Process':
             return {
                 backgroundColor: 'rgba(255, 236, 204, 0.9)', // Un naranja claro
                 borderColor: '#FFC107',
@@ -161,6 +166,20 @@ export const ReactFlowComponent = () => {
   const handleNodeChange = (nodeId: string, newNote: string) => {
     updateNote(nodeId, newNote); // Guardar nota en el contexto y localStorage
   };
+
+  const handleTemplateUpdate = ( nodeId: string, newTemplate: string ) => {
+    setNodes((nds) =>
+      nds.map((node) =>{
+        if(node.id === nodeId) {
+          return {
+            ...node,
+            data: { ...node.data, template: newTemplate },
+          }
+        }
+        return node;
+      })
+    )
+  }
 
   const handleNodeDragStop: OnNodeDrag = (event, node) => {
     console.log('🟢 Nodo soltado', node);
@@ -234,7 +253,7 @@ export const ReactFlowComponent = () => {
   const fetchNodes = useCallback(async (searchQuery = '') => {
     const url = searchQuery ? `/api/answers/search/?query=${searchQuery}` : '/api/answers/faqs/';
     const pinnedNodes: PinnedNodeInfo[] = storedPinnedNodes ? JSON.parse(storedPinnedNodes) : [] ;
-    const agentNotes = storedAgentNotes ? JSON.parse(storedAgentNotes) : [];
+    const agentNotes = storedAgentNotes ? JSON.parse(storedAgentNotes) : {};
   
     try {
       const response = await API.get<{results: FAQ[]}>(url);
@@ -243,129 +262,98 @@ export const ReactFlowComponent = () => {
       const apiNodes: FlowNode<NodePayload>[] = [];
       const apiEdges: Edge[] = [];
   
-      data.forEach((faq: FAQ) => {
+      data.forEach((faq: FAQ, faqIndex: number ) => {
         console.log('FAQ recibido:', faq);  // 👈 Agrega esta línea para inspeccionar qué campos llegan
-        const uniqueId = `faq-${faq.id}`;
-        const isPinned = pinnedNodes.some((pinnedNode) => pinnedNode.id === uniqueId);
-        const firstAnswer = faq.answers[0];
+        const questionNodeId = `faq-question-${faq.id}`;
+        const isPinned = pinnedNodes.some((pinnedNode) => pinnedNode.id === questionNodeId);
 
-        const typeStyle = getNodeStyleByType(faq.response_type);
-        const borderColor = isPinned ? '#D32F2F' : typeStyle.borderColor; // Un rojo más fuerte para 'pinned'
-
-        const nodeStyle = {
-          border: `2px solid ${borderColor}`,
-          backgroundColor: typeStyle.backgroundColor,
-          borderRadius: 8,
-          boxShadow: isPinned ? '0 0 10px rgba(211, 47, 47, 0.7)' : 'none', // Sombra para resaltar más si está fijado
-
-        };
-  
-        // Construye las propiedades del nodo antes de usar `node`
-        const nodeData: NodePayload = {
-          id: uniqueId,
-          NodeType: firstAnswer?.node_type || 'NonResizableNode',
-          position: { pos_x: 0, pos_y: 0 },
+        apiNodes.push({
+          id: questionNodeId,
+          type: 'QuestionNode',
+          position: { x: (faqIndex % 5 ) * 800, y: Math.floor(faqIndex / 5) * 600 },
           draggable: !isPinned,
-          questionText: faq.question || 'No Title',
-          answerText: firstAnswer?.answer_text || 'No Content',
-          template: firstAnswer?.template || '',
-          imageUrl: firstAnswer?.image_url || null,
-          response_type: faq.response_type,
-          keywords: faq.keywords || [],
-          steps: firstAnswer?.steps,
-          note: agentNotes[uniqueId] || '', // Accede correctamente a las notas guardadas
-          pinned: isPinned,
-          onPinToggle: togglePinNode, // Pasa la función al nodo
-          onChangeNote: (newNote: string) => handleNodeChange(uniqueId, newNote),
-        };
+          data: {
+            id: questionNodeId,
+            questionText: faq.question,
+            onPinToggle: togglePinNode,
+            pinned: isPinned,
+          } as any,
+          style: {
+            border: isPinned ? '3px solid #D32F2F' : undefined,
+            boxShadow: isPinned ? '0 0 10px rgba(211, 47, 47, 0.7)' : 'none'
+          }
+        })
 
-        const flowNodeProps: FlowNode<NodePayload> = {
-          id: uniqueId,
-          type: firstAnswer?.node_type || 'NonResizableNode',
-          position: { x: faq.pos_x || 0, y: faq.pos_y || 0},
-          draggable: !isPinned,
-          data: nodeData,
-          style: nodeStyle,
-        } 
-      
-        apiNodes.push(flowNodeProps);
+        faq.answers.forEach((answer, answerIndex) => {
+          const answerNodeId = `faq-${faq.id}-answer-${answer.id}`;
+          const typeStyle = getNodeStyleByType(faq.response_type);
+          const borderColor = isPinned ? '#D32F2F' : typeStyle.borderColor; // Un rojo más fuerte para 'pinned'
+          const nodeStyle = {
+            border: `2px solid ${borderColor}`,
+            backgroundColor: typeStyle.backgroundColor,
+            borderRadius: 8,
+            boxShadow: isPinned ? '0 0 10px rgba(211, 47, 47, 0.7)' : 'none', // Sombra para resaltar más si está fijado
   
-        if (faq.slides?.length) {
-          const { nodes: slideNodes, edges: slideEdges } = slidesToElements(faq.id, faq.slides);
-          apiNodes.push(...slideNodes);
-          apiEdges.push(...slideEdges);
-        }
-  
-        if (faq.answers[0]?.steps?.length) {
-          faq.answers[0].steps.forEach((step, index) => {
-          const stepNodeId = `faq-${faq.id}-step-${index}`;
+          };  
           
-          const stepPayload: NodePayload = {
-              id: stepNodeId, // o podrías añadir un originalStepId
-              questionText: `Step ${step.number}: ${step.text.substring(0, 30)}...`, // o solo el texto del paso
-              answerText: step.text,
-              imageUrl: step.image_url,
-              position: { pos_x: 0, pos_y: 0},
-              response_type: faq.response_type, // Heredado
-              keywords: [], // Los Steps del backend no tienen keywords. Define un valor por defecto.
-              steps: firstAnswer?.steps,
-              NodeType: firstAnswer?.node_type || 'NonResizableNode',
-              pinned: isPinned, 
-              draggable: !isPinned,
-              note: agentNotes[uniqueId] || '',
-              onPinToggle: togglePinNode,
-              onChangeNote: handleNodeChange,
-            };
-            
-            apiNodes.push({
-              id: stepNodeId,
-              type: 'NonResizableNode',
-              position: { x: 0, y: 0 },
-              data: stepPayload,
-              style: {
-                border: '2px solid blue',
-                backgroundColor: '#f0f9ff',
-                borderRadius: 8,
-              },
-            });
-  
-            if (index === 0) {
-              apiEdges.push({
-                id: `${uniqueId}->${stepNodeId}`,
-                source: uniqueId,
-                target: stepNodeId,
-                type: 'smoothstep',
-              });
-            }
-  
-            if (index > 0) {
-              const previousStepNodeId = `faq-${faq.id}-step-${index - 1}`;
-              apiEdges.push({
-                id: `${previousStepNodeId}->${stepNodeId}`,
-                source: previousStepNodeId,
-                target: stepNodeId,
-                type: 'smoothstep',
-              });
-            }
+          // Construye las propiedades del nodo antes de usar `node`
+          const nodeData: NodePayload = {
+            id: answerNodeId,
+            NodeType: answer.node_type || 'NonResizableNode',
+            position: { pos_x: 0, pos_y: 0 },
+            draggable: !isPinned,
+            questionText: faq.question || 'No Title',
+            answerText: answer.answer_text || 'No Content',
+            template: answer.template || '',
+            imageUrl: answer.image_url || null,
+            response_type: faq.response_type,
+            borderColor: typeStyle.borderColor,
+            keywords: faq.keywords || [],
+            steps: answer.steps,
+            note: agentNotes[answerNodeId] || '', // Accede correctamente a las notas guardadas
+            pinned: isPinned,
+            onPinToggle: togglePinNode, // Pasa la función al nodo
+            onChange: (newNote: string) => handleNodeChange(answerNodeId, newNote),
+            onTemplateChange: handleTemplateUpdate
+          };
+
+          apiNodes.push({
+            id: answerNodeId,
+            type: answer.node_type || 'NonResizableNode',
+            // Posicionamos el nodo de respuesta debajo del nodo de la pregunta
+            position: { 
+                x: ((faqIndex % 5) * 800) + (answerIndex * 400), 
+                y: (Math.floor(faqIndex / 5) * 600) + 150
+            },
+            draggable: !isPinned,
+            data: nodeData,
+            style: nodeStyle,
           });
-        }
-      });
-  
-      // Distribuye los nodos y actualiza el estado
-      const distributedNodes: FlowNode<NodePayload>[] = distributeNodesInGrid(apiNodes, 8, 800, 1000);
-      setNodes(distributedNodes);
+
+          apiEdges.push({
+              id: `${questionNodeId}->${answerNodeId}`,
+              source: questionNodeId,
+              target: answerNodeId,
+              type: 'smoothstep',
+              animated: true,
+            });
+        })
+      })
+
+      setNodes(apiNodes);
       setEdges(apiEdges);
-  
+      
       setTimeout(() => {
-        fitView({ padding: 0.1 });
-      }, 0);
-  
-      return distributedNodes; // Devuelve los nodos para validar si hay resultados
+            fitView({ padding: 0.2 });
+        }, 100);
+
+        return apiNodes;
     } catch (error) {
-      console.error('Error fetching nodes:', error);
-      return [];
+        console.error('Error fetching nodes:', error);
+        return [];
     }
-  }, []);
+}, [setNodes, setEdges, fitView, handleTemplateUpdate, togglePinNode, handleNodeChange, storedPinnedNodes, storedAgentNotes]);
+
   
   useEffect(() => {
           const lastColor = localStorage.getItem('preferedColor')
@@ -475,15 +463,9 @@ return (
           showFitView={true}
         />
         <MiniMap
-          nodeColor={(node) => {
-            switch (node.type) {
-              case 'NonresizableNode':
-                return '#0070f3';
-                case 'NotesNode':
-                  return '#f39';
-                  default:
-                    return '#ddd';
-                  }
+          nodeColor={(node: FlowNode<NodePayload>) => {
+              const typeStyle = getNodeStyleByType(node.data.response_type);
+                return typeStyle.backgroundColor;
                 }}
         />        
       <Background color={backgroundColor} variant={BackgroundVariant.Cross} gap={12} />
