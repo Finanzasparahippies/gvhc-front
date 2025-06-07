@@ -8,6 +8,7 @@ interface NodeData {
     imageUrl?: string;
     excel_file?: string;
     answerText?: string;
+    title: string;
     template?: string;
     id: string;
     borderColor?: string;

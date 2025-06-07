@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import API from '../utils/API';
 import logo from '../assets/img/logo.png'
 import { useNavigate } from 'react-router-dom';
 
@@ -18,7 +18,7 @@ const LoginPage = () => {
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         try {
-            const response = await axios.post<TokenResponse>('https://gvhc-backend.onrender.com/api/token/', {
+            const response = await API.post<TokenResponse>('https://gvhc-backend.onrender.com/api/token/', {
                 username,
                 password,
             });

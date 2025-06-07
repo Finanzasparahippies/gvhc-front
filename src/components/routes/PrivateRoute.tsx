@@ -74,11 +74,8 @@ const PrivateRoute = ({ children }: PrivateRouteProps): JSX.Element => {
                 setIsAuthenticated(false);
             }
         };
-            const timer = setTimeout(() => {
                 checkToken();
-            }, 500);
             
-                return () => clearTimeout(timer);
     }, []);
 
         if (isAuthenticated === null) {

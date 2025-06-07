@@ -31,7 +31,8 @@ import {
   NonResizableNode,
   CustomEdge,
   TooltipNode,
-  QuestionNode
+  QuestionNode,
+  TemplateNode,
 } from '../components/nodes'; 
 import ColorPicker from './ColorPicker';
 import { Slide, slidesToElements, ZoomSlider, loadSlidesFromAPI } from '../components/Slides';
@@ -47,6 +48,7 @@ type FAQStep = {
 
 type Answer = {
   id: string;
+  title: string;
   answer_text: string;
   template?: string;
   image_url?: string | null;
@@ -105,7 +107,8 @@ const nodeTypes = {
   NonResizableNode,
   Slide,
   TooltipNode,
-  QuestionNode
+  QuestionNode,
+  TemplateNode
 };
 
 const edgeTypes = {
@@ -163,11 +166,11 @@ export const ReactFlowComponent = () => {
   };  
 
 
-  const handleNodeChange = (nodeId: string, newNote: string) => {
+  const handleNodeChange = useCallback((nodeId: string, newNote: string) => {
     updateNote(nodeId, newNote); // Guardar nota en el contexto y localStorage
-  };
+  },[updateNote]);
 
-  const handleTemplateUpdate = ( nodeId: string, newTemplate: string ) => {
+  const handleTemplateUpdate = useCallback(( nodeId: string, newTemplate: string ) => {
     setNodes((nds) =>
       nds.map((node) =>{
         if(node.id === nodeId) {
@@ -179,7 +182,7 @@ export const ReactFlowComponent = () => {
         return node;
       })
     )
-  }
+  }, [setNodes]);
 
   const handleNodeDragStop: OnNodeDrag = (event, node) => {
     console.log('🟢 Nodo soltado', node);
@@ -200,29 +203,7 @@ export const ReactFlowComponent = () => {
     }
   };
   
-
-  const distributeNodesInGrid = (nodes: FlowNode<NodePayload>[], nodesPerRow: number, xGap: number, yGap: number ): FlowNode<NodePayload>[] => {
-    return nodes.map((node, index) => {
-      const row = Math.floor(index / nodesPerRow);
-      const col = index % nodesPerRow;
-        return {
-          ...node,
-          position: {
-            x: col * xGap,
-            y: row * yGap,
-          },
-          draggable: !node.data?.pinned, 
-          data: {
-            ...node.data,
-            setPanOnDrag: (isEnabled: boolean) => {
-              if (!node.data?.pinned) setPanOnDrag(isEnabled);
-            }, 
-          },
-        };
-    });
-  };
-  
-  const togglePinNode = (nodeId: string) => {
+  const togglePinNode = useCallback((nodeId: string) => {
     setNodes((currentNodes) =>
       currentNodes.map((node) =>
         node.id === nodeId
@@ -247,7 +228,7 @@ export const ReactFlowComponent = () => {
       const pinnedNodes = nodes.filter((n) => n.data?.pinned);
       localStorage.setItem('pinnedNodes', JSON.stringify(pinnedNodes));
     }, 0);
-  };
+  },[setNodes]);
   
 
   const fetchNodes = useCallback(async (searchQuery = '') => {
