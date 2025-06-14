@@ -37,69 +37,9 @@ import {
 import ColorPicker from './ColorPicker';
 import { Slide, slidesToElements, ZoomSlider, loadSlidesFromAPI } from '../components/Slides';
 import axios from 'axios';
-import { Ansewers } from './grammar';
-
-type FAQStep = {
-  number: number;
-  text: string;
-  image_url: string | null;
-  keywords?: string[];
-};
-
-type Answer = {
-  id: string;
-  title: string;
-  answer_text: string;
-  template?: string;
-  image_url?: string | null;
-  node_type?: string;
-  steps?: FAQStep[];
-};
-
-type FAQ = {
-  pos_y: number;
-  pos_x: number;
-  id: number;
-  question: string;
-  position: {
-    pos_x: number;
-    pos_y: number;
-  };
-  response_type?: string;
-  keywords?: string[];
-  answers: Answer[];
-  slides?: any[]; // Define mejor si tienes estructura
-};
+import { Answers } from './grammar';
 
 type PinnedNodeInfo = { id: string; data?: { pinned?: boolean } /* o lo que sea que guardes */ };
-
-type NodePayload = {
-  // Datos del FAQ/Answer original
-  id: number | string; // El ID de la Faq del backend
-  NodeType: string;
-  position: {
-    pos_x: number;
-    pos_y: number;
-  };
-  draggable: boolean;
-  questionText: string; // Vendría de Faq.question
-  answerText?: string; // Vendría de Answer.answer_text
-  template?: string; // Vendría de Answer.template
-  imageUrl?: string | null; // Vendría de Answer.image (serializada como URL)
-  response_type?: string; // Nombre del ResponseType de la Faq
-  borderColor?: string;
-  keywords?: string[]; // De Faq.keywords
-  steps?: FAQStep[]; // De Answer.steps
-  // Estado y callbacks manejados por React Flow o tu componente
-  note?: string;
-  pinned?: boolean;
-  // Callbacks que tus nodos customizados podrían necesitar invocar:
-  onPinToggle?: (nodeId: string) => void;
-  onChange?: (nodeId: string, newNote: string) => void;
-  onTemplateChange?: ( nodeId: string, newTemplate: string) => void
-  // setPanOnDrag es más global, pero si un nodo específico debe controlarlo, podría ir aquí.
-  // setPanOnDrag?: (enabled: boolean) => void;
-};
 
 const nodeTypes = {
   CustomResizableNode,
@@ -280,7 +220,8 @@ export const ReactFlowComponent = () => {
           // Construye las propiedades del nodo antes de usar `node`
           const nodeData: NodePayload = {
             id: answerNodeId,
-            NodeType: answer.node_type || 'NonResizableNode',
+            title: answer.title || 'No Title',
+            NodeType: answer.node_type || 'CustomResizableNode',
             position: { pos_x: 0, pos_y: 0 },
             draggable: !isPinned,
             questionText: faq.question || 'No Title',

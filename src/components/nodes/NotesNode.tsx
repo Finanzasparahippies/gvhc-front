@@ -1,19 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 
-interface NoteNodeData {
-    id: string;
-    note?: string;
-    pinned?: boolean;
-    setPanOnDrag?: (value: boolean) => void;
-    onPinToggle?: (id: string) => void;
-    onChange: (id: string, data: { note: string }) => void;
-}
-
-interface NoteNodeProps {
-    data: NoteNodeData;   
-}
-
 export const NoteNode: React.FC<NoteNodeProps> = ({ data }) => {
     const [note, setNote] = useState<string>(data.note || ''); // Estado para la nota
     const [noteHistory, setNoteHistory] = useState<string[]>([]); 

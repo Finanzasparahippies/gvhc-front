@@ -2,25 +2,6 @@ import { memo, useEffect, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import TemplateNode from './TemplateNode';
 
-interface NodeData {
-    questionText: string;
-    response_type: string;
-    imageUrl?: string;
-    excel_file?: string;
-    answerText?: string;
-    title: string;
-    template?: string;
-    id: string;
-    borderColor?: string;
-    setPanOnDrag?: (value: boolean) => void;
-    onChange?: (id: string, value: { template: string }) => void;
-    onPinToggle: (id: string) => void;
-    pinned?: boolean;
-}
-
-interface NonResizableNodeProps {
-    data: NodeData;
-}
 
 export const NonResizableNode: React.FC<NonResizableNodeProps> = ({ data }) => {
 

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactFlow, useReactFlow, ReactFlowProvider, Background, Controls } from '@xyflow/react';
 import  slidesToElements from './slides';
 import Slide from './Slide';
-import APIvs from '../../utils/APIvs';
+import APIvs from '../../utils/APISharpen';
 import '@xyflow/react/dist/style.css';
 
 // Función para cargar nodos desde la API

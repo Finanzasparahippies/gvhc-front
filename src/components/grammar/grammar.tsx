@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import APIvs from '../../utils/APIvs';
+import APIvs from '../../utils/APISharpen';
 
 const GrammarCorrection = () => {
     const [text, setText] = useState("");

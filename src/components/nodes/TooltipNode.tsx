@@ -1,13 +1,6 @@
 import { memo } from 'react';
 import { NodeToolbar } from '@xyflow/react';
 
-interface TooltipNodeProps {
-    data: {
-        label: string;
-        tooltip: string;
-    };
-}
-
 export const TooltipNode: React.FC<TooltipNodeProps> = ({ data }) => {
     return (
         <div className="relative group">

@@ -1,12 +1,6 @@
 import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 
-interface QuestionNodeProps {
-    data: {
-        label: string;
-    };
-}
-
 export const QuestionNode: React.FC<QuestionNodeProps> = ({ data }) => {
     return (
         <div style={{

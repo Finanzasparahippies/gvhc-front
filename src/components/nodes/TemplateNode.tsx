@@ -4,21 +4,6 @@ import { AiTwotonePushpin } from "react-icons/ai";
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
-interface TemplateNodeData {
-    id: string;
-    template?: string;
-    answerText?: string;
-    pinned?: boolean;
-    setPanOnDrag?: (enabled: boolean) => void;
-    onPinToggle: (id: string) => void;
-    onChange?: (id: string, data: { template: string }) => void;
-    onTemplateChange?: ( id:string, newTemplate: string ) => void;
-}
-
-interface TemplateNodeProps {
-    data: TemplateNodeData;
-}
-
 export const TemplateNode: React.FC<TemplateNodeProps> = ({ data }) => {
 
     const [editableTemplate, setEditableTemplate] = useState<string>(data.template || '');

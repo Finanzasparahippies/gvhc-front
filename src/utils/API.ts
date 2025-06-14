@@ -1,9 +1,5 @@
 import axios from 'axios';
 
-interface RefreshTokenResponse {
-    access: string;
-}
-
 const API = axios.create({
     baseURL: 'https://gvhc-backend.onrender.com',
     headers: {
