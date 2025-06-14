@@ -10,6 +10,9 @@ import sharpenAPI from '../../../utils/APISharpen'
         const [loading, setLoading] = useState(false);
         const [error, setError] = useState<string | null>(null);
         const [response, setResponse] = useState<responseData | null>(null);
+        const [fetchedCount, setFetchedCount] = useState(0);
+        const [currentPage, setCurrentPage] = useState(1);
+        const itemsPerPage = 100;
 
         const isValidRange = () => {
             return startDate && endDate && new Date(startDate) <= new Date(endDate);
@@ -26,34 +29,48 @@ import sharpenAPI from '../../../utils/APISharpen'
             setData([]);
             setResponse(null);
 
-            const query = `SELECT startTime, endTime, agentName, queueName, callType, endType FROM fathomvoice.fathomQueues.queueCDRLegs WHERE crm-companyID = :param003 AND (startTime BETWEEN :param001 AND :param002) LIMIT 100`;
+            const allData: any[] = [];
+            const limit = 5000;
+            let offset = 0;
+            let keepFetching = true;
+
             try {
-            const response = await sharpenAPI.post<responseData>('dashboards/proxy/sharpen-query/', {
-                method: 'query',
-                q: query,
-                param001: startDate,
-                param002: endDate,
-                param003: '10086'
-            });
-
-            const resp = response.data;
-
-            if (resp?.data && Array.isArray(resp.data)) {
-                setData(resp.data);
-                setResponse(resp);
-            } else if (resp?.raw_response) {
-                    setResponse({ raw_response: resp.raw_response } as responseData); // solo para mostrarlo
-            } else {
-                throw new Error('Respuesta no válida de la API');
+                while (keepFetching) {
+                const query = `SELECT * FROM fathomvoice.fathomQueues.queueCDR WHERE startTime BETWEEN '${startDate}' AND '${endDate}'  LIMIT ${offset}, ${limit}`;
+                const response = await sharpenAPI.post<responseData>('dashboards/proxy/sharpen-query/', {
+                    method: 'query',
+                    q: query,
+                });
+                
+                const resp = response.data;
+                
+                if (resp?.data && Array.isArray(resp.data)) {
+                    allData.push(...resp.data);
+                    setFetchedCount(allData.length);
+                    if (resp.data.length < limit ) {
+                        keepFetching = false;
+                    } else {
+                        offset += limit;
+                    }
+                } else {
+                    keepFetching = false;
+                    if (resp?.raw_response) {
+                        setResponse({ raw_response: resp.raw_response } as responseData )
+                    } else {
+                        throw new Error('Respuesta no valida de la API')
+                    }
+                };
             }
-            } catch (err: any) {
+            setData(allData);
+            setResponse({status: 'Complete', data: allData });
+            setCurrentPage(1)
+        } catch ( err: any ) {
             console.error(err);
-            setError('Error al consultar la API.');
-            } finally {
+            setError('Error al consultar la API')
+        } finally {
             setLoading(false);
-            }
-        };
-
+        }
+    }
         const downloadCSV = () => {
             if (!data.length) return;
 
@@ -65,8 +82,13 @@ import sharpenAPI from '../../../utils/APISharpen'
             saveAs(blob, `reporte_sharpen_${startDate}_a_${endDate}.csv`);
         };
 
+        const indexOfLastItem = currentPage * itemsPerPage;
+        const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+        const currentItems = data.slice(indexOfFirstItem, indexOfLastItem);
+        const totalPages = Math.ceil(data.length / itemsPerPage);
+
         return (
-            <div className='p-6 max-w-screen-lg mx-auto'>
+            <div className='p-6 max-w-screen-lg mx-auto mt-[150px]'>
             <h2 className='text-2xl font-semibold mb-4 text-white'>Reporte de Llamadas (Sharpen)</h2>
 
             <div className='flex flex-wrap items-center gap-4 mb-6'>
@@ -102,7 +124,9 @@ import sharpenAPI from '../../../utils/APISharpen'
                 Descargar CSV
                 </button>
             </div>
-
+            {loading && (
+                <p className="text-white font-medium">Cargando... {fetchedCount.toLocaleString()} registros hasta ahora.</p>
+            )}
             {error && (
                 <p className="text-red-600 font-medium mb-4"></p>
                 )}
@@ -118,8 +142,8 @@ import sharpenAPI from '../../../utils/APISharpen'
 
             {data.length > 0 && (
                 <div className="overflow-x-auto max-h-[500px] border rounded">
-                <table border={1} cellPadding={5} className="table-auto w-full text-sm text-left text-gray-700">
-                <thead className="bg-gray-100 sticky top-0">
+                <table border={1} cellPadding={5} className="table-auto w-full text-sm text-left text-white">
+                <thead className="bg-gray-100 sticky top-0 text-black">
                     <tr>
                     {Object.keys(data[0]).map(key => (
                         <th key={key} className="px-4 py-2 font-semibold border-b">{key}</th>
@@ -127,8 +151,8 @@ import sharpenAPI from '../../../utils/APISharpen'
                     </tr>
                 </thead>
                 <tbody>
-                    {data.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
+                    {currentItems.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50 hover:text-black">
                         {Object.keys(row).map(key => (
                         <td key={key} className="px-4 py-2 border-b">{row[key]}</td>
                         ))}
@@ -138,6 +162,25 @@ import sharpenAPI from '../../../utils/APISharpen'
                 </table>
                 </div>
             )}
+            <div className="flex justify-center gap-2 mt-4">
+                <button
+                    onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="bg-gray-700 text-white px-3 py-1 rounded disabled:opacity-50"
+                >
+                    Anterior
+                </button>
+                <span className="text-white self-center">
+                    Página {currentPage} de {totalPages}
+                </span>
+                <button
+                    onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="bg-gray-700 text-white px-3 py-1 rounded disabled:opacity-50"
+                >
+                    Siguiente
+                </button>
+            </div>
         </div>
     );
 };
