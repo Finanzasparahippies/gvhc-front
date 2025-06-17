@@ -4,14 +4,13 @@ import { Node } from '@xyflow/react'
 
 export const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, setNodes, fetchNodes }) => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [results, setResults] = useState<Node[]>([]);
+    const [results, setResults] = useState<Node<NodePayload>[]>([]);
     const [noResults, setNoResults] = useState<boolean>(false);
 
     const handleSearch = async () => {
         setIsLoading(true);
         try {
             const fetchedNodes = await fetchNodes(query); // Obtener nodos coincidentes
-            setNodes(fetchedNodes); // Actualizar ReactFlow con nodos filtrados
             setResults(fetchedNodes);
             setNoResults(fetchedNodes.length === 0);
         } catch (error) {
@@ -24,7 +23,6 @@ export const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, setNodes,
     const handleClearSearch = async () => {
         setQuery('');
         const allNodes = await fetchNodes(''); // Recargar todos los nodos
-        setNodes(allNodes); // Restaurar ReactFlow a su estado inicial
         setResults([]);
         setNoResults(false);
     };

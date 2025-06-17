@@ -1,8 +1,10 @@
 import { memo, useEffect, useState, useRef,MouseEvent, KeyboardEvent, ChangeEvent } from 'react';
 import { RxClipboardCopy } from "react-icons/rx";
 import { AiTwotonePushpin } from "react-icons/ai";
+import { FaUndo, FaRedo } from "react-icons/fa";
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
+import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 
 export const TemplateNode: React.FC<TemplateNodeProps> = ({ data }) => {
 
@@ -102,7 +104,7 @@ export const TemplateNode: React.FC<TemplateNodeProps> = ({ data }) => {
             }
         }
 
-        const handleTextareaClick = () => {
+        const handleTextareaClick = async () => {
         const textarea = textAreaRef.current;
         if (!textarea) return;
 
@@ -112,40 +114,57 @@ export const TemplateNode: React.FC<TemplateNodeProps> = ({ data }) => {
         
         while ((match = regex.exec(editableTemplate)) !== null) {
             if (cursorPos >= match.index && cursorPos <= match.index + 3) {
-                const replacement = prompt("Ingresa el valor para reemplazar ***:", "");
-                if (replacement !== null) {
-                    const newText = 
-                        editableTemplate.slice(0, match.index) + 
-                        replacement + 
+                const { value: replacement } = await Swal.fire({
+                    title: 'Reemplazar Variable',
+                    input: 'text',
+                    inputLabel: 'Ingresa el valor para reemplazar "***"',
+                    inputValue: '',
+                    showCancelButton: true,
+                    inputValidator: (value) => {
+                        if (!value) {
+                            return '¡Necesitas escribir algo!';
+                        }
+                        return null;
+                    }
+                });
+                if (replacement) {
+                    const newText =
+                        editableTemplate.slice(0, match.index) +
+                        replacement +
                         editableTemplate.slice(match.index + 3);
                     updateTemplate(newText);
                 }
-                break; // Salimos del bucle una vez que encontramos y procesamos el match
+                break; 
             }
         }
     };
 
     return (
         <div
-                        onClick={handlePinned}
-                    >
-                        {data.pinned && (
-                            <div className="">
+            className="w-full bg-gray-100 px-4 py-3 rounded-t-lg border-b border-gray-300 flex flex-col items-center justify-between overflow-hidden shadow-2xl" 
+        >
+            <div className="bg-gray-900 px-4 py-3 flex items-center justify-between cursor-pointer" onClick={handlePinned}>
+                <h3 className='text-lg font-semibold text-gray-800'>
+                    {data.questionText}
+                </h3>
+                    <div className="relative group">
                                 <AiTwotonePushpin
                                     className="
-                                        absolute 
-                                        top-0 
-                                        right-0 
-                                        text-red-500 
-                                        transition-transform 
-                                        duration-200 
-                                        transform 
-                                        hover:scale-110
-                                        "
-                                    size={30}
+                                    text-red-500 
+                                    transition-transform 
+                                    duration-200 
+                                    transform 
+                                    hover:scale-110
+                                    "
+                                    size={24}
+                                    title='Pinned'
                                     />
-                                </div>
-                                )}
+                            <span className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 transition-opacity duration-300 group-hover:opacity-100 whitespace-nowrap">
+                                {data.pinned ? 'Desanclar' : 'Anclar'}
+                            </span>
+                            </div>
+                    </div>
+                    <div className="p-4 flex-grow">
                         <textarea
                             id={`templateArea-${data.id}`} 
                             ref={textAreaRef}
@@ -176,63 +195,66 @@ export const TemplateNode: React.FC<TemplateNodeProps> = ({ data }) => {
                                 ease-in-out
                             "
                         />
-                        <div className="flex flex-col items-center mt-4">
-                            <div className="flex flex-row justify-around w-full text-center">
-                            <button onClick={handleCopy} className="relative group items-center justify-center">
-                                <RxClipboardCopy
-                                    size={30}
-                                    className="transition-transform duration-200 transform group-hover:scale-110 group-hover:text-blue-500 mb-5"
+                        </div>
+                        <div className="bg-gray-900/50 px-4 py-2 flex items-center justify-between border-t border-gray-700">
+                            <div className="flex items-center gap-4">
+                                <button onClick={undoTemplate} disabled={undoStack.length === 0} className="relative group disabled:opacity-40 disabled:cursor-not-allowed">
+                                    <FaUndo size={18} className="text-gray-400 group-hover:text-white transition-colors" />
+                                    <span className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 transition-opacity duration-300 group-hover:opacity-100">Deshacer</span>
+                                </button>
+                                <button onClick={redoTemplate} disabled={redoStack.length === 0} className="relative group disabled:opacity-40 disabled:cursor-not-allowed">
+                                    <FaRedo size={18} className="text-gray-400 group-hover:text-white transition-colors" />
+                                    <span className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 transition-opacity duration-300 group-hover:opacity-100">Rehacer</span>
+                                </button>
+                                <button onClick={handleCopy} className="relative group">
+                                    <RxClipboardCopy
+                                        size={30}
+                                        className="transition-transform duration-200 transform group-hover:scale-110 group-hover:text-blue-500 mb-5"
                                     />
                                 <span className="absolute bottom-10 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                                     Copy now
                                 </span>
                             </button>
                             <button
-                        onClick={clearTemplate}
-                        className="
-                        mt-3
-                        mb-5
-                        py-2 px-4
-                        bg-orange-600
-                        text-white
-                        font-semibold
-                        rounded-lg
-                        shadow-md
-                        hover:bg-red-600
-                        focus:outline-none
-                        focus:ring-2
-                        focus:ring-red-400
-                        focus:ring-opacity-75
-                        transition
-                        duration-300
-                        "
-                        >
-                        Clear Template
-                    </button>
-                </div>
-                            <div className="w-full text-center mt-2">
-                                <div
-                                    className={`absolute bottom-0 left-0 w-full ${
-                                        isRememberOpen ? 'bg-orange-500' : 'bg-blue-500'
-                                    } transition-colors duration-300 rounded-b-xl`}
-                                    onClick={() => setIsRememberOpen(!isRememberOpen)}
-                                    style={{
-                                        cursor: 'pointer',
-                                        padding: '5px 0',
-                                        textAlign: 'center',
-                                        borderTop: '1px solid #ccc',
-                                    }}
+                                onClick={clearTemplate}
+                                className="
+                                mt-3
+                                mb-5
+                                py-2 px-4
+                                bg-orange-600
+                                text-white
+                                font-semibold
+                                rounded-lg
+                                shadow-md
+                                hover:bg-red-600
+                                focus:outline-none
+                                focus:ring-2
+                                focus:ring-red-400
+                                focus:ring-opacity-75
+                                transition
+                                duration-300
+                                "
                                 >
-                                    <span className="text-white font-medium">
-                                        {isRememberOpen ? 'Hide' : 'Remember'}
-                                    </span>
-                                </div>
-                                {isRememberOpen && (
-                                    <p className="italic mt-2 max-w-[200px] flex text-center text-gray-700 mb-10">
-                                        {data.answerText}
-                                    </p>
-                                )}
-                            </div>
+                                Clear Template
+                            </button>
+                </div>
+                            {data.answerText && (
+                                <>
+                                    <div className="bg-gray-800 border-t border-gray-700 cursor-pointer" onClick={() => setIsRememberOpen(!isRememberOpen)}>
+                                        <div className="px-4 py-2 flex justify-between items-center">
+                                            <span className="text-sm font-medium text-gray-300">Recordar</span>
+                                            {isRememberOpen ? <FiChevronUp /> : <FiChevronDown />}
+                                        </div>
+                                    </div>
+                                    {isRememberOpen && (
+                                        <div className="p-4 bg-gray-900/50 border-t border-gray-700">
+                                            <p className="italic text-sm text-gray-400">
+                                                {data.answerText}
+                                            </p>
+                                        </div>
+                                    )}
+                                </>
+                            )}
                         </div>
                     </div>
         );

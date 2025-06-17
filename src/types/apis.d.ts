@@ -21,4 +21,12 @@ interface responseData {
     raw_text?: string;
     status_code?: number;
     raw_response?: string;
+    table?: string;
+}
+
+interface RecordingUrlResponse {
+    status: 'successful' | 'Error' | number; // Puedes ser más específico si conoces los estados
+    url?: string;
+    key?: string;
+    description?: string; // Importante para manejar los mensajes de error
 }

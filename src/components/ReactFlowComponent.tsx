@@ -19,7 +19,6 @@ import {
   NodeMouseHandler,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import useGridDistribution from '../hooks/useGridDistribution';
 
 import CustomAttribution from './CustomAttribution';
 import { useNotes } from '../utils/NotesContext';
@@ -35,9 +34,7 @@ import {
   TemplateNode,
 } from '../components/nodes'; 
 import ColorPicker from './ColorPicker';
-import { Slide, slidesToElements, ZoomSlider, loadSlidesFromAPI } from '../components/Slides';
-import axios from 'axios';
-import { Answers } from './grammar';
+import { Slide } from '../components/Slides';
 
 type PinnedNodeInfo = { id: string; data?: { pinned?: boolean } /* o lo que sea que guardes */ };
 
@@ -93,18 +90,6 @@ export const ReactFlowComponent = () => {
   const [panOnDrag, setPanOnDrag] = useState(true); // Controla el pan dinámicamente
   const { fitView, toObject, setViewport } = useReactFlow();
   const [backgroundColor, setBackgroundColor] = useState<string>("#000");
-  const storedPinnedNodes = localStorage.getItem('pinnedNodes');
-  const storedAgentNotes = localStorage.getItem('agentNotes');
-
-
-  const onNodeChange = (id: string, newValue: string) => {
-    setNodes((nds) =>
-      nds.map((node) =>
-        node.id === id ? { ...node, data: { ...node.data, note: newValue } } : node
-      )
-    );
-  };  
-
 
   const handleNodeChange = useCallback((nodeId: string, newNote: string) => {
     updateNote(nodeId, newNote); // Guardar nota en el contexto y localStorage
@@ -130,10 +115,10 @@ export const ReactFlowComponent = () => {
     const id = node.id.replace('faq-', '');
     const originalNode = nodes.find((n: FlowNode<NodePayload>) => n.id === node.id);
   
-    if (
+    if (originalNode && (
       originalNode?.position.x !== node.position.x ||
       originalNode?.position.y !== node.position.y
-    ) {
+    )) {
       API.patch(`/api/faqs/${id}/`, {
         pos_x: node.position.x,
         pos_y: node.position.y,
@@ -142,38 +127,54 @@ export const ReactFlowComponent = () => {
       .catch((err: any) => console.error(err));
     }
   };
+
+  const getCombinedNodeStyle = (nodeData: NodePayload) => {
+        const baseStyle = getNodeStyleByType(nodeData.response_type);
+        const pinnedStyle = {
+            border: `3px solid ${baseStyle.borderColor}`, // Borde más grueso
+            boxShadow: '0 0 15px rgba(255, 100, 100, 0.8)', // Sombra roja para resaltar
+        };
+        const defaultStyle = {
+            border: `2px solid ${baseStyle.borderColor}`,
+            backgroundColor: baseStyle.backgroundColor,
+            borderRadius: 8,
+        };
+
+        return nodeData.pinned ? { ...defaultStyle, ...pinnedStyle } : defaultStyle;
+    };
+
   
   const togglePinNode = useCallback((nodeId: string) => {
     setNodes((currentNodes) =>
-      currentNodes.map((node) =>
-        node.id === nodeId
-          ? {
-              ...node,
-              data: {
-                ...node.data,
-                pinned: !node.data.pinned,
-              },
-              draggable: !node.data.pinned, // Cambia el estado de draggable dinámicamente
-              style: {
-                ...node.style,
-                border: !node.data.pinned ? '2px solid red' : '2px solid black',
-              },
-            }
-          : node
-      )
-    );
-  
-    // Actualiza el almacenamiento local para mantener la persistencia
-    setTimeout(() => {
-      const pinnedNodes = nodes.filter((n) => n.data?.pinned);
-      localStorage.setItem('pinnedNodes', JSON.stringify(pinnedNodes));
-    }, 0);
-  },[setNodes]);
+      currentNodes.map((node) => {
+        if (node.id === nodeId || node.data.id === nodeId) {
+                    const isPinned = !node.data.pinned;
+                    const updatedData = { ...node.data, pinned: isPinned };
+                    
+                    return {
+                        ...node,
+                        data: updatedData,
+                        draggable: !isPinned,
+                        style: getCombinedNodeStyle(updatedData), // Usar la nueva función de estilo
+                    };
+                }
+                return node;
+            })
+        );
+
+        setTimeout(() => {
+            const flow = toObject();
+            const pinnedNodes = flow.nodes.filter((n) => n.data?.pinned);
+            localStorage.setItem('pinnedNodes', JSON.stringify(pinnedNodes));
+        }, 0);
+    }, [setNodes, toObject]);
   
 
   const fetchNodes = useCallback(async (searchQuery = '') => {
+    const storedPinnedNodes = localStorage.getItem('pinnedNodes');
+    const storedAgentNotes = localStorage.getItem('agentNotes');
     const url = searchQuery ? `/api/answers/search/?query=${searchQuery}` : '/api/answers/faqs/';
-    const pinnedNodes: PinnedNodeInfo[] = storedPinnedNodes ? JSON.parse(storedPinnedNodes) : [] ;
+    const pinnedNodesInfo: PinnedNodeInfo[] = storedPinnedNodes ? JSON.parse(storedPinnedNodes) : [] ;
     const agentNotes = storedAgentNotes ? JSON.parse(storedAgentNotes) : {};
   
     try {
@@ -184,38 +185,29 @@ export const ReactFlowComponent = () => {
       const apiEdges: Edge[] = [];
   
       data.forEach((faq: FAQ, faqIndex: number ) => {
-        console.log('FAQ recibido:', faq);  // 👈 Agrega esta línea para inspeccionar qué campos llegan
         const questionNodeId = `faq-question-${faq.id}`;
-        const isPinned = pinnedNodes.some((pinnedNode) => pinnedNode.id === questionNodeId);
+        const isGroupPinned = pinnedNodesInfo.some((pn) => pn.id === questionNodeId);
 
         apiNodes.push({
           id: questionNodeId,
           type: 'QuestionNode',
           position: { x: (faqIndex % 5 ) * 800, y: Math.floor(faqIndex / 5) * 600 },
-          draggable: !isPinned,
+          draggable: !isGroupPinned,
           data: {
             id: questionNodeId,
             questionText: faq.question,
             onPinToggle: togglePinNode,
-            pinned: isPinned,
+            pinned: isGroupPinned,
           } as any,
-          style: {
-            border: isPinned ? '3px solid #D32F2F' : undefined,
-            boxShadow: isPinned ? '0 0 10px rgba(211, 47, 47, 0.7)' : 'none'
-          }
-        })
+          style: isGroupPinned ? {
+            border: '3px solid #D32F2F',
+            boxShadow: '0 0 10px rgba(211, 47, 47, 0.7)'
+          } : undefined
+        });
 
         faq.answers.forEach((answer, answerIndex) => {
           const answerNodeId = `faq-${faq.id}-answer-${answer.id}`;
           const typeStyle = getNodeStyleByType(faq.response_type);
-          const borderColor = isPinned ? '#D32F2F' : typeStyle.borderColor; // Un rojo más fuerte para 'pinned'
-          const nodeStyle = {
-            border: `2px solid ${borderColor}`,
-            backgroundColor: typeStyle.backgroundColor,
-            borderRadius: 8,
-            boxShadow: isPinned ? '0 0 10px rgba(211, 47, 47, 0.7)' : 'none', // Sombra para resaltar más si está fijado
-  
-          };  
           
           // Construye las propiedades del nodo antes de usar `node`
           const nodeData: NodePayload = {
@@ -223,7 +215,7 @@ export const ReactFlowComponent = () => {
             title: answer.title || 'No Title',
             NodeType: answer.node_type || 'CustomResizableNode',
             position: { pos_x: 0, pos_y: 0 },
-            draggable: !isPinned,
+            draggable: !isGroupPinned,
             questionText: faq.question || 'No Title',
             answerText: answer.answer_text || 'No Content',
             template: answer.template || '',
@@ -233,8 +225,8 @@ export const ReactFlowComponent = () => {
             keywords: faq.keywords || [],
             steps: answer.steps,
             note: agentNotes[answerNodeId] || '', // Accede correctamente a las notas guardadas
-            pinned: isPinned,
-            onPinToggle: togglePinNode, // Pasa la función al nodo
+            pinned: isGroupPinned,
+            onPinToggle: () => togglePinNode(questionNodeId), // Pasa la función al nodo
             onChange: (newNote: string) => handleNodeChange(answerNodeId, newNote),
             onTemplateChange: handleTemplateUpdate
           };
@@ -244,12 +236,12 @@ export const ReactFlowComponent = () => {
             type: answer.node_type || 'NonResizableNode',
             // Posicionamos el nodo de respuesta debajo del nodo de la pregunta
             position: { 
-                x: ((faqIndex % 5) * 800) + (answerIndex * 400), 
+                x: ((faqIndex % 5) * 800) + (answerIndex * 420), 
                 y: (Math.floor(faqIndex / 5) * 600) + 150
             },
-            draggable: !isPinned,
+            draggable: !isGroupPinned,
             data: nodeData,
-            style: nodeStyle,
+            style: getCombinedNodeStyle(nodeData),
           });
 
           apiEdges.push({
@@ -264,17 +256,14 @@ export const ReactFlowComponent = () => {
 
       setNodes(apiNodes);
       setEdges(apiEdges);
-      
-      setTimeout(() => {
-            fitView({ padding: 0.2 });
-        }, 100);
 
-        return apiNodes;
+      return apiNodes
+      
     } catch (error) {
         console.error('Error fetching nodes:', error);
         return [];
     }
-}, [setNodes, setEdges, fitView, handleTemplateUpdate, togglePinNode, handleNodeChange, storedPinnedNodes, storedAgentNotes]);
+}, [setNodes, setEdges, fitView, handleTemplateUpdate, togglePinNode, handleNodeChange]);
 
   
   useEffect(() => {
@@ -313,39 +302,7 @@ export const ReactFlowComponent = () => {
   
 
  // Manejar clic en nodo (fijar o desfijar)
-const handleNodeClick: NodeMouseHandler<FlowNode<NodePayload>> = useCallback(
-  (event: React.MouseEvent, clickedNode: FlowNode<NodePayload>) => {
-    event.stopPropagation(); // Evita que el evento clic se propague más allá del nodo
 
-    setNodes((currentNodes) =>
-      currentNodes.map((n) => {
-        if (n.id === clickedNode.id) {
-          const isPinned = !n.data.pinned; // Alterna el estado pineado
-          return {
-            ...n,
-            data: {
-              ...n.data,
-              pinned: isPinned, // Actualiza el estado pineado
-            },
-            style: {
-              ...n.style,
-              border: isPinned ? '2px solid red' : '2px solid black', // Cambia el borde
-            },
-            draggable: !isPinned, // Deshabilita arrastre si está pineado
-          };
-        }
-        return n; // Retorna nodos sin cambios
-      })
-    );
-
-    // Actualiza el almacenamiento local para mantener persistencia
-    setTimeout(() => {
-      const pinnedNodes = nodes.filter((n) => n.data?.pinned);
-      localStorage.setItem('pinnedNodes', JSON.stringify(pinnedNodes));
-    }, 0);
-  },
-  [nodes]
-);
 
 return (
 <>
@@ -364,12 +321,10 @@ return (
     <CustomAttribution />
     </div>
       <ReactFlow
-        attributionPosition='top-left'
         nodes={nodes}
         edges={edges}
         onConnect={onConnect}
         onNodesChange={onNodesChange}
-        onNodeClick={handleNodeClick}
         onNodeDrag={handleNodeDragStop}
         onlyRenderVisibleElements={true}
         colorMode='system'

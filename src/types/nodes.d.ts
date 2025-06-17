@@ -112,6 +112,7 @@ interface QuestionNodeProps {
 
 interface TemplateNodeData {
     id: string;
+    questionText: string;
     template?: string;
     answerText?: string;
     pinned?: boolean;
