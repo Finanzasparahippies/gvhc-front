@@ -15,9 +15,9 @@ import sharpenAPI from '../../../utils/APISharpen'
 
         const QUERY_TEMPLATES = {
             agentStatus: (username?: string) => ({
-                endpoint: "V2/queues/getAgentStatus/", 
+                endpoint: "V2/queues/getAgentStatus/",
                 payload: {
-                    username: username, 
+                    username: username,
                     // Otros campos del payload si los necesitas para esta llamada específica
                     // findRoomStats: "",
                     // checkInCall: "",
@@ -32,21 +32,21 @@ import sharpenAPI from '../../../utils/APISharpen'
                 payload: {
                     method: "query",
                     q: `
-                        SELECT 
-                            \`queueCallManagerID\`, \`queue\`.\`queueName\` AS "Logged in Qs", 
-                            \`queueCallManager\`.\`answerTime\` AS "Answer Time", 
-                            \`username\`, 
-                            SEC_TO_TIME(UNIX_TIMESTAMP(NOW())-UNIX_TIMESTAMP(\`lastStatusChange\`)) AS "Status duration", 
-                            SUM(\`lastStatusChange\` >= NOW() - INTERVAL 12 HOUR AND paused = 1 AND status = "active") AS "Paused Agents", 
-                            SUM(\`lastStatusChange\` >= NOW() - INTERVAL 12 HOUR AND status != "offline" AND status != "active") AS "Interacting Agents", 
-                            SUM(\`lastStatusChange\` >= NOW() - INTERVAL 12 HOUR AND paused = 0 AND status = "active") AS "Available Agents", 
-                            SUM(\`status\` != "offline" AND \`lastStatusChange\` >= NOW() - INTERVAL 12 HOUR) AS "Active Agents", 
-                            \`queueCallManager\`.\`commType\` AS "Interaction Type", 
-                            \`callType\`, \`pauseReason\`, \`paused\`, FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(NOW())/(5))*(5)) AS "intervals" 
+                        SELECT
+                            \`queueCallManagerID\`, \`queue\`.\`queueName\` AS "Logged in Qs",
+                            \`queueCallManager\`.\`answerTime\` AS "Answer Time",
+                            \`username\`,
+                            SEC_TO_TIME(UNIX_TIMESTAMP(NOW())-UNIX_TIMESTAMP(\`lastStatusChange\`)) AS "Status duration",
+                            SUM(\`lastStatusChange\` >= NOW() - INTERVAL 12 HOUR AND paused = 1 AND status = "active") AS "Paused Agents",
+                            SUM(\`lastStatusChange\` >= NOW() - INTERVAL 12 HOUR AND status != "offline" AND status != "active") AS "Interacting Agents",
+                            SUM(\`lastStatusChange\` >= NOW() - INTERVAL 12 HOUR AND paused = 0 AND status = "active") AS "Available Agents",
+                            SUM(\`status\` != "offline" AND \`lastStatusChange\` >= NOW() - INTERVAL 12 HOUR) AS "Active Agents",
+                            \`queueCallManager\`.\`commType\` AS "Interaction Type",
+                            \`callType\`, \`pauseReason\`, \`paused\`, FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(NOW())/(5))*(5)) AS "intervals"
                         FROM \`fathomvoice\`.\`fathomQueues\`.\`queueAgents\`
-                        GROUP BY \`queueCallManagerID\` 
+                        GROUP BY \`queueCallManagerID\`
                         LIMIT 5000 UNION (SELECT null, null, null, null, null, null, null, null, null, null, null, null, null,
-                        FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(NOW())/(5))*(5)) AS "intervals") 
+                        FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(NOW())/(5))*(5)) AS "intervals")
                         LIMIT 1
                         `,
                     global: false
@@ -72,7 +72,7 @@ import sharpenAPI from '../../../utils/APISharpen'
             }
         }),
 
-        
+
 
         getAgents: (params: {
         getActiveCalls?: boolean;
@@ -91,41 +91,11 @@ import sharpenAPI from '../../../utils/APISharpen'
         endpoint: 'V2/queues/getCdrDetails/',
         payload: {
             queueCallManagerID: uniqueID,
-            getRecording: "false", 
+            getRecording: "false",
             getNotes: "",
             getTranscription: "",
         }
     }),
-    getInteraction: (queueCallManagerID: string, uKey: string) => ({
-        endpoint: 'V2/queues/getInteraction/',
-        payload: {
-            queueCallManagerID: queueCallManagerID,
-            uKey: uKey, // You'll need to pass the user's uKey
-            // cKey1 and cKey2 are typically handled by your backend proxy.
-            // If not, you'd need to add them here and ensure your frontend has access.
-        }
-    }),
-
-    getCallDetails: (queueCallManagerID: string, extension: string, answerTime: string) => ({
-        endpoint: 'V2/voice/cdr/getCalls//',
-        payload: {
-            queueCallManagerID: queueCallManagerID,
-            extension: extension, // You'll need to pass the user's uKe
-            answerTime: answerTime
-            // cKey1 and cKey2 are typically handled by your backend proxy.
-            // If not, you'd need to add them here and ensure your frontend has access.
-        }
-    }),
-
-    getAwsObjectLink: (fileName: string) => ({
-        endpoint: 'V2/aws/getObjectLink/',
-        payload: {
-            bucketName: 'mixrec', // As per documentation
-            fileName: fileName,
-            // cKey1 and cKey2 are typically handled by your backend proxy.
-            // If not, you'd need to add them here and ensure your frontend has access.
-        }
-    })
 }
 
 
@@ -135,9 +105,7 @@ import sharpenAPI from '../../../utils/APISharpen'
         const [server, setServer] = useState(SERVERS[0]);
         const [database, setDataBase] = useState(DATABASES[server][0]);
         const [table, setTable] = useState(TABLES[database][0]);
-        const [customQuery, setCustomQuery] = useState(''); // Ahora 'advancedQuery' se llama 'customQuery' para mayor claridad
-        // const [advancedQuery, setAdvancedQuery] = useState(productionQueryExample);
-        //estados para las fechas
+        const [customQuery, setCustomQuery] = useState(''); 
         const [startDate, setStartDate] = useState('');
         const [endDate, setEndDate] = useState('');
         const [useCurrentEndDate, setUseCurrentEndDate] = useState(false);
@@ -160,9 +128,8 @@ import sharpenAPI from '../../../utils/APISharpen'
         orderByCol: 'activeCall',
         });
         const [agentStatusData, setAgentStatusData] = useState<RowData | null>(null);
-        const [userUKey, setUserUKey] = useState<string>('YOUR_USER_UKEY_HERE'); // <--- IMPORTANT: Replace with actual uKey
-
-
+        const [isModalOpen, setIsModalOpen] = useState(false);
+        const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
 
         const getLocalDatetimeString = (date: Date): string => {
         const year = date.getFullYear();
@@ -188,13 +155,17 @@ import sharpenAPI from '../../../utils/APISharpen'
         useEffect(() => {
         if (useCurrentEndDate) {
                 const now = new Date()
-                // Usamos la nueva función para obtener la hora local correcta
                 setEndDate(getLocalDatetimeString(now));
             }
         }, [useCurrentEndDate]);
 
         const isValidRange = () => {
             return startDate && endDate && new Date(startDate) <= new Date(endDate);
+        };
+
+        const closeAudioModal = () => {
+        setIsModalOpen(false);
+        setCurrentAudioUrl(null); // Limpia la URL cuando se cierra
         };
 
         const fetchData = useCallback(async () => {
@@ -204,8 +175,8 @@ import sharpenAPI from '../../../utils/APISharpen'
             setResponse(null);
             setFetchedCount(0);
             setCurrentPage(1);
-            setMonitoringStatus(null); // Limpiar status de monitoreo en nueva búsqueda
-        // Generar la consulta basada en la selección
+            setMonitoringStatus(null); 
+
             let apiEndpoint: string;
             let apiPayload: { [key: string]: any; }; // Definimos el tipo del payload
         if (selectedQueryTemplate === 'liveStatus') { // Creamos una nueva plantilla para la consulta directa
@@ -234,19 +205,17 @@ import sharpenAPI from '../../../utils/APISharpen'
             setLoading(false);
             return;
         }
-    
+
 
     try {
-        // Usa el endpoint genérico de tu backend y pasa el endpoint de Sharpen y el payload
         const apiResponse = await sharpenAPI.post<responseData>('dashboards/proxy/generic/', {
-            endpoint: apiEndpoint, // Este es el endpoint de Sharpen (ej. V2/query/ o V2/queues/getAgentStatus/)
-            payload: apiPayload, // Este es el payload que Sharpen espera
+            endpoint: apiEndpoint, 
+            payload: apiPayload, 
         });
 
         const resp = apiResponse.data;
         let extractedData: RowData[] = [];
 
-        // Para el endpoint de Agent Status, la data viene directamente en `getAgentStatusData`
         if (selectedQueryTemplate === 'getAgents') {
             if (resp && resp.getAgentsStatus === "Complete" && resp.getAgentsData) {
                     extractedData = Array.isArray(resp.getAgentsData) ? resp.getAgentsData : [resp.getAgentsData];
@@ -254,7 +223,6 @@ import sharpenAPI from '../../../utils/APISharpen'
             setError("No se pudieron obtener los datos de los agentes.");
             }
         }else if (selectedQueryTemplate === 'agentStatus') {
-                // Para 'agentStatus', la respuesta es un objeto único dentro de `getAgentStatusData`
                 if (resp && resp.getAgentStatusStatus  === "Complete" && resp.getAgentStatusData) {
                     extractedData = [resp.getAgentStatusData]; // Siempre se espera un único objeto, lo envolvemos en un array
                 } else {
@@ -263,7 +231,6 @@ import sharpenAPI from '../../../utils/APISharpen'
             }
         else if (selectedQueryTemplate === "liveStatus" || selectedQueryTemplate === "cdrReport") {
             if (resp?.data && Array.isArray(resp.data)) {
-                // Envuelve el objeto en un array para que sea consistente con la tabla
                 extractedData = Array.isArray(resp.data) ? resp.data : [resp.data];
             } else if (resp?.table && typeof resp.table === 'string') {
                 try {
@@ -289,7 +256,7 @@ import sharpenAPI from '../../../utils/APISharpen'
             let filteredData = extractedData; // Por defecto, usamos todos los datos extraídos.
 
             if (selectedQueryTemplate === 'liveStatus') {
-                filteredData = extractedData.filter(row => 
+                filteredData = extractedData.filter(row =>
                     row.queueCallManagerID !== null && row.queueCallManagerID !== undefined
                 );
             }
@@ -315,19 +282,19 @@ import sharpenAPI from '../../../utils/APISharpen'
     } finally {
         setLoading(false);
     }
-}, [customQuery, selectedQueryTemplate, isValidRange, startDate, endDate, server, database, table, agentUsername]); 
+}, [customQuery, selectedQueryTemplate, isValidRange, startDate, endDate, server, database, table, agentUsername]);
 
     const startMonitoringCall = async (queueCallManagerID: string, extension: string) => {
             if (!queueCallManagerID || !extension) {
                 alert("Falta el ID de la llamada o la extensión del agente para poder monitorear.");
                 return;
             }
-            
+
             setMonitoringStatus({ message: 'Iniciando conexión de monitoreo...', type: 'info' });
 
             try {
                 const response = await sharpenAPI.post<responseData>('dashboards/proxy/generic/', {
-                    endpoint: 'V2/queueCallManager/listen', 
+                    endpoint: 'V2/queueCallManager/listen',
                     payload: {
                         queueCallManagerID: queueCallManagerID,
                         extension: extension,
@@ -353,15 +320,12 @@ import sharpenAPI from '../../../utils/APISharpen'
             }
         };
 
-     // Coloca esta función dentro de tu componente SharpenQueryReport,
-// justo antes de la sección del return.
-
-const downloadCSV = () => {
-    // 1. No hacer nada si no hay datos
-    if (!data.length) {
-        alert("No hay datos para descargar.");
-        return;
-    }
+    const downloadCSV = () => {
+        // 1. No hacer nada si no hay datos
+        if (!data.length) {
+            alert("No hay datos para descargar.");
+            return;
+        }
 
     /**
      * Función auxiliar para formatear de forma segura cada celda del CSV.
@@ -389,10 +353,8 @@ const downloadCSV = () => {
     try {
         // 2. Obtener las cabeceras de la primera fila de datos.
         const headers = Object.keys(data[0]);
-        
         // 3. Crear la fila de cabeceras para el CSV.
         const headerRow = headers.map(escapeCsvCell).join(',');
-
         // 4. Mapear cada fila de datos al formato CSV.
         const dataRows = data.map((row) =>
             headers.map((header) => {
@@ -416,9 +378,7 @@ const downloadCSV = () => {
         console.log(new Date("2025-06-17T08:36:08Z").toLocaleString());
         console.log(new Date("2025-06-17T15:22:25Z").toISOString());
 
-        
         saveAs(blob, fileName);
-
     } catch (error) {
         console.error("Error al generar el CSV:", error);
         alert("Ocurrió un error al generar el archivo CSV. Revisa la consola para más detalles.");
@@ -430,24 +390,9 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
 
     const callId = row.queueCallManagerID;
     const answerTime = row.answerTime;
+    const startTime = row.startTime
     const extension = row.extension;
 
-    console.log(callId)
-    console.log(answerTime)
-    console.log(extension)
-
-    // if (!callId) {
-    //     alert("No hay un ID de llamada para buscar.");
-    //     return;
-    // }
-    // if (!extension) {
-    //     alert("No se encontró la extensión del agente para la llamada.");
-    //     return;
-    // }   
-    // if (!answerTime) {
-    //     alert("No se encontró el tiempo de respuesta (answerTime) de la llamada.");
-    //     return;
-    // }
     let finalAudioUrl: string | null = null; // Variable para almacenar la URL final
 
     const callDateTimeStr = row.answerTime || row.endTime || row.startTime;
@@ -464,35 +409,10 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
     console.log(`Llamada con ID ${callId} tiene ${diffDays} días de antigüedad.`);
 
     try {
-        // Para llamadas recientes (<= 4 días), la lógica parece ser diferente y puede que
-        // requiera la creación explícita de la URL. Mantenemos esto igual.
-        if (diffDays <= 4) {
-            console.log(`Llamada reciente (<= 4 días). Creando URL con createRecordingURL.`);
-            
-            const response = await sharpenAPI.post<RecordingUrlResponse>(
-                'dashboards/proxy/generic/',
-                {
-                    endpoint: 'V2/voice/callRecordings/createRecordingURL',
-                    payload: {
-                        queueCallManagerID: callId,
-                        // Para llamadas recientes, a menudo se usa el mismo ID
-                        uniqueID: callId 
-                    }
-                }
-            );
-
-            if (response.data?.status === 'successful' && response.data.url) {
-                finalAudioUrl = response.data.url;
-            } else {
-                console.warn(`createRecordingURL para llamada reciente falló: ${response.data?.description || 'Respuesta no válida'}. Intentando método para llamadas antiguas.`);
-                alert(`Error al generar la URL para la grabación reciente: ${response.data.description || 'Respuesta no válida de la API.'}`);
-            }
-
-        } 
-        if (!finalAudioUrl) {
+        if (callId) {
             // --- LÓGICA CORREGIDA PARA LLAMADAS ANTIGUAS ---
-            console.log(`Llamada antigua (> 4 días). Buscando detalles con getCdrDetails.`);
-            
+            console.log(`Buscando detalles con getCdrDetails.`);
+
             const { endpoint: interactionEndpoint, payload: interactionPayload  } = QUERY_TEMPLATES.getCdrDetails(callId);
             const interactionResponse = await sharpenAPI.post<any>('dashboards/proxy/generic/', { // Usamos <any> para flexibilidad
                 endpoint: interactionEndpoint,
@@ -502,8 +422,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
             console.log('ApiResponse:', interactionResponse.data);
 
             const mixmonFileName = interactionResponse.data?.data?.cdr?.mixmonFileName;
-            const extension = interactionResponse.data?.data?.cdr?.extension;
-
+            const extension = interactionResponse.data?.data?.cdr?.context;
 
             if (!mixmonFileName && !extension) {
                     alert(`No se pudo obtener el 'mixmonFileName' de la API 'getInteraction' para la llamada con ID: ${callId}.`);
@@ -513,15 +432,21 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
             console.log(`extension obtenida: ${extension}`);
 
             console.log(`Obteniendo URL temporal de AWS S3 con getObjectLink.`);
-                
-            const { endpoint: awsEndpoint, payload: awsPayload } = QUERY_TEMPLATES.getAwsObjectLink(mixmonFileName);
-            const awsResponse = await sharpenAPI.post<RecordingUrlResponse>('dashboards/proxy/generic/', {
-                endpoint: awsEndpoint,
-                payload: awsPayload,
-            });
+
+            const awsResponse = await sharpenAPI.post<RecordingUrlResponse>(
+                'dashboards/proxy/generic/',
+                {
+                    endpoint: 'V2/voice/callRecordings/createRecordingURL',
+                    payload: {
+                        queueCallManagerID: callId,
+                        // Para llamadas recientes, a menudo se usa el mismo ID
+                        fileName: mixmonFileName
+                    }
+                }
+            );
             console.log('AWS Object Link Response:', awsResponse.data);
 
-            
+
             if (awsResponse.data?.status === 'successful' && awsResponse.data.url) {
                 finalAudioUrl = awsResponse.data.url;
                 console.log(`URL de AWS S3 obtenida y limpia: ${finalAudioUrl}`);
@@ -600,7 +525,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
 
 
             {/* --- SECCIÓN DE SELECCIÓN DE DATOS (CONDICIONAL SEGÚN PLANTILLA/CUSTOM QUERY) --- */}
-            
+
                     {selectedQueryTemplate === 'agentStatus' && (
                         <div style={{ marginBottom: '1rem' }}>
                             <label htmlFor="agentUsernameInput" style={{ marginRight: '0.5rem' }}>
@@ -671,7 +596,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                     </label>
                 </div>
             )}
-            
+
             {/* --- BOTONES DE ACCIÓN --- */}
             <div className='flex flex-wrap items-center gap-4 mb-6 p-4 bg-gray-800 rounded-lg shadow-md'>
                 <button
@@ -748,10 +673,9 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                                         return row.queueCallManagerID !== null && row.queueCallManagerID !== undefined;
                                     }
                                     return true;
-                                })                                
+                                })
                                 .map((row, rowIndex) => (
                                 <tr key={rowIndex} className="bg-gray-800 border-b text-gray-200 hover:bg-gray-700 transition-colors duration-150 ease-in-out">
-                                    {/* CELDAS DE ACCIONES - ¡AQUÍ ESTÁ EL CAMBIO PARA LAS FILAS! */}
                                     <td className="px-6 py-4 text-center whitespace-nowrap">
                                         {selectedQueryTemplate === 'cdrReport' && (
                                             <div className="flex flex-col space-y-1 items-center"> {/* Usa flexbox para alinear botones */}
@@ -787,14 +711,6 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                                             </button>
                                         )}
                                     </td>
-                                    {/* FIN DE CELDAS DE ACCIONES */}
-
-                                    {/* Celdas de datos generadas dinámicamente */}
-                                    {/* {Object.entries(row).map(([key, value], colIndex) => (
-                                        <td key={`${rowIndex}-${colIndex}`} className="px-6 py-4 text-center whitespace-nowrap text-ellipsis max-w-[300px] text-sm text-white overflow-hidden">
-                                            {value !== null && value !== undefined ? String(value) : 'N/A'}
-                                        </td>
-                                    ))} */}
                                     {Object.entries(row).map(([key, value], colIndex) => (
                                         <td key={`${rowIndex}-${colIndex}`} className="px-6 py-4 text-center whitespace-nowrap text-ellipsis max-w-[300px] text-sm text-white overflow-hidden">
                                             {Array.isArray(value)
