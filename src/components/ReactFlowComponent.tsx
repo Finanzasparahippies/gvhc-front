@@ -9,14 +9,12 @@ import {
   useEdgesState,
   addEdge,
   useReactFlow,
-  Node as FlowNode,
-  XYPosition,
+  Node,
+  NodeTypes,
   Edge,
   Connection,
   OnConnect,
-  OnNodeDrag,
-  OnNodesChange,
-  NodeMouseHandler,
+  NodeProps
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -26,7 +24,7 @@ import API from '../utils/API';
 import { SearchBar } from './searchBar/SearchBar';
 import { 
   CustomResizableNode,
-  NoteNode,
+  NotesNode,
   NonResizableNode,
   CustomEdge,
   TooltipNode,
@@ -35,24 +33,25 @@ import {
 } from '../components/nodes'; 
 import ColorPicker from './ColorPicker';
 import { Slide } from '../components/Slides';
+import { BasePayload, FAQ } from '../types/nodes';
 
 type PinnedNodeInfo = { id: string; data?: { pinned?: boolean } /* o lo que sea que guardes */ };
 
-const nodeTypes = {
-  CustomResizableNode,
-  NoteNode,
-  NonResizableNode,
-  Slide,
-  TooltipNode,
-  QuestionNode,
-  TemplateNode
+const node_Types: NodeTypes  = {
+  CustomResizableNode: CustomResizableNode,
+  NotesNode: NotesNode,
+  NonResizableNode: NonResizableNode,
+  Slide: Slide,
+  TooltipNode: TooltipNode,
+  QuestionNode: QuestionNode,
+  TemplateNode: TemplateNode
 };
 
 const edgeTypes = {
   CustomEdge,
 };
 
-const getNodeStyleByType = (responseType?: string) => {
+const getNodeStyleByType = (responseType?: string) : { backgroundColor: string; borderColor: string;} => {
     switch (responseType) {
         case 'Image':
             return {
@@ -82,8 +81,8 @@ const getNodeStyleByType = (responseType?: string) => {
     }
 };
 
-export const ReactFlowComponent = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode<NodePayload>>([]);
+export const ReactFlowComponent: React.FC = () => {
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<BasePayload>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [query, setQuery] = useState('');
   const { notes, updateNote } = useNotes();
@@ -91,7 +90,7 @@ export const ReactFlowComponent = () => {
   const { fitView, toObject, setViewport } = useReactFlow();
   const [backgroundColor, setBackgroundColor] = useState<string>("#000");
 
-  const handleNodeChange = useCallback((nodeId: string, newNote: string) => {
+  const handleNoteChange = useCallback((nodeId: string, newNote: string) => {
     updateNote(nodeId, newNote); // Guardar nota en el contexto y localStorage
   },[updateNote]);
 
@@ -109,26 +108,7 @@ export const ReactFlowComponent = () => {
     )
   }, [setNodes]);
 
-  const handleNodeDragStop: OnNodeDrag = (event, node) => {
-    console.log('🟢 Nodo soltado', node);
-
-    const id = node.id.replace('faq-', '');
-    const originalNode = nodes.find((n: FlowNode<NodePayload>) => n.id === node.id);
-  
-    if (originalNode && (
-      originalNode?.position.x !== node.position.x ||
-      originalNode?.position.y !== node.position.y
-    )) {
-      API.patch(`/api/faqs/${id}/`, {
-        pos_x: node.position.x,
-        pos_y: node.position.y,
-      })
-      .then((res: any) => console.log('Posición actualizada'))
-      .catch((err: any) => console.error(err));
-    }
-  };
-
-  const getCombinedNodeStyle = (nodeData: NodePayload) => {
+  const getCombinedNodeStyle = (nodeData: BasePayload) => {
         const baseStyle = getNodeStyleByType(nodeData.response_type);
         const pinnedStyle = {
             border: `3px solid ${baseStyle.borderColor}`, // Borde más grueso
@@ -145,29 +125,36 @@ export const ReactFlowComponent = () => {
 
   
   const togglePinNode = useCallback((nodeId: string) => {
+    let newPinnedState = false;
+
+    const nodeInGroup = nodes.find(n => n.data.groupId === nodeId);
+    if (!nodeInGroup) return;
+
+    newPinnedState = !nodeInGroup.data.pinned;
+    console.log(`Toggling group ${nodeId} to pinned: ${newPinnedState}`);
+
     setNodes((currentNodes) =>
       currentNodes.map((node) => {
-        if (node.id === nodeId || node.data.id === nodeId) {
-                    const isPinned = !node.data.pinned;
-                    const updatedData = { ...node.data, pinned: isPinned };
-                    
-                    return {
-                        ...node,
-                        data: updatedData,
-                        draggable: !isPinned,
-                        style: getCombinedNodeStyle(updatedData), // Usar la nueva función de estilo
-                    };
-                }
-                return node;
-            })
+        if (node.data.groupId === nodeId) {
+            return {
+            ...node,
+            data: { ...node.data, pinned: newPinnedState }, // Actualiza la data
+            draggable: !newPinnedState,                    // Actualiza propiedad raíz
+            // style: getCombinedNodeStyle({ ...node.data, pinned: newPinnedState }),
+          };
+        }
+        return node;
+      })
         );
 
         setTimeout(() => {
             const flow = toObject();
-            const pinnedNodes = flow.nodes.filter((n) => n.data?.pinned);
-            localStorage.setItem('pinnedNodes', JSON.stringify(pinnedNodes));
+            const pinnedQuestionNodes = flow.nodes.filter(
+                (n) => n.data?.pinned && n.type === 'QuestionNode'
+            );
+            localStorage.setItem('pinnedNodes', JSON.stringify(pinnedQuestionNodes));
         }, 0);
-    }, [setNodes, toObject]);
+    }, [nodes, setNodes, toObject]);
   
 
   const fetchNodes = useCallback(async (searchQuery = '') => {
@@ -181,91 +168,102 @@ export const ReactFlowComponent = () => {
       const response = await API.get<{results: FAQ[]}>(url);
       console.log('Response:', response);
       const data: FAQ[] = response.data.results || [];
-      const apiNodes: FlowNode<NodePayload>[] = [];
+      const apiNodes: Node<BasePayload>[] = [];
       const apiEdges: Edge[] = [];
   
       data.forEach((faq: FAQ, faqIndex: number ) => {
         const questionNodeId = `faq-question-${faq.id}`;
         const isGroupPinned = pinnedNodesInfo.some((pn) => pn.id === questionNodeId);
 
-        apiNodes.push({
-          id: questionNodeId,
-          type: 'QuestionNode',
-          position: { x: (faqIndex % 5 ) * 800, y: Math.floor(faqIndex / 5) * 600 },
-          draggable: !isGroupPinned,
-          data: {
+        const questionNodeData = {
             id: questionNodeId,
+            title: faq.question || 'No Question Title',
+            groupId: questionNodeId,
+            NodeType: 'Question',
             questionText: faq.question,
+            draggable: !isGroupPinned,
             onPinToggle: togglePinNode,
+            setPanOnDrag: setPanOnDrag,
             pinned: isGroupPinned,
-          } as any,
-          style: isGroupPinned ? {
-            border: '3px solid #D32F2F',
-            boxShadow: '0 0 10px rgba(211, 47, 47, 0.7)'
-          } : undefined
-        });
-
-        faq.answers.forEach((answer, answerIndex) => {
-          const answerNodeId = `faq-${faq.id}-answer-${answer.id}`;
-          const typeStyle = getNodeStyleByType(faq.response_type);
-          
-          // Construye las propiedades del nodo antes de usar `node`
-          const nodeData: NodePayload = {
-            id: answerNodeId,
-            title: answer.title || 'No Title',
-            NodeType: answer.node_type || 'CustomResizableNode',
-            position: { pos_x: 0, pos_y: 0 },
-            draggable: !isGroupPinned,
-            questionText: faq.question || 'No Title',
-            answerText: answer.answer_text || 'No Content',
-            template: answer.template || '',
-            imageUrl: answer.image_url || null,
             response_type: faq.response_type,
-            borderColor: typeStyle.borderColor,
-            keywords: faq.keywords || [],
-            steps: answer.steps,
-            note: agentNotes[answerNodeId] || '', // Accede correctamente a las notas guardadas
-            pinned: isGroupPinned,
-            onPinToggle: () => togglePinNode(questionNodeId), // Pasa la función al nodo
-            onChange: (newNote: string) => handleNodeChange(answerNodeId, newNote),
-            onTemplateChange: handleTemplateUpdate
-          };
+            };
 
-          apiNodes.push({
-            id: answerNodeId,
-            type: answer.node_type || 'NonResizableNode',
-            // Posicionamos el nodo de respuesta debajo del nodo de la pregunta
-            position: { 
-                x: ((faqIndex % 5) * 800) + (answerIndex * 420), 
-                y: (Math.floor(faqIndex / 5) * 600) + 150
-            },
-            draggable: !isGroupPinned,
-            data: nodeData,
-            style: getCombinedNodeStyle(nodeData),
-          });
-
-          apiEdges.push({
-              id: `${questionNodeId}->${answerNodeId}`,
-              source: questionNodeId,
-              target: answerNodeId,
-              type: 'smoothstep',
-              animated: true,
+            // 2. CREA EL NODO COMPLETO usando el payload anterior
+            apiNodes.push({
+              id: questionNodeId,
+              type: 'QuestionNode',
+              position: { x: (faqIndex % 5) * 800, y: Math.floor(faqIndex / 5) * 600 },
+              draggable: !isGroupPinned,
+              data: questionNodeData, // ✅ El payload va aquí
             });
-        })
-      })
 
-      setNodes(apiNodes);
-      setEdges(apiEdges);
+                faq.answers.forEach((answer, answerIndex) => {
+                  const answerNodeId = `faq-${faq.id}-answer-${answer.id}`;
+                  const typeStyle = getNodeStyleByType(faq.response_type);
+                  const nodeType = answer.node_type || 'NonResizableNode'; // Default type
 
-      return apiNodes
-      
-    } catch (error) {
-        console.error('Error fetching nodes:', error);
-        return [];
-    }
-}, [setNodes, setEdges, fitView, handleTemplateUpdate, togglePinNode, handleNodeChange]);
+                  // 1. Construye el objeto de datos (payload) directamente
+                  const answerNodeData = {
+                      id: answerNodeId,
+                      title: answer.title || 'No Title',
+                      groupId: questionNodeId,
+                      NodeType: nodeType,
+                      questionText: faq.question || 'No Title',
+                      answerText: answer.answer_text || 'No Content',
+                      template: answer.template,
+                      imageUrl: answer.image_url,
+                      response_type: faq.response_type,
+                      borderColor: typeStyle.borderColor,
+                      keywords: faq.keywords,
+                      steps: answer.steps,
+                      excel_file: answer.excel_file,
+                      note: agentNotes[answerNodeId] || '',
+                      pinned: isGroupPinned,
+                      draggable: !isGroupPinned,
+                      onChange: handleNoteChange,
+                      onPinToogle: togglePinNode,
+                      onTemplateChange: handleTemplateUpdate,
+                      // Add setPanOnDrag if your nodes need it
+                      setPanOnDrag: setPanOnDrag, // Pass
+                  };
 
-  
+                  // 2. Crea el nodo con la estructura correcta
+                  apiNodes.push({
+                      id: answerNodeId,
+                      type: nodeType, // El tipo de componente a renderizar
+                      position: {
+                          x: ((faqIndex % 5) * 800) + 150 + (answerIndex * 420), // Ajusta la posición para que no se superponga
+                          y: (Math.floor(faqIndex / 5) * 600) + 150
+                      },
+                      draggable: !isGroupPinned,
+                      data: answerNodeData, // 👈 Pasa el payload directamente aquí
+                      style: isGroupPinned ? {
+                        border: '3px solid #D32F2F',
+                        boxShadow: '0 0 10px rgba(211, 47, 47, 0.7)'
+                      } : undefined,
+                  });
+
+                  apiEdges.push({
+                      id: `${questionNodeId}->${answerNodeId}`,
+                      source: questionNodeId,
+                      target: answerNodeId,
+                      type: 'smoothstep',
+                      animated: true,
+                  });
+              });
+            });
+
+            setNodes(apiNodes);
+            setEdges(apiEdges)
+
+            return apiNodes;
+
+        } catch (error) {
+            console.error('Error fetching nodes:', error);
+            return [];
+        }
+    }, [ ]);
+
   useEffect(() => {
           const lastColor = localStorage.getItem('preferedColor')
           if (lastColor) {
@@ -315,7 +313,6 @@ return (
     <SearchBar
             query={query}
             setQuery={setQuery}
-            setNodes={setNodes}
             fetchNodes={fetchNodes}
             />
     <CustomAttribution />
@@ -325,10 +322,10 @@ return (
         edges={edges}
         onConnect={onConnect}
         onNodesChange={onNodesChange}
-        onNodeDrag={handleNodeDragStop}
+        // onNodeDrag={handleNodeDragStop}
         onlyRenderVisibleElements={true}
         colorMode='system'
-        nodeTypes={nodeTypes}
+        nodeTypes={ node_Types }
         edgeTypes={edgeTypes}
         fitView
         maxZoom={2}
@@ -340,8 +337,8 @@ return (
           showFitView={true}
         />
         <MiniMap
-          nodeColor={(node: FlowNode<NodePayload>) => {
-              const typeStyle = getNodeStyleByType(node.data.response_type);
+          nodeColor={(node: Node<BasePayload>) => {
+              const typeStyle = getCombinedNodeStyle(node.data.NodeType);
                 return typeStyle.backgroundColor;
                 }}
         />        

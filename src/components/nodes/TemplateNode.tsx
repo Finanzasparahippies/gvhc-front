@@ -1,31 +1,44 @@
-import { memo, useEffect, useState, useRef,MouseEvent, KeyboardEvent, ChangeEvent } from 'react';
+import { memo, useState, useRef,MouseEvent, KeyboardEvent, ChangeEvent } from 'react';
 import { RxClipboardCopy } from "react-icons/rx";
 import { AiTwotonePushpin } from "react-icons/ai";
 import { FaUndo, FaRedo } from "react-icons/fa";
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { Handle, Position, NodeProps, Node  } from '@xyflow/react';
+import { BasePayload } from '../../types/nodes';
 
-export const TemplateNode: React.FC<TemplateNodeProps> = ({ data }) => {
+export const TemplateNode: React.FC<NodeProps<Node<BasePayload>>> = ({ id, data, sourcePosition }) => {
 
+    const {
+        template,
+        onPinToggle,
+        questionText,
+        answerText,
+        pinned,
+        setPanOnDrag,
+        onTemplateChange
+    } = data;
     const [editableTemplate, setEditableTemplate] = useState<string>(data.template || '');
     const [undoStack, setUndoStack] = useState<string[]>([]);
     const [redoStack, setRedoStack] = useState<string[]>([]);
     const [isRememberOpen, setIsRememberOpen] = useState<boolean>(false); 
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
+    const initialTemplateRef = useRef<string>(data.template || '');
+
 
 
         const handleMouseEnter = (): void => {
-            data.setPanOnDrag?.(false);
+            setPanOnDrag?.(false);
         };
     
         const handleMouseLeave = (): void => {
-            data.setPanOnDrag?.(true);
+            setPanOnDrag?.(true);
         };
     
         const handlePinned = (event: MouseEvent<HTMLDivElement>): void => {
             event.stopPropagation(); 
-                data.onPinToggle(data.id); 
+                data.onPinToggle(id); 
             };
     
         const handleCopy = (): void => {
@@ -62,7 +75,7 @@ export const TemplateNode: React.FC<TemplateNodeProps> = ({ data }) => {
             setRedoStack( [ ] )
         }
         setEditableTemplate( newText );
-        data.onTemplateChange?.( data.id, newText );
+        data.onTemplateChange?.( id, newText );
     }
     
     const handleTemplateChange = (event: ChangeEvent<HTMLTextAreaElement>): void => {
@@ -70,9 +83,9 @@ export const TemplateNode: React.FC<TemplateNodeProps> = ({ data }) => {
     };
         
     
-        const clearTemplate = () => {
-            updateTemplate( '' );
-        };
+    const clearTemplate = () => {
+        updateTemplate(initialTemplateRef.current); // Usa el valor original
+    };
     
         const undoTemplate = (): void => {
         if (undoStack.length > 0) {
@@ -141,75 +154,90 @@ export const TemplateNode: React.FC<TemplateNodeProps> = ({ data }) => {
 
     return (
         <div
-            className="w-full bg-gray-100 px-4 py-3 rounded-t-lg border-b border-gray-300 flex flex-col items-center justify-between overflow-hidden shadow-2xl" 
+            className="w-[400px] bg-white rounded-lg shadow-xl flex flex-col border border-gray-300"
         >
-            <div className="bg-gray-900 px-4 py-3 flex items-center justify-between cursor-pointer" onClick={handlePinned}>
-                <h3 className='text-lg font-semibold text-gray-800'>
+            <Handle type="source" position={Position.Bottom} id={'question'}/>
+            <Handle 
+                type="target" 
+                position={Position.Top}
+                id={'answer'}
+            />
+            <div 
+                className="bg-gray-700 text-white px-4 py-2 rounded-t-lg flex items-center justify-between cursor-grab" 
+                onMouseDown={handleMouseEnter} // Permite arrastrar el nodo desde la cabecera
+                onMouseUp={handleMouseLeave}
+                >
+                    
+                <h3 className='absolute text-lg font-semibold text-white left-0 right-0 text-center
+                                truncate px-12'>
                     {data.questionText}
                 </h3>
-                    <div className="relative group">
-                                <AiTwotonePushpin
-                                    className="
-                                    text-red-500 
-                                    transition-transform 
-                                    duration-200 
-                                    transform 
-                                    hover:scale-110
-                                    "
-                                    size={24}
-                                    title='Pinned'
-                                    />
-                            <span className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 transition-opacity duration-300 group-hover:opacity-100 whitespace-nowrap">
-                                {data.pinned ? 'Desanclar' : 'Anclar'}
-                            </span>
+                    <div className="relative group" 
+                        onClick={handlePinned}>
+                            <AiTwotonePushpin
+                                className={`
+                                    text-red-400 cursor-pointer transition-transform duration-200
+                                    ${data.pinned ? 'transform scale-110' : 'transform scale-100 hover:scale-110'}
+                                `}
+                                size={24}
+                                title={data.pinned ? 'Desanclar' : 'Anclar'}
+                                />
+                                <span className="
+                                    absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2
+                                    px-2 py-1 bg-gray-700 text-white text-xs rounded
+                                    opacity-0 transition-opacity duration-300 group-hover:opacity-100 whitespace-nowrap
+                                ">
+                                    {data.pinned ? 'Desanclar' : 'Anclar'}
+                                </span>
                             </div>
                     </div>
                     <div className="p-4 flex-grow">
                         <textarea
-                            id={`templateArea-${data.id}`} 
+                            id={`templateArea-${id}`} 
                             ref={textAreaRef}
                             value={editableTemplate}
                             onChange={handleTemplateChange}
                             onKeyDown={ handleKeyDown }
-                            onClick={ handleTextareaClick }
                             onMouseEnter={handleMouseEnter}
-                            onMouseLeave={handleMouseLeave}
+                            onMouseLeave={handleMouseLeave}     
                             className="
-                                nowheel
-                                w-[350px]
-                                h-72
-                                resize-none
-                                p-3
-                                mt-5
-                                rounded-lg
-                                shadow-md
-                                focus:shadow-lg
-                                focus:outline-none
-                                border
-                                focus:border-blue-400
-                                text-gray-800
-                                placeholder-gray-400
-                                bg-white
-                                transition
-                                duration-200
-                                ease-in-out
+                                nowheel w-full h-72 resize-none p-3 rounded-lg shadow-md
+                                focus:shadow-lg focus:outline-none border border-gray-300
+                                focus:border-blue-500 text-gray-800 placeholder-gray-400
+                                bg-gray-50 transition duration-200 ease-in-out
                             "
-                        />
+                            />
                         </div>
-                        <div className="bg-gray-900/50 px-4 py-2 flex items-center justify-between border-t border-gray-700">
-                            <div className="flex items-center gap-4">
-                                <button onClick={undoTemplate} disabled={undoStack.length === 0} className="relative group disabled:opacity-40 disabled:cursor-not-allowed">
-                                    <FaUndo size={18} className="text-gray-400 group-hover:text-white transition-colors" />
+                            <div className="
+                                    bg-gray-100 px-4 py-3 flex flex-wrap justify-center items-center
+                                    gap-4 border-t border-gray-200 rounded-b-lg
+                                ">                            
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={undoTemplate}
+                                        disabled={undoStack.length === 0}
+                                        className="relative group p-2 rounded-full hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                        title="Deshacer (Ctrl+Z)"
+                                    >                                    
+                                    <FaUndo size={18} className="text-gray-600 group-hover:text-gray-800 transition-colors" />
                                     <span className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 transition-opacity duration-300 group-hover:opacity-100">Deshacer</span>
                                 </button>
-                                <button onClick={redoTemplate} disabled={redoStack.length === 0} className="relative group disabled:opacity-40 disabled:cursor-not-allowed">
-                                    <FaRedo size={18} className="text-gray-400 group-hover:text-white transition-colors" />
+                                <button
+                                    onClick={redoTemplate}
+                                    disabled={redoStack.length === 0}
+                                    className="relative group p-2 rounded-full hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                    title="Rehacer (Ctrl+Y)"
+                                >
+                                <FaRedo size={18} className="text-gray-600 group-hover:text-gray-800 transition-colors" />
                                     <span className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 transition-opacity duration-300 group-hover:opacity-100">Rehacer</span>
                                 </button>
-                                <button onClick={handleCopy} className="relative group">
+                                <button 
+                                    onClick={handleCopy}                     
+                                    className="relative group p-2 rounded-full hover:bg-blue-100 transition-colors"
+                                >
                                     <RxClipboardCopy
                                         size={30}
-                                        className="transition-transform duration-200 transform group-hover:scale-110 group-hover:text-blue-500 mb-5"
+                                        className="text-gray-600 group-hover:text-blue-700 transition-colors"
                                     />
                                 <span className="absolute bottom-10 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-gray-700 text-white text-xs rounded opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                                     Copy now
@@ -218,42 +246,31 @@ export const TemplateNode: React.FC<TemplateNodeProps> = ({ data }) => {
                             <button
                                 onClick={clearTemplate}
                                 className="
-                                mt-3
-                                mb-5
-                                py-2 px-4
-                                bg-orange-600
-                                text-white
-                                font-semibold
-                                rounded-lg
-                                shadow-md
-                                hover:bg-red-600
-                                focus:outline-none
-                                focus:ring-2
-                                focus:ring-red-400
-                                focus:ring-opacity-75
-                                transition
-                                duration-300
+                                    ml-auto py-2 px-4 bg-orange-500 text-white font-semibold rounded-lg shadow-md
+                                    hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400
+                                    focus:ring-opacity-75 transition duration-300 whitespace-nowrap
                                 "
-                                >
+                            >
                                 Clear Template
                             </button>
-                </div>
+                            </div>
                             {data.answerText && (
-                                <>
-                                    <div className="bg-gray-800 border-t border-gray-700 cursor-pointer" onClick={() => setIsRememberOpen(!isRememberOpen)}>
-                                        <div className="px-4 py-2 flex justify-between items-center">
-                                            <span className="text-sm font-medium text-gray-300">Recordar</span>
-                                            {isRememberOpen ? <FiChevronUp /> : <FiChevronDown />}
-                                        </div>
+                                <div className="bg-gray-50 border-t border-gray-200">
+                                    <div
+                                        className="px-4 py-2 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors"
+                                        onClick={() => setIsRememberOpen(!isRememberOpen)}
+                                    >
+                                        <span className="text-sm font-medium text-gray-700">Recordar</span>
+                                        {isRememberOpen ? <FiChevronUp className="text-gray-600" /> : <FiChevronDown className="text-gray-600" />}
                                     </div>
                                     {isRememberOpen && (
-                                        <div className="p-4 bg-gray-900/50 border-t border-gray-700">
-                                            <p className="italic text-sm text-gray-400">
+                                        <div className="p-4 bg-gray-100 border-t border-gray-200">
+                                            <p className="italic text-sm text-gray-600 whitespace-pre-wrap">
                                                 {data.answerText}
                                             </p>
                                         </div>
                                     )}
-                                </>
+                                </div>
                             )}
                         </div>
                     </div>

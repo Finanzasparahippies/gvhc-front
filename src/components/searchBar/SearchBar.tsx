@@ -1,10 +1,11 @@
 import React, { useState, ChangeEvent, KeyboardEvent } from 'react';
 import { FiSearch } from 'react-icons/fi';
 import { Node } from '@xyflow/react'
+import { BasePayload, SearchBarProps } from '../../types/nodes';
 
-export const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, setNodes, fetchNodes }) => {
+export const SearchBar: React.FC<SearchBarProps> = ({ query, setQuery, fetchNodes }) => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [results, setResults] = useState<Node<NodePayload>[]>([]);
+    const [results, setResults] = useState<Node<BasePayload>[]>([]);
     const [noResults, setNoResults] = useState<boolean>(false);
 
     const handleSearch = async () => {

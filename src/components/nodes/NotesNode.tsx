@@ -1,34 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import React, { useState, memo } from 'react';
+import { Handle, Position, NodeProps, Node } from '@xyflow/react';
+import { BasePayload } from '../../types/nodes';
 
-export const NoteNode: React.FC<NoteNodeProps> = ({ data }) => {
+
+export const NotesNode: React.FC<NodeProps<Node<BasePayload>>> = ({ id, data }) => {
+    const {  setPanOnDrag, onChange, onPinToggle, note: initialNote } = data
     const [note, setNote] = useState<string>(data.note || ''); // Estado para la nota
     const [noteHistory, setNoteHistory] = useState<string[]>([]); 
 
     const handleMouseEnter = () => {
-        data.setPanOnDrag?.(false);
+        setPanOnDrag?.(false);
     };
 
     const handleMouseLeave = () => {
-        data.setPanOnDrag?.(true)
+        setPanOnDrag?.(true)
     };
 
     const handlePinned = (event: React.MouseEvent<HTMLDivElement>): void => {
         event.stopPropagation(); // Evita propagar el clic
-        data.onPinToggle?.(data.id);
+        onPinToggle?.(id);
     };
 
     const handleNoteChange = (event: React.ChangeEvent<HTMLTextAreaElement>): void => {
         const updatedNote = event.target.value;
         setNoteHistory((prev) => [...prev, note]); // Agregar el valor actual al historial
         setNote(updatedNote);
-        data.onChange(data.id, { note: updatedNote });
+        if (data.onChange) {
+            data.onChange(id, updatedNote); // Pasa el ID del nodo
+        }    
     };
 
     const clearNote = () => {
         setNoteHistory((prev) => [...prev, note]); // Agregar el valor actual al historial
         setNote(''); // Limpia la nota
-        data.onChange(data.id, { note: '' });
+        onChange?.(id, '' );
     };
 
     return (
@@ -75,11 +80,11 @@ export const NoteNode: React.FC<NoteNodeProps> = ({ data }) => {
             >
             Limpiar nota
         </button>
-        <Handle type="source" position={Position.Bottom} />
-        <Handle type="target" position={Position.Top} />
+        <Handle type="source" position={Position.Bottom} id={'question'}/>
+        <Handle type="target" position={Position.Top} id={'answer'}/>
         </div>
     </>
     );
 };
 
-export default NoteNode;
+export default memo(NotesNode);

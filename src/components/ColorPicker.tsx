@@ -1,17 +1,22 @@
-import React, { ChangeEvent, useEffect, useState } from "react";
+import React, { ChangeEvent, useRef, useEffect, useState } from "react";
 
 interface ColorPickerProps {
     onChangeColor: (color: string) => void;
 }
 
 const ColorPicker: React.FC<ColorPickerProps> = ({ onChangeColor }) => {
-    const [selectedColor, setSelectedColor] = useState<string>("#ddd");
+    const [selectedColor, setSelectedColor] = useState<string>("#09c07a");
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const handleColorChange = (event: ChangeEvent<HTMLInputElement>) => {
         const newColor = event.target.value;
         setSelectedColor(newColor);
         onChangeColor(newColor);
         localStorage.setItem('preferedColor', newColor)
+    };
+
+    const openColorPicker = () => {
+        inputRef.current?.click();
     };
 
     useEffect(() => {
@@ -23,16 +28,22 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ onChangeColor }) => {
     
 
     return (
-        <>
-            <input
-                id="colorPicker"
+        <div>
+            <input  
+                ref={inputRef}
                 type="color"
                 value={selectedColor}
                 onChange={handleColorChange}
-                className="w-10 h-10 border-none cursor-pointer rounded-lg"
+                className="hidden"
+            />
+            <button
+                onClick={openColorPicker}
+                className="w-10 h-10 rounded-full border-2 border-gray-300"
+                style={{ backgroundColor: selectedColor }}
+                title="Pick a color"
             />
             {/* <span className="font-semibold text-gray-600">{selectedColor}</span> */}
-        </>
+        </div>
     );
 };
 

@@ -1,4 +1,4 @@
-export { NoteNode } from './NotesNode';
+export { NotesNode } from './NotesNode';
 export { NonResizableNode } from './NonresizableNode';
 export { CustomEdge } from './CustomEdges';
 export { TooltipNode } from './TooltipNode';
