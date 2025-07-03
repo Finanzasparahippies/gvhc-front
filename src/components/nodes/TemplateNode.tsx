@@ -8,17 +8,17 @@ import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { Handle, Position, NodeProps, Node  } from '@xyflow/react';
 import { BasePayload } from '../../types/nodes';
 
-export const TemplateNode: React.FC<NodeProps<Node<BasePayload>>> = ({ id, data, sourcePosition }) => {
+export const TemplateNode: React.FC<NodeProps<Node<BasePayload>>> = (props) => {
 
     const {
-        template,
-        onPinToggle,
-        questionText,
-        answerText,
-        pinned,
-        setPanOnDrag,
-        onTemplateChange
-    } = data;
+        id,
+        data,
+        dragging,
+        isConnectable,
+        positionAbsoluteX,
+        positionAbsoluteY,
+        type
+    } = props;
     const [editableTemplate, setEditableTemplate] = useState<string>(data.template || '');
     const [undoStack, setUndoStack] = useState<string[]>([]);
     const [redoStack, setRedoStack] = useState<string[]>([]);
@@ -29,11 +29,11 @@ export const TemplateNode: React.FC<NodeProps<Node<BasePayload>>> = ({ id, data,
 
 
         const handleMouseEnter = (): void => {
-            setPanOnDrag?.(false);
+            data.setPanOnDrag?.(false);
         };
     
         const handleMouseLeave = (): void => {
-            setPanOnDrag?.(true);
+            data.setPanOnDrag?.(true);
         };
     
         const handlePinned = (event: MouseEvent<HTMLDivElement>): void => {

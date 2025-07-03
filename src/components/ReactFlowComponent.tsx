@@ -35,6 +35,10 @@ import ColorPicker from './ColorPicker';
 import { Slide } from '../components/Slides';
 import { BasePayload, FAQ } from '../types/nodes';
 
+const COLUMNS = 5;
+const GROUP_WIDTH = 850; // Ancho del espacio para cada grupo de nodos
+const GROUP_HEIGHT = 1200; // Alto del espacio para cada grupo de nodos
+
 type PinnedNodeInfo = { id: string; data?: { pinned?: boolean } /* o lo que sea que guardes */ };
 
 const node_Types: NodeTypes  = {
@@ -172,6 +176,8 @@ export const ReactFlowComponent: React.FC = () => {
       const apiEdges: Edge[] = [];
   
       data.forEach((faq: FAQ, faqIndex: number ) => {
+        const groupX = (faqIndex % COLUMNS) * GROUP_WIDTH;
+        const groupY = Math.floor(faqIndex / COLUMNS) * GROUP_HEIGHT;
         const questionNodeId = `faq-question-${faq.id}`;
         const isGroupPinned = pinnedNodesInfo.some((pn) => pn.id === questionNodeId);
 
@@ -192,7 +198,8 @@ export const ReactFlowComponent: React.FC = () => {
             apiNodes.push({
               id: questionNodeId,
               type: 'QuestionNode',
-              position: { x: (faqIndex % 5) * 800, y: Math.floor(faqIndex / 5) * 600 },
+              // position: { x: (faqIndex % 5) * 800, y: Math.floor(faqIndex / 5) * 600 },
+              position: { x: groupX, y: groupY },
               draggable: !isGroupPinned,
               data: questionNodeData, // ✅ El payload va aquí
             });
@@ -226,15 +233,11 @@ export const ReactFlowComponent: React.FC = () => {
                       // Add setPanOnDrag if your nodes need it
                       setPanOnDrag: setPanOnDrag, // Pass
                   };
-
                   // 2. Crea el nodo con la estructura correcta
                   apiNodes.push({
                       id: answerNodeId,
-                      type: nodeType, // El tipo de componente a renderizar
-                      position: {
-                          x: ((faqIndex % 5) * 800) + 150 + (answerIndex * 420), // Ajusta la posición para que no se superponga
-                          y: (Math.floor(faqIndex / 5) * 600) + 150
-                      },
+                      type: nodeType, // El tipo de componente a renderizar            
+                      position: { x: groupX, y: groupY + (answerIndex + 1) * 180 }, // Apilados verticalmente
                       draggable: !isGroupPinned,
                       data: answerNodeData, // 👈 Pasa el payload directamente aquí
                       style: isGroupPinned ? {
@@ -254,8 +257,7 @@ export const ReactFlowComponent: React.FC = () => {
             });
 
             setNodes(apiNodes);
-            setEdges(apiEdges)
-
+            setEdges(apiEdges);
             return apiNodes;
 
         } catch (error) {

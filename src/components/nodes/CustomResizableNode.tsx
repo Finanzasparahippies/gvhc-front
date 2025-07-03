@@ -1,7 +1,14 @@
-import { Handle, Position, NodeProps, Node } from '@xyflow/react';
+import { Handle, Position, NodeProps, Node, NodeResizeControl } from '@xyflow/react';
 import React, { memo } from 'react';
 import { FiMapPin } from 'react-icons/fi'; // Ícono para el pin
 import { BasePayload } from '../../types/nodes';
+import { BsTextareaResize } from "react-icons/bs";
+
+
+const controlStyle = {
+  background: 'transparent',
+  border: 'none',
+};
 
 export const CustomResizableNode: React.FC<NodeProps<Node<BasePayload>>> = (props) => {
 
@@ -13,8 +20,12 @@ export const CustomResizableNode: React.FC<NodeProps<Node<BasePayload>>> = (prop
     <div
       className={`relative bg-white border ${
         data.pinned ? 'border-red-500' : 'border-gray-300'
-      } rounded-lg shadow-md flex flex-col overflow-hidden w-[300px] h-auto min-h-[150px]`} // Ajusta width/height si es necesario
+      } rounded-lg shadow-md flex flex-col overflow-hidden`} // Ajusta width/height si es necesario
     >
+      <NodeResizeControl style={ controlStyle } minHeight={ 50 } minWidth={ 100 }>
+        {/* <BsTextareaResize/> */}
+        <ResizeIcon/>
+      </NodeResizeControl>
       <Handle type="source" position={Position.Bottom} id="output-handle"/>
       
       <Handle
@@ -33,12 +44,12 @@ export const CustomResizableNode: React.FC<NodeProps<Node<BasePayload>>> = (prop
       <div className="p-2 flex-grow">
         {/* Título del nodo */}
         {data.title && (
-          <h3 className="font-bold text-lg mb-2 text-gray-800 break-words">{data.title}</h3>
+          <h3 className="font-bold text-lg mb-2 text-gray-800 break-words">{data.answerText}</h3>
         )}
 
         {/* Muestra la imagen si existe imageUrl */}
         {data.imageUrl && (
-          <div className="mb-2 max-h-[200px] overflow-hidden rounded-md">
+          <div className="mb-2 overflow-hidden rounded-md">
             <img src={data.imageUrl} alt={data.title || "Node Image"} className="w-full h-auto object-contain" />
           </div>
         )}
@@ -46,5 +57,28 @@ export const CustomResizableNode: React.FC<NodeProps<Node<BasePayload>>> = (prop
     </div>
   );
 };
+
+function ResizeIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      strokeWidth="2"
+      stroke="#ff0071"
+      fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ position: 'absolute', right: 5, bottom: 5 }}
+    >
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <polyline points="16 20 20 20 20 16" />
+      <line x1="14" y1="14" x2="20" y2="20" />
+      <polyline points="8 4 4 4 4 8" />
+      <line x1="4" y1="4" x2="10" y2="10" />
+    </svg>
+  );
+}
 
 export default memo(CustomResizableNode);

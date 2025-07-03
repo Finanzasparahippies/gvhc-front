@@ -488,8 +488,8 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
             <h2 className='text-2xl font-semibold mb-6 text-white'>Generador de Reportes GVHC</h2>
 
             {/* --- SELECCIÓN DE PLANTILLA DE CONSULTA O CONSULTA AVANZADA --- */}
-            <div className="mb-6 p-4 bg-gray-800 rounded-lg shadow-md sharpen-query-report-container">
-                <label htmlFor="queryTemplateSelect" className="text-lg font-medium text-white mb-3 block">
+            <div className="mb-6 p-4 bg-gray-800 rounded-lg shadow-md sharpen-query-report-container border-b border-t border-gray-200">
+                <label htmlFor="queryTemplateSelect" className="text-lg font-medium text-white mb-3 block text-center">
                     Seleccionar Tipo de Reporte
                 </label>
                 <select
@@ -502,12 +502,13 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                     className="w-full p-2 border border-gray-300 rounded text-sm mb-4 focus:ring-blue-500 focus:border-blue-500"
                 >
                     <option value="agentStatus">Buscar por Agente</option>
-                    <option value="cdrReport">Reporte CDR (Detalle de Llamadas)</option>
+                    <option value="cdrReport">Reporte de Segmentos</option>
                     <option value="liveStatus">Live Queue</option>
-                    <option value="getAgents">Estado de Agentes (Tiempo Real)</option>
+                    <option value="getAgents">Disposition de Agentes (Tiempo Real)</option>
                 </select>
             </div>
-            <div>
+            {/* -area de Consulta Personalizada */}
+            {/* <div>
                 <textarea
                     id="customQueryTextarea"
                     value={customQuery}
@@ -521,14 +522,19 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                     placeholder="Si este campo tiene texto, se ejecutará esta consulta directamente."
                     className="w-full h-36 p-3 border border-gray-300 bg-gray-700 text-white rounded-md text-sm font-mono resize-y focus:ring-blue-500 focus:border-blue-500"
                 />
-            </div>
+            </div> */}
 
 
             {/* --- SECCIÓN DE SELECCIÓN DE DATOS (CONDICIONAL SEGÚN PLANTILLA/CUSTOM QUERY) --- */}
 
                     {selectedQueryTemplate === 'agentStatus' && (
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label htmlFor="agentUsernameInput" style={{ marginRight: '0.5rem' }}>
+                        <div 
+                            className='flex flex-col max-w-[350px] mb-5'
+                            >
+                            <label 
+                                htmlFor="agentUsernameInput"
+                                className='text-center bg-gray-800 border-t rounded-lg text-white font-semibold'
+                                >
                                 Nombre de Usuario del Agente:
                             </label>
                             <input
@@ -537,7 +543,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                                 value={agentUsername}
                                 onChange={(e) => setAgentUsername(e.target.value)}
                                 placeholder="Ej. 273con10086"
-                                style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                                className='p-1 text-center max-w-[350px] items-center rounded-lg border border-gray-200'
                             />
                         </div>
                     )}
