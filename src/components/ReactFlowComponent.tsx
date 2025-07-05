@@ -35,9 +35,9 @@ import ColorPicker from './ColorPicker';
 import { Slide } from '../components/Slides';
 import { BasePayload, FAQ } from '../types/nodes';
 
-const COLUMNS = 5;
-const GROUP_WIDTH = 850; // Ancho del espacio para cada grupo de nodos
-const GROUP_HEIGHT = 1200; // Alto del espacio para cada grupo de nodos
+const COLUMNS = 8;
+let GROUP_WIDTH = 0; // Ancho del espacio para cada grupo de nodos
+let GROUP_HEIGHT = 0; // Alto del espacio para cada grupo de nodos
 
 type PinnedNodeInfo = { id: string; data?: { pinned?: boolean } /* o lo que sea que guardes */ };
 
@@ -55,29 +55,48 @@ const edgeTypes = {
   CustomEdge,
 };
 
-const getNodeStyleByType = (responseType?: string) : { backgroundColor: string; borderColor: string;} => {
-    switch (responseType) {
-        case 'Image':
+const getNodeStyleByType = (dataType?: string) => {
+    switch (dataType) {
+        case 'CustomResizableNode':
             return {
-                backgroundColor: 'rgba(204, 232, 255, 0.9)', // Un azul claro
+                backgroundColor: '#007BFF', // Un azul claro
+                borderColor: '#007BFF',
+            };
+        case 'Image':
+            GROUP_HEIGHT = 1800
+            GROUP_WIDTH = 1800
+            return {
+                backgroundColor: '#007BFF', // Un azul claro
                 borderColor: '#007BFF',
             };
         case 'Text':
             return {
-                backgroundColor: 'rgba(208, 245, 218, 0.9)', // Un verde claro
-                borderColor: '#28A745',
+                backgroundColor: '#05e09c', // Un verde claro
+                borderColor: '#05e09c',
             };
-        case 'Process':
+        case 'TemplateNode':
             return {
-                backgroundColor: 'rgba(255, 236, 204, 0.9)', // Un naranja claro
-                borderColor: '#FFC107',
+                backgroundColor: '#ee015f', // Un naranja claro
+                borderColor: '#ee015f',
             };
-        case 'Note': // Podrías tener un tipo para las notas
+        case 'Process': // Podrías tener un tipo para las notas
             return {
-                backgroundColor: 'rgba(243, 225, 255, 0.9)', // Un púrpura claro
+                backgroundColor: '#6F42C1', // Un púrpura claro
                 borderColor: '#6F42C1',
             };
+        case 'NonResizableNode': // Podrías tener un tipo para las notas
+            return {
+                backgroundColor: '#FF1',
+                borderColor: '#FF1',
+            };
+        case 'NotesNode': 
+            return {
+              backgroundColor: '#000142',
+              borderColor: '#000142',
+            };
         default:
+            GROUP_HEIGHT = 800
+            GROUP_WIDTH = 800
             return {
                 backgroundColor: 'rgba(248, 249, 250, 0.9)', // Un gris claro por defecto
                 borderColor: '#6C757D',
@@ -112,10 +131,10 @@ export const ReactFlowComponent: React.FC = () => {
     )
   }, [setNodes]);
 
-  const getCombinedNodeStyle = (nodeData: BasePayload) => {
-        const baseStyle = getNodeStyleByType(nodeData.response_type);
+  const getCombinedNodeStyle = (data: string) => {
+        const baseStyle = getNodeStyleByType(data);
         const pinnedStyle = {
-            border: `3px solid ${baseStyle.borderColor}`, // Borde más grueso
+            border: `3px solid rgba(255, 100, 100, 0.8)`, // Borde más grueso
             boxShadow: '0 0 15px rgba(255, 100, 100, 0.8)', // Sombra roja para resaltar
         };
         const defaultStyle = {
@@ -124,7 +143,7 @@ export const ReactFlowComponent: React.FC = () => {
             borderRadius: 8,
         };
 
-        return nodeData.pinned ? { ...defaultStyle, ...pinnedStyle } : defaultStyle;
+        return data ? { ...defaultStyle, ...pinnedStyle } : defaultStyle;
     };
 
   
@@ -185,13 +204,13 @@ export const ReactFlowComponent: React.FC = () => {
             id: questionNodeId,
             title: faq.question || 'No Question Title',
             groupId: questionNodeId,
-            NodeType: 'Question',
+            NodeType: faq.response_type || 'No response Data',
             questionText: faq.question,
             draggable: !isGroupPinned,
             onPinToggle: togglePinNode,
             setPanOnDrag: setPanOnDrag,
             pinned: isGroupPinned,
-            response_type: faq.response_type,
+            // response_type: faq.response_type || 'No Response Data',
             };
 
             // 2. CREA EL NODO COMPLETO usando el payload anterior
@@ -243,7 +262,7 @@ export const ReactFlowComponent: React.FC = () => {
                       style: isGroupPinned ? {
                         border: '3px solid #D32F2F',
                         boxShadow: '0 0 10px rgba(211, 47, 47, 0.7)'
-                      } : undefined,
+                      } : typeStyle,
                   });
 
                   apiEdges.push({
@@ -307,11 +326,14 @@ export const ReactFlowComponent: React.FC = () => {
 return (
 <>
     <div
-      className='w-screen'
+      className='w-full'
       style={{ height: 'calc(100vh - 120px)' }}
       >
-  <div className='flex flex-row justify-between mx-5 items-center'>
-    <ColorPicker onChangeColor={setBackgroundColor} />
+  <div className='flex flex-row justify-around mx-5 items-center'>
+    <div className='translate-x-[50px] lg:translate-x-[150px] xl:translate-x-[200px]'>
+    <ColorPicker
+            onChangeColor={setBackgroundColor}/>
+    </div>
     <SearchBar
             query={query}
             setQuery={setQuery}
@@ -333,23 +355,23 @@ return (
         maxZoom={2}
         minZoom={0.2}
         panOnDrag={panOnDrag}
-        className='border border-purple-800 rounded-lg w-full h-full bg-slate-200'
+        className='border border-purple-800 rounded-lg w-screen h-full bg-slate-200'
       >
         <Controls
           showFitView={true}
         />
         <MiniMap
           nodeColor={(node: Node<BasePayload>) => {
-              const typeStyle = getCombinedNodeStyle(node.data.NodeType);
+              const typeStyle = getCombinedNodeStyle(node.data?.NodeType);
                 return typeStyle.backgroundColor;
                 }}
         />        
       <Background color={backgroundColor} variant={BackgroundVariant.Cross} gap={12} />
       </ReactFlow>
-      <div className="save-restore">
+      {/* <div className="save-restore">
         <button onClick={handleSave}>Guardar</button>
         <button onClick={handleRestore}>Restaurar</button>
-      </div>
+      </div> */}
 
     </div>
   </>

@@ -2,34 +2,44 @@ import React, { useState } from 'react';
 import API from '../utils/API';
 import logo from '../assets/img/logo.png'
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../utils/AuthContext'; // 🟢 Importa useAuth
 
-type TokenResponse = {
-    access: string;
-    refresh: string;
-};
 
 const LoginPage = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-
     const navigate = useNavigate();
+    const { login } = useAuth(); // 🟢 Obtén la función login del contexto
+
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         try {
-            const response = await API.post<TokenResponse>('https://gvhc-backend.onrender.com/api/token/', {
+            const response = await API.post<LoginResponse>('api/token/', {
                 username,
                 password,
             });
-    
-            localStorage.setItem('access_token', response.data.access);
-            localStorage.setItem('refresh_token', response.data.refresh);
+
+            console.log("Login successful response:", response); // Añade esto
+
+            const {access, refresh, user } = response.data
+
+            if (!user) {
+            console.error("El campo 'user' no está presente en la respuesta:", response.data);
+            }
+
+            localStorage.setItem('access_token', access);
+            localStorage.setItem('refresh_token',refresh);
+            login(access, refresh, user);
+
             navigate('/dashboard');
         } catch (err: any) {
-            if (err.response?.status === 401) {
+            console.error("Login API call failed:", err); // 🔴 ¡Añade esto!
+            if (err.response?.status === 400) {
                 setError('Credenciales inválidas. Intenta de nuevo.');
-            } else {
+            } 
+            else {
                 setError('Error en el servidor. Por favor, intenta más tarde.');
             }
         }

@@ -2,7 +2,7 @@ import { Node, XYPosition } from '@xyflow/react';
 
 
 type FAQStep = {
-    id: string;
+    id: number | string;
     number: number;
     text: string;
     image_url: string | undefined;
@@ -10,7 +10,7 @@ type FAQStep = {
 };
 
 type Answer = {
-    id: string;
+    id: number | string;
     title: string;
     answer_text: string;
     template?: string;
@@ -23,7 +23,7 @@ type Answer = {
 type FAQ = {
     pos_y?: number;
     pos_x?: number;
-    id: string;
+    id: number | string;
     question: string;
     position: {
         pos_x: number;
@@ -37,16 +37,16 @@ type FAQ = {
 
 
 interface BasePayload { // Renamed from the original "BasePayload" content
-    id?: string;
+    id?: number | string;
     data?:{
-        id?: string;
+        id?: number | string;
         data?: {};
         width?: number;
         height?: number;
         sourcePosition?:any;
         title: string;
         groupId: string;
-        NodeType: string;
+        NodeType?: string;
         draggable?: boolean;
         questionText?: string;
         answerText?: string;
@@ -80,7 +80,7 @@ interface SearchBarProps {
 }
 
 type PinnedNodeInfo = {
-    id: string;
+    id: number | string;
     data?: BasePayload;
     type?: string; // The type of the node, e.g., 'QuestionNode'
     position?: XYPosition;

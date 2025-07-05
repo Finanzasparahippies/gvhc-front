@@ -6,6 +6,8 @@ import LoginPage from './views/LoginPage';
 import PrivateRoute from './components/routes/PrivateRoute';
 import { SupervisorComponent } from './components/SupervisorComponent';
 import TabsComponent from './components/tabRender/tabComponent';  
+import { AuthProvider, useAuth } from './utils/AuthContext'; // 🟢 Importa AuthProvider
+
 
 const App = (): JSX.Element => {
 
@@ -22,6 +24,7 @@ const App = (): JSX.Element => {
   return (
     <NotesProvider>
         <ReactFlowProvider>
+        <AuthProvider>
           <Router
             future={{
               v7_startTransition: true,
@@ -34,7 +37,7 @@ const App = (): JSX.Element => {
                 <Route
                       path="/dashboard"
                       element={
-                          <PrivateRoute>
+                          <PrivateRoute requiredRoles={['agent', 'supervisor', 'teamleader']}>
                             <TabsComponent/>
                           </PrivateRoute>
                     }
@@ -42,13 +45,15 @@ const App = (): JSX.Element => {
                 <Route
                       path="/supervisors"
                       element={
-                          <PrivateRoute>
+                          <PrivateRoute requiredRoles={['agent', 'supervisor', 'teamleader']}> {/* Ejemplo: solo supervisores y teamleaders */}
                             <SupervisorComponent/>
                           </PrivateRoute>
+                        
                     }
                 />
             </Routes>
           </Router>
+          </AuthProvider>
         </ReactFlowProvider>
     </NotesProvider>
   );

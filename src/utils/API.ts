@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-    baseURL: 'https://gvhc-backend.onrender.com',
+    baseURL: 'https://gvhc-backend.onrender.com/',
     headers: {
         'Content-Type': 'application/json',
     }
