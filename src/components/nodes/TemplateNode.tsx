@@ -25,6 +25,7 @@ export const TemplateNode: React.FC<NodeProps<Node<BasePayload>>> = (props) => {
     const [isRememberOpen, setIsRememberOpen] = useState<boolean>(false); 
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
     const initialTemplateRef = useRef<string>(data.template || '');
+    const image = data.data?.imageUrl
 
 
 

@@ -34,10 +34,12 @@ import {
 import ColorPicker from './ColorPicker';
 import { Slide } from '../components/Slides';
 import { BasePayload, FAQ } from '../types/nodes';
+import { getNodeStyleByType, getGroupDimensionsByType } from '../utils/nodeStyles';
+
 
 const COLUMNS = 8;
-let GROUP_WIDTH = 0; // Ancho del espacio para cada grupo de nodos
-let GROUP_HEIGHT = 0; // Alto del espacio para cada grupo de nodos
+// let GROUP_WIDTH = 0; // Ancho del espacio para cada grupo de nodos
+// let GROUP_HEIGHT = 0; // Alto del espacio para cada grupo de nodos
 
 type PinnedNodeInfo = { id: string; data?: { pinned?: boolean } /* o lo que sea que guardes */ };
 
@@ -55,54 +57,54 @@ const edgeTypes = {
   CustomEdge,
 };
 
-const getNodeStyleByType = (dataType?: string) => {
-    switch (dataType) {
-        case 'CustomResizableNode':
-            return {
-                backgroundColor: '#007BFF', // Un azul claro
-                borderColor: '#007BFF',
-            };
-        case 'Image':
-            GROUP_HEIGHT = 1800
-            GROUP_WIDTH = 1800
-            return {
-                backgroundColor: '#007BFF', // Un azul claro
-                borderColor: '#007BFF',
-            };
-        case 'Text':
-            return {
-                backgroundColor: '#05e09c', // Un verde claro
-                borderColor: '#05e09c',
-            };
-        case 'TemplateNode':
-            return {
-                backgroundColor: '#ee015f', // Un naranja claro
-                borderColor: '#ee015f',
-            };
-        case 'Process': // Podrías tener un tipo para las notas
-            return {
-                backgroundColor: '#6F42C1', // Un púrpura claro
-                borderColor: '#6F42C1',
-            };
-        case 'NonResizableNode': // Podrías tener un tipo para las notas
-            return {
-                backgroundColor: '#FF1',
-                borderColor: '#FF1',
-            };
-        case 'NotesNode': 
-            return {
-              backgroundColor: '#000142',
-              borderColor: '#000142',
-            };
-        default:
-            GROUP_HEIGHT = 800
-            GROUP_WIDTH = 800
-            return {
-                backgroundColor: 'rgba(248, 249, 250, 0.9)', // Un gris claro por defecto
-                borderColor: '#6C757D',
-            };
-    }
-};
+// const getNodeStyleByType = (dataType?: string) => {
+//     switch (dataType) {
+//         case 'CustomResizableNode':
+//             return {
+//                 backgroundColor: '#007BFF', // Un azul claro
+//                 borderColor: '#007BFF',
+//             };
+//         case 'Image':
+//             GROUP_HEIGHT = 1800
+//             GROUP_WIDTH = 1800
+//             return {
+//                 backgroundColor: '#007BFF', // Un azul claro
+//                 borderColor: '#007BFF',
+//             };
+//         case 'Text':
+//             return {
+//                 backgroundColor: '#05e09c', // Un verde claro
+//                 borderColor: '#05e09c',
+//             };
+//         case 'TemplateNode':
+//             return {
+//                 backgroundColor: '#ee015f', // Un naranja claro
+//                 borderColor: '#ee015f',
+//             };
+//         case 'Process': // Podrías tener un tipo para las notas
+//             return {
+//                 backgroundColor: '#6F42C1', // Un púrpura claro
+//                 borderColor: '#6F42C1',
+//             };
+//         case 'NonResizableNode': // Podrías tener un tipo para las notas
+//             return {
+//                 backgroundColor: '#FF1',
+//                 borderColor: '#FF1',
+//             };
+//         case 'NotesNode': 
+//             return {
+//               backgroundColor: '#000142',
+//               borderColor: '#000142',
+//             };
+//         default:
+//             GROUP_HEIGHT = 800
+//             GROUP_WIDTH = 800
+//             return {
+//                 backgroundColor: 'rgba(248, 249, 250, 0.9)', // Un gris claro por defecto
+//                 borderColor: '#6C757D',
+//             };
+//     }
+// };
 
 export const ReactFlowComponent: React.FC = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<BasePayload>>([]);
@@ -131,20 +133,23 @@ export const ReactFlowComponent: React.FC = () => {
     )
   }, [setNodes]);
 
-  const getCombinedNodeStyle = (data: string) => {
+  const getCombinedNodeStyle = useCallback ((data?: string, isPinned?: boolean) => {
         const baseStyle = getNodeStyleByType(data);
-        const pinnedStyle = {
-            border: `3px solid rgba(255, 100, 100, 0.8)`, // Borde más grueso
-            boxShadow: '0 0 15px rgba(255, 100, 100, 0.8)', // Sombra roja para resaltar
-        };
         const defaultStyle = {
             border: `2px solid ${baseStyle.borderColor}`,
             backgroundColor: baseStyle.backgroundColor,
             borderRadius: 8,
         };
 
-        return data ? { ...defaultStyle, ...pinnedStyle } : defaultStyle;
-    };
+        if (isPinned) {
+            const pinnedStyle = {
+                border: `3px solid rgba(255, 100, 100, 0.8)`, // Borde más grueso
+                boxShadow: '0 0 15px rgba(255, 100, 100, 0.8)', // Sombra roja para resaltar
+            };
+            return { ...defaultStyle, ...pinnedStyle };
+        }
+        return defaultStyle;
+    }, []); // Dependencias: ninguna si getNodeStyleByType no cambia
 
   
   const togglePinNode = useCallback((nodeId: string) => {
@@ -183,20 +188,30 @@ export const ReactFlowComponent: React.FC = () => {
   const fetchNodes = useCallback(async (searchQuery = '') => {
     const storedPinnedNodes = localStorage.getItem('pinnedNodes');
     const storedAgentNotes = localStorage.getItem('agentNotes');
-    const url = searchQuery ? `/api/answers/search/?query=${searchQuery}` : '/api/answers/faqs/';
+    const url = searchQuery ? `/api/search/?query=${searchQuery}` : '/api/faqs/';
     const pinnedNodesInfo: PinnedNodeInfo[] = storedPinnedNodes ? JSON.parse(storedPinnedNodes) : [] ;
     const agentNotes = storedAgentNotes ? JSON.parse(storedAgentNotes) : {};
   
     try {
       const response = await API.get<{results: FAQ[]}>(url);
-      console.log('Response:', response);
+      // console.log('Response:', response);
       const data: FAQ[] = response.data.results || [];
+      console.log('ResponseData:', data);
       const apiNodes: Node<BasePayload>[] = [];
       const apiEdges: Edge[] = [];
+
+      const defaultGroupDimensions = getGroupDimensionsByType(); // Obtiene las dimensiones por defecto
+      let currentGroupWidth = defaultGroupDimensions.width;
+      let currentGroupHeight = defaultGroupDimensions.height;
   
       data.forEach((faq: FAQ, faqIndex: number ) => {
-        const groupX = (faqIndex % COLUMNS) * GROUP_WIDTH;
-        const groupY = Math.floor(faqIndex / COLUMNS) * GROUP_HEIGHT;
+
+        const faqGroupDimensions = getGroupDimensionsByType(faq.response_type?.type_name); // Usa type_name de response_type
+        currentGroupWidth = faqGroupDimensions.width;
+        currentGroupHeight = faqGroupDimensions.height;
+
+        const groupX = (faqIndex % COLUMNS) * currentGroupWidth;
+        const groupY = Math.floor(faqIndex / COLUMNS) * currentGroupHeight;
         const questionNodeId = `faq-question-${faq.id}`;
         const isGroupPinned = pinnedNodesInfo.some((pn) => pn.id === questionNodeId);
 
@@ -225,7 +240,7 @@ export const ReactFlowComponent: React.FC = () => {
 
                 faq.answers.forEach((answer, answerIndex) => {
                   const answerNodeId = `faq-${faq.id}-answer-${answer.id}`;
-                  const typeStyle = getNodeStyleByType(faq.response_type);
+                  const typeStyle = getNodeStyleByType(faq.response_type?.type_name);
                   const nodeType = answer.node_type || 'NonResizableNode'; // Default type
 
                   // 1. Construye el objeto de datos (payload) directamente
@@ -235,7 +250,7 @@ export const ReactFlowComponent: React.FC = () => {
                       groupId: questionNodeId,
                       NodeType: nodeType,
                       questionText: faq.question || 'No Title',
-                      answerText: answer.answer_text || 'No Content',
+                      answerText: answer.answer_text || '',
                       template: answer.template,
                       imageUrl: answer.image_url,
                       response_type: faq.response_type,

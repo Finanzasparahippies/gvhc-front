@@ -20,6 +20,12 @@ type Answer = {
     excel_file?: string
 };
 
+type ResponseTypeData = {
+    id: number;
+    type_name: string;
+    description?: string;
+}
+
 type FAQ = {
     pos_y?: number;
     pos_x?: number;
@@ -29,11 +35,23 @@ type FAQ = {
         pos_x: number;
         pos_y: number;
     };
-    response_type?: string;
+    response_type?: ResponseTypeData;
     keywords?: string[];
     answers: Answer[];
     slides?: any[]; // Define mejor si tienes estructura
 };
+
+type Department = {
+    id: number | string;
+    name: string;
+    description?: string;
+}
+
+interface GroupNodeData extends BaseNodeData {
+    type: 'group';
+    departmentId: number | string; // El ID del departamento
+    departmentName: string; // El nombre del departamento
+}
 
 
 interface BasePayload { // Renamed from the original "BasePayload" content
@@ -84,4 +102,15 @@ type PinnedNodeInfo = {
     data?: BasePayload;
     type?: string; // The type of the node, e.g., 'QuestionNode'
     position?: XYPosition;
+};
+
+export type NodeTypeStyle = {
+    backgroundColor: string;
+    borderColor: string;
+    // Puedes añadir más propiedades de estilo aquí si las necesitas en el futuro
+};
+
+export type NodeDimensions = {
+    width: number;
+    height: number;
 };
