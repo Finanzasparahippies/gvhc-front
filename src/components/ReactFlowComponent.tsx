@@ -34,12 +34,16 @@ import {
 import ColorPicker from './ColorPicker';
 import { Slide } from '../components/Slides';
 import { BasePayload, FAQ } from '../types/nodes';
-import { getNodeStyleByType, getGroupDimensionsByType } from '../utils/nodeStyles';
+import getCombinedNodeStyle, { getNodeStyleByType, getGroupDimensionsByType } from '../utils/nodeStyles';
 
 
 const COLUMNS = 8;
-// let GROUP_WIDTH = 0; // Ancho del espacio para cada grupo de nodos
-// let GROUP_HEIGHT = 0; // Alto del espacio para cada grupo de nodos
+const ANSWER_NODE_WIDTH = 650; // Ancho estimado de tus nodos de respuesta (ajusta según el tamaño real de tus nodos)
+const ANSWER_NODE_HEIGHT = 100; // Alto estimado de tus nodos (ya lo usas)
+const HORIZONTAL_SPACING = ANSWER_NODE_WIDTH + 50; // Espacio entre nodos (ancho + un margen)
+const VERTICAL_SPACING = ANSWER_NODE_HEIGHT + 50; // Espacio vertical, si decides apilar después de cierta cantidad
+const ANSWERS_PER_ROW = 3; // Número de respuestas por fila dentro de un grupo de preguntas/respuestas
+
 
 type PinnedNodeInfo = { id: string; data?: { pinned?: boolean } /* o lo que sea que guardes */ };
 
@@ -56,55 +60,6 @@ const node_Types: NodeTypes  = {
 const edgeTypes = {
   CustomEdge,
 };
-
-// const getNodeStyleByType = (dataType?: string) => {
-//     switch (dataType) {
-//         case 'CustomResizableNode':
-//             return {
-//                 backgroundColor: '#007BFF', // Un azul claro
-//                 borderColor: '#007BFF',
-//             };
-//         case 'Image':
-//             GROUP_HEIGHT = 1800
-//             GROUP_WIDTH = 1800
-//             return {
-//                 backgroundColor: '#007BFF', // Un azul claro
-//                 borderColor: '#007BFF',
-//             };
-//         case 'Text':
-//             return {
-//                 backgroundColor: '#05e09c', // Un verde claro
-//                 borderColor: '#05e09c',
-//             };
-//         case 'TemplateNode':
-//             return {
-//                 backgroundColor: '#ee015f', // Un naranja claro
-//                 borderColor: '#ee015f',
-//             };
-//         case 'Process': // Podrías tener un tipo para las notas
-//             return {
-//                 backgroundColor: '#6F42C1', // Un púrpura claro
-//                 borderColor: '#6F42C1',
-//             };
-//         case 'NonResizableNode': // Podrías tener un tipo para las notas
-//             return {
-//                 backgroundColor: '#FF1',
-//                 borderColor: '#FF1',
-//             };
-//         case 'NotesNode': 
-//             return {
-//               backgroundColor: '#000142',
-//               borderColor: '#000142',
-//             };
-//         default:
-//             GROUP_HEIGHT = 800
-//             GROUP_WIDTH = 800
-//             return {
-//                 backgroundColor: 'rgba(248, 249, 250, 0.9)', // Un gris claro por defecto
-//                 borderColor: '#6C757D',
-//             };
-//     }
-// };
 
 export const ReactFlowComponent: React.FC = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<BasePayload>>([]);
@@ -133,63 +88,45 @@ export const ReactFlowComponent: React.FC = () => {
     )
   }, [setNodes]);
 
-  const getCombinedNodeStyle = useCallback ((data?: string, isPinned?: boolean) => {
-        const baseStyle = getNodeStyleByType(data);
-        const defaultStyle = {
-            border: `2px solid ${baseStyle.borderColor}`,
-            backgroundColor: baseStyle.backgroundColor,
-            borderRadius: 8,
-        };
-
-        if (isPinned) {
-            const pinnedStyle = {
-                border: `3px solid rgba(255, 100, 100, 0.8)`, // Borde más grueso
-                boxShadow: '0 0 15px rgba(255, 100, 100, 0.8)', // Sombra roja para resaltar
-            };
-            return { ...defaultStyle, ...pinnedStyle };
-        }
-        return defaultStyle;
-    }, []); // Dependencias: ninguna si getNodeStyleByType no cambia
-
   
   const togglePinNode = useCallback((nodeId: string) => {
-    let newPinnedState = false;
-
-    const nodeInGroup = nodes.find(n => n.data.groupId === nodeId);
-    if (!nodeInGroup) return;
-
-    newPinnedState = !nodeInGroup.data.pinned;
-    console.log(`Toggling group ${nodeId} to pinned: ${newPinnedState}`);
-
-    setNodes((currentNodes) =>
-      currentNodes.map((node) => {
-        if (node.data.groupId === nodeId) {
-            return {
+    setNodes((currentNodes) => {
+      let newPinnedState = false;
+      const updatedNodes = currentNodes.map((node) => {
+        if (node.id === nodeId) { // Identifica el nodo directamente por su ID
+          newPinnedState = !node.data.pinned; // Obtiene el nuevo estado de pineado
+          console.log(`Toggling node ${nodeId} to pinned: ${newPinnedState}`);
+          return {
             ...node,
             data: { ...node.data, pinned: newPinnedState }, // Actualiza la data
-            draggable: !newPinnedState,                    // Actualiza propiedad raíz
-            // style: getCombinedNodeStyle({ ...node.data, pinned: newPinnedState }),
+            draggable: !newPinnedState,                     // Actualiza propiedad raíz draggable
+            // El estilo se aplicará dentro de QuestionNode si recibe `isPinned`
           };
         }
+        // También actualiza los nodos hijos si están asociados al mismo grupo
+        // Asumiendo que `groupId` en los nodos de respuesta es el mismo que `nodeId` del QuestionNode
         return node;
-      })
-        );
+      });
 
-        setTimeout(() => {
-            const flow = toObject();
-            const pinnedQuestionNodes = flow.nodes.filter(
-                (n) => n.data?.pinned && n.type === 'QuestionNode'
-            );
-            localStorage.setItem('pinnedNodes', JSON.stringify(pinnedQuestionNodes));
-        }, 0);
-    }, [nodes, setNodes, toObject]);
+      // Guardar en localStorage solo los nodos de tipo 'QuestionNode' y que estén pineados
+      setTimeout(() => {
+        const flow = toObject();
+        const pinnedQuestionNodes = flow.nodes.filter(
+          (n) => n.data?.pinned && (n.type === 'NonResizableNode' || n.type === 'NotesNode' || n.type === 'Slide' || n.type === 'TooltipNode' || n.type === 'TemplateNode' || n.type === 'CustomResizableNode')
+        );
+        localStorage.setItem('pinnedNodes', JSON.stringify(pinnedQuestionNodes));
+      }, 0); // Un pequeño retraso para asegurar que el estado se actualice antes de guardar
+
+      return updatedNodes;
+    });
+  }, [setNodes, toObject]);
   
 
   const fetchNodes = useCallback(async (searchQuery = '') => {
     const storedPinnedNodes = localStorage.getItem('pinnedNodes');
     const storedAgentNotes = localStorage.getItem('agentNotes');
     const url = searchQuery ? `/api/search/?query=${searchQuery}` : '/api/faqs/';
-    const pinnedNodesInfo: PinnedNodeInfo[] = storedPinnedNodes ? JSON.parse(storedPinnedNodes) : [] ;
+    const pinnedNodesInfo: PinnedNodeInfo[] = storedPinnedNodes ? JSON.parse(storedPinnedNodes) : [];
     const agentNotes = storedAgentNotes ? JSON.parse(storedAgentNotes) : {};
   
     try {
@@ -213,19 +150,14 @@ export const ReactFlowComponent: React.FC = () => {
         const groupX = (faqIndex % COLUMNS) * currentGroupWidth;
         const groupY = Math.floor(faqIndex / COLUMNS) * currentGroupHeight;
         const questionNodeId = `faq-question-${faq.id}`;
-        const isGroupPinned = pinnedNodesInfo.some((pn) => pn.id === questionNodeId);
 
         const questionNodeData = {
             id: questionNodeId,
             title: faq.question || 'No Question Title',
             groupId: questionNodeId,
-            NodeType: faq.response_type || 'No response Data',
+            NodeType: faq.response_type, 
             questionText: faq.question,
-            draggable: !isGroupPinned,
-            onPinToggle: togglePinNode,
             setPanOnDrag: setPanOnDrag,
-            pinned: isGroupPinned,
-            // response_type: faq.response_type || 'No Response Data',
             };
 
             // 2. CREA EL NODO COMPLETO usando el payload anterior
@@ -234,50 +166,51 @@ export const ReactFlowComponent: React.FC = () => {
               type: 'QuestionNode',
               // position: { x: (faqIndex % 5) * 800, y: Math.floor(faqIndex / 5) * 600 },
               position: { x: groupX, y: groupY },
-              draggable: !isGroupPinned,
+              draggable: true,
               data: questionNodeData, // ✅ El payload va aquí
             });
 
                 faq.answers.forEach((answer, answerIndex) => {
                   const answerNodeId = `faq-${faq.id}-answer-${answer.id}`;
-                  const typeStyle = getNodeStyleByType(faq.response_type?.type_name);
-                  const nodeType = answer.node_type || 'NonResizableNode'; // Default type
+                  const nodeType = answer.node_type; // Default type
+                  console.log('nodetype:',nodeType)
+
+                  const isAnswerNodePinned = pinnedNodesInfo.some((pn) => pn.id === answerNodeId);
+                  const col = answerIndex % ANSWERS_PER_ROW;
+                  const row = Math.floor(answerIndex / ANSWERS_PER_ROW);
+                  const answerX = groupX + (col * HORIZONTAL_SPACING);
+                  const answerY = groupY + VERTICAL_SPACING + (row * VERTICAL_SPACING);
 
                   // 1. Construye el objeto de datos (payload) directamente
                   const answerNodeData = {
                       id: answerNodeId,
                       title: answer.title || 'No Title',
                       groupId: questionNodeId,
-                      NodeType: nodeType,
+                      NodeType: faq.response_type,
+                      response_data: nodeType,
                       questionText: faq.question || 'No Title',
                       answerText: answer.answer_text || '',
                       template: answer.template,
                       imageUrl: answer.image_url,
-                      response_type: faq.response_type,
-                      borderColor: typeStyle.borderColor,
                       keywords: faq.keywords,
                       steps: answer.steps,
                       excel_file: answer.excel_file,
                       note: agentNotes[answerNodeId] || '',
-                      pinned: isGroupPinned,
-                      draggable: !isGroupPinned,
+                      pinned: isAnswerNodePinned,
+                      draggable: !isAnswerNodePinned,
                       onChange: handleNoteChange,
-                      onPinToogle: togglePinNode,
+                      onPinToggle: togglePinNode, // <-- Corregí el nombre aquí también, de tu pregunta anterior
                       onTemplateChange: handleTemplateUpdate,
-                      // Add setPanOnDrag if your nodes need it
                       setPanOnDrag: setPanOnDrag, // Pass
+                      // Add setPanOnDrag if your nodes need it
                   };
                   // 2. Crea el nodo con la estructura correcta
                   apiNodes.push({
                       id: answerNodeId,
                       type: nodeType, // El tipo de componente a renderizar            
-                      position: { x: groupX, y: groupY + (answerIndex + 1) * 180 }, // Apilados verticalmente
-                      draggable: !isGroupPinned,
+                      position: { x: answerX, y: answerY }, // <-- Posición ajustada
+                      draggable: !isAnswerNodePinned,
                       data: answerNodeData, // 👈 Pasa el payload directamente aquí
-                      style: isGroupPinned ? {
-                        border: '3px solid #D32F2F',
-                        boxShadow: '0 0 10px rgba(211, 47, 47, 0.7)'
-                      } : typeStyle,
                   });
 
                   apiEdges.push({
@@ -377,8 +310,15 @@ return (
         />
         <MiniMap
           nodeColor={(node: Node<BasePayload>) => {
-              const typeStyle = getCombinedNodeStyle(node.data?.NodeType);
+                const typeStyle = getCombinedNodeStyle(node.data?.response_data);
+                console.log(typeStyle)
                 return typeStyle.backgroundColor;
+                }}
+          nodeBorderRadius={50}
+          nodeStrokeColor={(node: Node<BasePayload>) => {
+                const typeStyle = getCombinedNodeStyle(node.data?.response_data);
+                console.log(typeStyle)
+                return typeStyle.borderColor;
                 }}
         />        
       <Background color={backgroundColor} variant={BackgroundVariant.Cross} gap={12} />

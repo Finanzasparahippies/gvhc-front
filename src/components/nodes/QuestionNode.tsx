@@ -6,10 +6,6 @@ export const QuestionNode: React.FC<NodeProps<Node<BasePayload>>> = (props) => {
 
     const { data } = props
 
-    const handleTogglePin = () => {
-        data.onPinToggle(data.id); // Usa el 'id' que NodeProps ya te da
-    };
-
     return (
         <div style={{
             padding: '10px 20px',
@@ -21,9 +17,6 @@ export const QuestionNode: React.FC<NodeProps<Node<BasePayload>>> = (props) => {
             minWidth: '250px',
         }}>
             <h3 style={{ margin: 0, fontSize: '1.1em', fontWeight: 'bold' }}>{data.questionText}</h3>
-            <button onClick={handleTogglePin}>
-                {data.pinned ? 'Desfijar' : 'Fijar'}
-            </button>
             {/* Solo tiene un handle de salida para conectar con sus respuestas */}
             <Handle type="source" position={Position.Bottom} id={data.questionNodeId}/>
             <Handle 

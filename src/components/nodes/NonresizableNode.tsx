@@ -6,7 +6,7 @@ import { BasePayload } from '../../types/nodes';
 
 export const NonResizableNode: React.FC<NodeProps<Node<BasePayload>>> = ({ id, data }) => {
 
-    const { imageUrl, excel_file, borderColor, keywords, response_type, questionText, answerText, template, NodeType, steps, onTemplateChange, onChange} = data
+    const { imageUrl, excel_file, borderColor, keywords, response_type, questionText, answerText, title, template, NodeType, steps, onTemplateChange, onChange} = data
 
     const [imageSize, setImageSize] = useState<{ width: number | string; height: number | string}>({ width: 'auto', height: 'auto' });
 
@@ -47,7 +47,7 @@ export const NonResizableNode: React.FC<NodeProps<Node<BasePayload>>> = ({ id, d
                     className={`absolute top-0 left-0 w-full h-8 flex items-center justify-center`}
                     style={{ backgroundColor: borderColor || '#6C757D'}}
                 >
-                    {questionText}
+                    {title}
                 </strong>
                 {response_type === 'Process' && imageUrl ? (
                     <div className="relative">

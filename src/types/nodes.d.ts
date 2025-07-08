@@ -21,7 +21,7 @@ type Answer = {
 };
 
 type ResponseTypeData = {
-    id: number;
+    id: number | string;
     type_name: string;
     description?: string;
 }
@@ -35,7 +35,7 @@ type FAQ = {
         pos_x: number;
         pos_y: number;
     };
-    response_type?: ResponseTypeData;
+    response_type: ResponseTypeData;
     keywords?: string[];
     answers: Answer[];
     slides?: any[]; // Define mejor si tienes estructura
@@ -47,6 +47,10 @@ type Department = {
     description?: string;
 }
 
+interface BaseNodeData {
+    id: string; // Asegura que el ID de BaseNodeData sea string y obligatorio
+    // Otras propiedades comunes a todos los datos de nodo
+}
 interface GroupNodeData extends BaseNodeData {
     type: 'group';
     departmentId: number | string; // El ID del departamento
@@ -54,42 +58,38 @@ interface GroupNodeData extends BaseNodeData {
 }
 
 
-interface BasePayload { // Renamed from the original "BasePayload" content
-    id?: number | string;
-    data?:{
-        id?: number | string;
-        data?: {};
-        width?: number;
-        height?: number;
-        sourcePosition?:any;
-        title: string;
-        groupId: string;
-        NodeType?: string;
-        draggable?: boolean;
-        questionText?: string;
-        answerText?: string;
-        template?: string;
-        imageUrl?: string | undefined;
-        response_type?: string;
-        borderColor?: string;
-        keywords?: string[];
-        steps?: FAQStep[];
-        note?: string;
-        pinned?: boolean;
-        label?: string;
-        tooltip?: string;
+export interface BasePayload { // Renamed from the original "BasePayload" content
+    id?: string;
+    width?: number;
+    height?: number;
+    sourcePosition?:any;
+    title: string;
+    groupId: string;
+    draggable?: boolean;
+    questionText?: string;
+    answerText?: string;
+    template?: string;
+    imageUrl?: string | undefined;
+    borderColor?: string;
+    keywords?: string[];
+    steps?: FAQStep[];
+    note?: string;
+    pinned?: boolean;
+    response_data?:string;
+    label?: string;
+    tooltip?: string;
     excel_file?: string;
     label?: string; // For TooltipNode
     tooltip?: string; // For TooltipNode
-    onPinToggle: (id: string) => void;
+    NodeType: ResponseTypeData;
     onChange?: (nodeId: string, newNote: string) => void;
     onTemplateChange?: (nodeId: string, newTemplate: string) => void;
     setPanOnDrag?: (enabled: boolean) => void;
-}
-position?:{
-    x:number, y:numer
-}
-[key: string]: any; // Important for flexibility if you add more properties dynamically
+    onPinToggle?: (id: string) => void;
+    position?:{
+        x:number, y:numer
+    }
+    [key: string]: any; // Important for flexibility if you add more properties dynamically
 }
 interface SearchBarProps {
     query: string;

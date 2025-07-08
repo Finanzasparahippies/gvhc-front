@@ -29,6 +29,10 @@ const NODE_STYLES: { [key: string]: NodeTypeStyle } = {
         backgroundColor: '#000142', // Azul oscuro
         borderColor: '#000142',
     },
+    'default': {
+        backgroundColor: 'rgba(248, 249, 250, 0.9)', // Un gris claro por defecto
+        borderColor: '#6C757D',
+    },
 };
 
 // Define las dimensiones de grupo asociadas a ciertos tipos de nodos.
@@ -44,13 +48,36 @@ export const getNodeStyleByType = (dataType?: string): NodeTypeStyle => {
     return NODE_STYLES[dataType || 'default'] || NODE_STYLES['default'];
 };
 
+export const getCombinedNodeStyle = (dataType?: string, isPinned?: boolean): React.CSSProperties => {
+    const baseStyle = getNodeStyleByType(dataType);
+    console.log('dataType:', dataType)
+    console.log('estilo base:', baseStyle)
+    const defaultStyle: React.CSSProperties = {
+        border: `2px solid ${baseStyle.borderColor}`,
+        backgroundColor: baseStyle.backgroundColor,
+        borderRadius: 8,
+    };
+
+    if (isPinned) {
+        const pinnedStyle: React.CSSProperties = {
+            border: `3px solid rgba(255, 100, 100, 0.8)`, // Borde más grueso
+            boxShadow: '0 0 15px rgba(255, 100, 100, 0.8)', // Sombra roja para resaltar
+            borderRadius: 8,
+        };
+        return { ...defaultStyle, ...pinnedStyle };
+    }
+    return defaultStyle;
+};
 // Función para obtener las dimensiones del grupo basadas en un tipo de dato.
 // Considera si realmente necesitas que estas dimensiones globales cambien dinámicamente así.
 // Generalmente, GROUP_WIDTH y GROUP_HEIGHT deberían ser constantes o calculadas una vez.
 export const getGroupDimensionsByType = (dataType?: string): NodeDimensions => {
+    console.log('group dimensions:', dataType)
     return NODE_GROUP_DIMENSIONS[dataType || 'default'] || NODE_GROUP_DIMENSIONS['default'];
 };
 
 // Exporta los estilos directamente si prefieres acceder a ellos como un objeto
 export const nodeStyles = NODE_STYLES;
 export const nodeGroupDimensions = NODE_GROUP_DIMENSIONS;
+
+export default getNodeStyleByType;
