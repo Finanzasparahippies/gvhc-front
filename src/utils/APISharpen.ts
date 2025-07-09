@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const sharpenAPI = axios.create({
-    baseURL: 'https://gvhc-backend.onrender.com/',
+    baseURL: 'https://gvhc-backend.onrender.com/api/',
     headers: {
         'Content-Type': 'application/json',
     },
