@@ -50,8 +50,6 @@ export const getNodeStyleByType = (dataType?: string): NodeTypeStyle => {
 
 export const getCombinedNodeStyle = (dataType?: string, isPinned?: boolean): React.CSSProperties => {
     const baseStyle = getNodeStyleByType(dataType);
-    console.log('dataType:', dataType)
-    console.log('estilo base:', baseStyle)
     const defaultStyle: React.CSSProperties = {
         border: `2px solid ${baseStyle.borderColor}`,
         backgroundColor: baseStyle.backgroundColor,

@@ -14,11 +14,9 @@ const controlStyle = {
 export const CustomResizableNode: React.FC<NodeProps<Node<BasePayload>>> = (props) => {
 
   const { id, data, type } = props;
-  console.log('data:', data)
   const nodeStyle = getCombinedNodeStyle(data.response_data, data.pinned);
   const onPinToggle = data.onPinToggle;
 
-  console.log('data (BasePayload):', data); // ¡Ahora data es directamente tu BasePayload!
   return (
     <div
       style={nodeStyle}

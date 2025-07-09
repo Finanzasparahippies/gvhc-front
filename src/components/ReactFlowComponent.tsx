@@ -196,8 +196,6 @@ export const ReactFlowComponent: React.FC = () => {
                 faq.answers.forEach((answer, answerIndex) => {
                   const answerNodeId = `faq-${faq.id}-answer-${answer.id}`;
                   const nodeType = answer.node_type; // Default type
-                  console.log('nodetype:',nodeType)
-
                   const isAnswerNodePinned = pinnedNodesInfo.some((pn) => pn.id === answerNodeId);
                   const col = answerIndex % ANSWERS_PER_ROW;
                   const row = Math.floor(answerIndex / ANSWERS_PER_ROW);
@@ -338,13 +336,11 @@ return (
         <MiniMap
           nodeColor={(node: Node<BasePayload>) => {
                 const typeStyle = getCombinedNodeStyle(node.data?.response_data);
-                console.log(typeStyle)
                 return typeStyle.backgroundColor;
                 }}
           nodeBorderRadius={50}
           nodeStrokeColor={(node: Node<BasePayload>) => {
                 const typeStyle = getCombinedNodeStyle(node.data?.response_data);
-                console.log(typeStyle)
                 return typeStyle.borderColor;
                 }}
         />        

@@ -26,7 +26,6 @@ import { QUERY_TEMPLATES } from '../utils/sharpenConfig';
     }, []);
 
     const fetchAndPlayAudio = useCallback(async (row: RowData, rowIndex: number) => {
-        console.log('Attempting to fetch audio for row:', row);
         const callId = row.queueCallManagerID;
 
         const callDateTimeStr = row.answerTime || row.endTime || row.startTime;
@@ -40,7 +39,7 @@ import { QUERY_TEMPLATES } from '../utils/sharpenConfig';
         const now = new Date();
         const diffTime = Math.abs(now.getTime() - callDate.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        console.log(`Llamada con ID ${callId} tiene ${diffDays} días de antigüedad.`);
+        // console.log(`Llamada con ID ${callId} tiene ${diffDays} días de antigüedad.`);
 
         try {
         if (!callId) {
@@ -48,14 +47,12 @@ import { QUERY_TEMPLATES } from '../utils/sharpenConfig';
             return;
         }
 
-        console.log(`Buscando detalles con getCdrDetails para callId: ${callId}.`);
         const { endpoint: cdrDetailsEndpoint, payload: cdrDetailsPayload } = QUERY_TEMPLATES.getCdrDetails(callId);
         const cdrDetailsResponse = await sharpenAPI.post<CdrDetailsData>('dashboards/proxy/generic/', {
             endpoint: cdrDetailsEndpoint,
             payload: cdrDetailsPayload,
         });
 
-        console.log('CDR Details Response Data:', cdrDetailsResponse.data);
 
         const mixmonFileName = cdrDetailsResponse.data?.cdr?.mixmonFileName;
         const uniqueID = cdrDetailsResponse.data?.cdr?.queueCallManagerID; // Re-usar callId si es el uniqueID
@@ -64,9 +61,7 @@ import { QUERY_TEMPLATES } from '../utils/sharpenConfig';
             alert(`No se pudo obtener el 'mixmonFileName' o 'uniqueID' de la API 'getCdrDetails' para la llamada con ID: ${callId}.`);
             return;
         }
-        console.log(`mixmonFileName obtenido: ${mixmonFileName}, uniqueID para audio: ${uniqueID}`);
 
-        console.log(`Obteniendo URL de grabación de Sharpen a través del proxy.`);
         const { endpoint: recordingUrlEndpoint, payload: recordingUrlPayload } = QUERY_TEMPLATES.getCdrDetails(callId);
         const recordingUrlResponse = await sharpenAPI.post<RecordingUrlResponse>(
             'dashboards/proxy/generic/',
@@ -76,7 +71,6 @@ import { QUERY_TEMPLATES } from '../utils/sharpenConfig';
             }
         );
         
-        console.log('Recording URL Response:', recordingUrlResponse.data);
 
         if (recordingUrlResponse.data?.status === 'successful' && recordingUrlResponse.data.url) {
             // Redirige directamente al endpoint del proxy de audio para que maneje el streaming y CORS

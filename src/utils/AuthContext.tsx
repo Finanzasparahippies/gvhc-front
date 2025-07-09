@@ -53,7 +53,6 @@ import API from '../utils/API';
             console.error("❌ login(): userData está vacío o no definido");
             return;
         }
-        console.log('data de usuario', userData)
         localStorage.setItem('access_token', accessToken);
         localStorage.setItem('refresh_token', refreshToken);
         localStorage.setItem('user', JSON.stringify(userData)); // Guarda el objeto de usuario completo

@@ -251,8 +251,6 @@ import sharpenAPI from '../../../utils/APISharpen'
             throw new Error('Formato de respuesta no reconocido o plantilla no manejada.');
         }
 
-            console.log("Primer resultado (procesado):", extractedData?.[0]);
-
             let filteredData = extractedData; // Por defecto, usamos todos los datos extraídos.
 
             if (selectedQueryTemplate === 'liveStatus') {
@@ -260,7 +258,6 @@ import sharpenAPI from '../../../utils/APISharpen'
                     row.queueCallManagerID !== null && row.queueCallManagerID !== undefined
                 );
             }
-        console.log("Datos finales para renderizar:", filteredData);
 
         startTransition(() => {
             setData(filteredData);
@@ -375,18 +372,14 @@ import sharpenAPI from '../../../utils/APISharpen'
         // Se añade un BOM para asegurar la correcta interpretación de caracteres UTF-8 en Excel.
         const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
         const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
-        console.log(new Date("2025-06-17T08:36:08Z").toLocaleString());
-        console.log(new Date("2025-06-17T15:22:25Z").toISOString());
 
         saveAs(blob, fileName);
     } catch (error) {
-        console.error("Error al generar el CSV:", error);
         alert("Ocurrió un error al generar el archivo CSV. Revisa la consola para más detalles.");
     }
 };
 
 const fetchCallAudio = async (row: RowData, rowIndex: number) => {
-    console.log('Attempting to fetch audio for row:', row);
 
     const callId = row.queueCallManagerID;
     const answerTime = row.answerTime;
@@ -406,20 +399,16 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
     const diffTime = Math.abs(now.getTime() - callDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    console.log(`Llamada con ID ${callId} tiene ${diffDays} días de antigüedad.`);
+    // console.log(`Llamada con ID ${callId} tiene ${diffDays} días de antigüedad.`);
 
     try {
         if (callId) {
-            // --- LÓGICA CORREGIDA PARA LLAMADAS ANTIGUAS ---
-            console.log(`Buscando detalles con getCdrDetails.`);
 
             const { endpoint: interactionEndpoint, payload: interactionPayload  } = QUERY_TEMPLATES.getCdrDetails(callId);
             const interactionResponse = await sharpenAPI.post<any>('dashboards/proxy/generic/', { // Usamos <any> para flexibilidad
                 endpoint: interactionEndpoint,
                 payload: interactionPayload,
             });
-
-            console.log('ApiResponse:', interactionResponse.data);
 
             const mixmonFileName = interactionResponse.data?.data?.cdr?.mixmonFileName;
             const extension = interactionResponse.data?.data?.cdr?.context;
@@ -428,10 +417,6 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                     alert(`No se pudo obtener el 'mixmonFileName' de la API 'getInteraction' para la llamada con ID: ${callId}.`);
                     return;
                 }
-            console.log(`mixmonFileName obtenido: ${mixmonFileName}`);
-            console.log(`extension obtenida: ${extension}`);
-
-            console.log(`Obteniendo URL temporal de AWS S3 con getObjectLink.`);
 
             const awsResponse = await sharpenAPI.post<RecordingUrlResponse>(
                 'dashboards/proxy/generic/',
@@ -444,12 +429,10 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                     }
                 }
             );
-            console.log('AWS Object Link Response:', awsResponse.data);
 
 
             if (awsResponse.data?.status === 'successful' && awsResponse.data.url) {
                 finalAudioUrl = awsResponse.data.url;
-                console.log(`URL de AWS S3 obtenida y limpia: ${finalAudioUrl}`);
             } else {
                 alert(`Error al generar la URL de la grabación (vía fallback): ${awsResponse.data.description || 'Respuesta no válida de la API.'}`);
                 return
@@ -461,9 +444,8 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
         return;
     }
 
-    // 3. USA LA URL FINAL (si se obtuvo)
     if (finalAudioUrl) {
-        console.log(`Frontend: Abriendo URL de grabación obtenida: ${finalAudioUrl}`);
+        // console.log(`Frontend: Abriendo URL de grabación obtenida: ${finalAudioUrl}`);
         setData(currentData => {
             const newData = [...currentData];
             const globalIndex = ((currentPage - 1) * itemsPerPage) + rowIndex;
