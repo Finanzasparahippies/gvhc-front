@@ -1,5 +1,6 @@
 // src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import API from '../utils/API'; 
 
     const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -13,31 +14,39 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
     const [isLoading, setIsLoading] = useState<boolean>(true); // Nuevo estado de carga
 
     useEffect(() => {
-        const loadUserFromStorage = () => {
-        // Intenta cargar el usuario y los tokens del localStorage al iniciar la app
-        const storedAccessToken = localStorage.getItem('access_token');
-        const storedRefreshToken = localStorage.getItem('refresh_token');
-        const storedUser = localStorage.getItem('user');
+    // Convertimos la lógica en una función asíncrona para usar await
+    const validateToken = async () => {
+        const accessToken = localStorage.getItem('access_token');
 
-        if (storedAccessToken && storedRefreshToken && storedUser) {
+        if (!accessToken) {
+            setIsLoading(false); // No hay token, termina la carga.
+            return;
+        }
+
         try {
-            const userData = JSON.parse(storedUser);
-            if (userData && typeof userData.role === 'string') {
-                        setUser(userData);
-                        setIsAuthenticated(true);
-                    } else {
-                        console.error("Stored user data is invalid or missing role:", userData);
-                        logout(); // Limpiar si los datos son inválidos
-                    }
+            // ✨ CAMBIO CLAVE: Validar el token con el backend.
+            // Usamos un endpoint protegido que devuelva los datos del usuario.
+            // Si el token es inválido, esta llamada fallará y irá al catch.
+            const response = await API.get<{data: User }>('api/protected/'); // O tu endpoint de perfil
+
+            // Si la llamada tiene éxito, tenemos datos de usuario frescos.
+            setUser(response.data.data);
+        if (response.data) {
+            const { id, username, role, email } = response.data.data;
+            setUser({ id, username, role, email });
+            } else {
+                setUser(null); // En caso de que data venga vacía o nula
+            }
         } catch (error) {
-            console.error("Failed to parse stored user data:", error);
-            logout(); // Limpiar si los datos son inválidos
+            console.error("La validación del token falló, cerrando sesión.", error);
+            logout();
+        } finally {
+            setIsLoading(false);
         }
-        }
-        setIsLoading(false); // La carga inicial ha terminado
     };
-    loadUserFromStorage();
-    }, []); // Se ejecuta solo una vez al montar []);
+
+    validateToken();
+  }, []); // Se ejecuta solo una vez al montar
 
     const login = (accessToken: string, refreshToken: string, userData: AuthContextType['user']) => {
         if (!userData) {
