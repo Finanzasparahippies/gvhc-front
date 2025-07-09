@@ -7,6 +7,7 @@ import 'sweetalert2/dist/sweetalert2.min.css';
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { Handle, Position, NodeProps, Node  } from '@xyflow/react';
 import { BasePayload } from '../../types/nodes';
+import { getCombinedNodeStyle } from '../../utils/nodeStyles';
 
 export const TemplateNode: React.FC<NodeProps<Node<BasePayload>>> = (props) => {
 
@@ -26,6 +27,9 @@ export const TemplateNode: React.FC<NodeProps<Node<BasePayload>>> = (props) => {
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
     const initialTemplateRef = useRef<string>(data.template || '');
     const image = data.data?.imageUrl
+    const onPinToggle = data.onPinToggle;
+    const nodeStyle = getCombinedNodeStyle(data.response_data, data.pinned);
+
 
 
 
@@ -36,11 +40,6 @@ export const TemplateNode: React.FC<NodeProps<Node<BasePayload>>> = (props) => {
         const handleMouseLeave = (): void => {
             data.setPanOnDrag?.(true);
         };
-    
-        const handlePinned = (event: MouseEvent<HTMLDivElement>): void => {
-            event.stopPropagation(); 
-                data.onPinToggle(id); 
-            };
     
         const handleCopy = (): void => {
             navigator.clipboard.writeText(editableTemplate)
@@ -155,6 +154,7 @@ export const TemplateNode: React.FC<NodeProps<Node<BasePayload>>> = (props) => {
 
     return (
         <div
+            style={nodeStyle}
             className="w-[400px] bg-white rounded-lg shadow-xl flex flex-col border border-gray-300"
         >
             <Handle type="source" position={Position.Bottom} id={'question'}/>
@@ -171,18 +171,12 @@ export const TemplateNode: React.FC<NodeProps<Node<BasePayload>>> = (props) => {
                     
                 <h3 className='absolute text-lg font-semibold text-white left-0 right-0 text-center
                                 truncate px-12'>
-                    {data.questionText}
+                    {data.title}
                 </h3>
                     <div className="relative group" 
-                        onClick={handlePinned}>
-                            <AiTwotonePushpin
-                                className={`
-                                    text-red-400 cursor-pointer transition-transform duration-200
-                                    ${data.pinned ? 'transform scale-110' : 'transform scale-100 hover:scale-110'}
-                                `}
-                                size={24}
-                                title={data.pinned ? 'Desanclar' : 'Anclar'}
-                                />
+                        onClick={() => onPinToggle && onPinToggle(id)} 
+                        >
+                                      {data.pinned ? '📌' : '📍'} {/* Emoji de pin para indicar el estado */}
                                 <span className="
                                     absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2
                                     px-2 py-1 bg-gray-700 text-white text-xs rounded

@@ -14,7 +14,6 @@ import {
   Edge,
   Connection,
   OnConnect,
-  NodeProps
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -36,13 +35,15 @@ import { Slide } from '../components/Slides';
 import { BasePayload, FAQ } from '../types/nodes';
 import getCombinedNodeStyle, { getNodeStyleByType, getGroupDimensionsByType } from '../utils/nodeStyles';
 
-
-const COLUMNS = 8;
-const ANSWER_NODE_WIDTH = 650; // Ancho estimado de tus nodos de respuesta (ajusta según el tamaño real de tus nodos)
-const ANSWER_NODE_HEIGHT = 100; // Alto estimado de tus nodos (ya lo usas)
-const HORIZONTAL_SPACING = ANSWER_NODE_WIDTH + 50; // Espacio entre nodos (ancho + un margen)
-const VERTICAL_SPACING = ANSWER_NODE_HEIGHT + 50; // Espacio vertical, si decides apilar después de cierta cantidad
-const ANSWERS_PER_ROW = 3; // Número de respuestas por fila dentro de un grupo de preguntas/respuestas
+const INITIAL_X = 50; // Posición X inicial para el primer nodo
+const INITIAL_Y = 50; // Posición Y inicial para el primer nodo
+const COLUMNS = 10; // Número de grupos (pregunta + respuestas) por fila. Ajústalo a 8 si quieres 8 columnas.
+const QUESTION_NODE_HEIGHT = 40; // Altura estimada de tu QuestionNode. Ajusta si tu QuestionNode es más alto/bajo.
+const ANSWER_NODE_WIDTH_ESTIMATED = 600; // Ancho estimado de tus nodos de respuesta (TemplateNode, NotesNode, etc.)
+const ANSWER_NODE_HEIGHT_ESTIMATED = 500; // Alto estimado de tus nodos de respuesta. ¡Este es CRÍTICO para evitar solapamientos verticales!
+const HORIZONTAL_GROUP_SPACING = 100; // Espacio horizontal entre grupos de preguntas/respuestas
+const VERTICAL_GROUP_SPACING = 100; // Espacio vertical entre filas de grupos de preguntas/respuestas
+const ANSWERS_PER_ROW = 10; // Cuántas respuestas quieres apilar horizontalmente bajo una pregunta.
 
 
 type PinnedNodeInfo = { id: string; data?: { pinned?: boolean } /* o lo que sea que guardes */ };
@@ -137,19 +138,39 @@ export const ReactFlowComponent: React.FC = () => {
       const apiNodes: Node<BasePayload>[] = [];
       const apiEdges: Edge[] = [];
 
-      const defaultGroupDimensions = getGroupDimensionsByType(); // Obtiene las dimensiones por defecto
-      let currentGroupWidth = defaultGroupDimensions.width;
-      let currentGroupHeight = defaultGroupDimensions.height;
-  
-      data.forEach((faq: FAQ, faqIndex: number ) => {
+      let currentX = INITIAL_X;
+      let currentY = INITIAL_Y;
+      let rowMaxHeight = 0; // Altura máxima de los grupos en la fila actual
 
-        const faqGroupDimensions = getGroupDimensionsByType(faq.response_type?.type_name); // Usa type_name de response_type
-        currentGroupWidth = faqGroupDimensions.width;
-        currentGroupHeight = faqGroupDimensions.height;
-
-        const groupX = (faqIndex % COLUMNS) * currentGroupWidth;
-        const groupY = Math.floor(faqIndex / COLUMNS) * currentGroupHeight;
+      data.forEach((faq: FAQ ) => {
         const questionNodeId = `faq-question-${faq.id}`;
+
+       const numAnswers = faq.answers.length;
+                const numAnswerRows = Math.ceil(numAnswers / ANSWERS_PER_ROW);
+
+                // Altura total de las respuestas debajo de la pregunta
+                const answersTotalHeight = numAnswerRows * (ANSWER_NODE_HEIGHT_ESTIMATED + (VERTICAL_GROUP_SPACING / 2));
+                // Altura total del grupo: altura de la pregunta + un margen + altura total de las respuestas
+                const groupActualHeight = QUESTION_NODE_HEIGHT + VERTICAL_GROUP_SPACING + answersTotalHeight;
+
+                // Ancho total del grupo: ANSWERS_PER_ROW * ANSWER_NODE_WIDTH_ESTIMATED + (ANSWERS_PER_ROW-1) * un margen
+                // O un ancho estimado de la pregunta si es más ancha, tomaremos la más ancha
+                const groupActualWidth = Math.max(
+                    ANSWER_NODE_WIDTH_ESTIMATED * ANSWERS_PER_ROW + (ANSWERS_PER_ROW > 1 ? (ANSWERS_PER_ROW - 1) * 30 : 0), // Ancho de las respuestas apiladas
+                    ANSWER_NODE_WIDTH_ESTIMATED // O el ancho de la pregunta si es que la pregunta se extiende mucho
+                );
+
+
+                // 2. Lógica para el salto de fila si no hay suficiente espacio horizontal
+                // Esto comprueba si el próximo grupo excedería el ancho máximo de la "columna virtual"
+                if (currentX + groupActualWidth > (INITIAL_X + COLUMNS * (ANSWER_NODE_WIDTH_ESTIMATED + HORIZONTAL_GROUP_SPACING))) {
+                    currentX = INITIAL_X; // Reinicia X al principio de la fila
+                    currentY += rowMaxHeight + VERTICAL_GROUP_SPACING; // Baja a la siguiente fila, usando la altura máxima de la fila anterior
+                    rowMaxHeight = 0; // Reinicia la altura máxima para la nueva fila
+                }
+
+                // 3. Actualizar la altura máxima de la fila actual
+                rowMaxHeight = Math.max(rowMaxHeight, groupActualHeight);
 
         const questionNodeData = {
             id: questionNodeId,
@@ -158,6 +179,8 @@ export const ReactFlowComponent: React.FC = () => {
             NodeType: faq.response_type, 
             questionText: faq.question,
             setPanOnDrag: setPanOnDrag,
+            onPinToggle: togglePinNode,
+            pinned: pinnedNodesInfo.some((pn) => pn.id === questionNodeId) // Verificar si la pregunta también está anclada
             };
 
             // 2. CREA EL NODO COMPLETO usando el payload anterior
@@ -165,7 +188,7 @@ export const ReactFlowComponent: React.FC = () => {
               id: questionNodeId,
               type: 'QuestionNode',
               // position: { x: (faqIndex % 5) * 800, y: Math.floor(faqIndex / 5) * 600 },
-              position: { x: groupX, y: groupY },
+              position: { x: currentX, y: currentY },
               draggable: true,
               data: questionNodeData, // ✅ El payload va aquí
             });
@@ -178,8 +201,8 @@ export const ReactFlowComponent: React.FC = () => {
                   const isAnswerNodePinned = pinnedNodesInfo.some((pn) => pn.id === answerNodeId);
                   const col = answerIndex % ANSWERS_PER_ROW;
                   const row = Math.floor(answerIndex / ANSWERS_PER_ROW);
-                  const answerX = groupX + (col * HORIZONTAL_SPACING);
-                  const answerY = groupY + VERTICAL_SPACING + (row * VERTICAL_SPACING);
+                  const answerX = currentX + (col * (ANSWER_NODE_WIDTH_ESTIMATED + HORIZONTAL_GROUP_SPACING));
+                  const answerY = currentY + QUESTION_NODE_HEIGHT + (VERTICAL_GROUP_SPACING / 2) + (row * (ANSWER_NODE_HEIGHT_ESTIMATED + (VERTICAL_GROUP_SPACING / 2)));
 
                   // 1. Construye el objeto de datos (payload) directamente
                   const answerNodeData = {
@@ -221,17 +244,21 @@ export const ReactFlowComponent: React.FC = () => {
                       animated: true,
                   });
               });
+                currentX += groupActualWidth + HORIZONTAL_GROUP_SPACING;
             });
 
             setNodes(apiNodes);
             setEdges(apiEdges);
+            // setTimeout(() => {
+            //     fitView({ padding: 0.1 });
+            // }, 50); 
             return apiNodes;
 
         } catch (error) {
             console.error('Error fetching nodes:', error);
             return [];
         }
-    }, [ ]);
+    }, [handleNoteChange, handleTemplateUpdate, setEdges, setNodes, setPanOnDrag, togglePinNode]); // Dependencias actualizadas
 
   useEffect(() => {
           const lastColor = localStorage.getItem('preferedColor')
