@@ -145,7 +145,7 @@ export const ReactFlowComponent: React.FC = () => {
       data.forEach((faq: FAQ ) => {
         const questionNodeId = `faq-question-${faq.id}`;
 
-       const numAnswers = faq.answers.length;
+      const numAnswers = faq.answers.length;
                 const numAnswerRows = Math.ceil(numAnswers / ANSWERS_PER_ROW);
 
                 // Altura total de las respuestas debajo de la pregunta
