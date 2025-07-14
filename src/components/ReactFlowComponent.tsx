@@ -145,7 +145,7 @@ export const ReactFlowComponent: React.FC = () => {
       data.forEach((faq: FAQ ) => {
         const questionNodeId = `faq-question-${faq.id}`;
 
-       const numAnswers = faq.answers.length;
+      const numAnswers = faq.answers.length;
                 const numAnswerRows = Math.ceil(numAnswers / ANSWERS_PER_ROW);
 
                 // Altura total de las respuestas debajo de la pregunta
@@ -196,6 +196,8 @@ export const ReactFlowComponent: React.FC = () => {
                 faq.answers.forEach((answer, answerIndex) => {
                   const answerNodeId = `faq-${faq.id}-answer-${answer.id}`;
                   const nodeType = answer.node_type; // Default type
+                  console.log('nodetype:',nodeType)
+
                   const isAnswerNodePinned = pinnedNodesInfo.some((pn) => pn.id === answerNodeId);
                   const col = answerIndex % ANSWERS_PER_ROW;
                   const row = Math.floor(answerIndex / ANSWERS_PER_ROW);
@@ -293,9 +295,6 @@ export const ReactFlowComponent: React.FC = () => {
   };  
   
 
- // Manejar clic en nodo (fijar o desfijar)
-
-
 return (
 <>
     <div
@@ -336,11 +335,13 @@ return (
         <MiniMap
           nodeColor={(node: Node<BasePayload>) => {
                 const typeStyle = getCombinedNodeStyle(node.data?.response_data);
+                console.log(typeStyle)
                 return typeStyle.backgroundColor;
                 }}
           nodeBorderRadius={50}
           nodeStrokeColor={(node: Node<BasePayload>) => {
                 const typeStyle = getCombinedNodeStyle(node.data?.response_data);
+                console.log(typeStyle)
                 return typeStyle.borderColor;
                 }}
         />        

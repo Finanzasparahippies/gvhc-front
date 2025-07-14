@@ -53,7 +53,7 @@ import sharpenAPI from '../../../utils/APISharpen'
 
             }
         }),
-            cdrReport: (server: string, database: string, table: string, startDate: string, endDate: string) => ({
+            cdrReport: (server: string, database: string, table: string, startDate: string, endDate: string, limit: number, offset:number) => ({
                 endpoint: "V2/query/", // Sigue usando el endpoint genérico para consultas SQL
                 payload: {
                     method: "query", // Asegúrate de que el método sea 'query' para las consultas SQL
@@ -62,6 +62,7 @@ import sharpenAPI from '../../../utils/APISharpen'
                         queueCallManagerID, answerTime, endTime, agentName, waitTime, agentTalkTime, agentHoldTime, wrapup, segmentNumber, queueName, username, transferToData, commType
                         FROM ${server}.${database}.${table}
                         WHERE endTime BETWEEN '${startDate}' AND '${endDate}'
+                        LIMIT ${limit} OFFSET ${offset}
                     `,
                 }
             }),
@@ -131,6 +132,11 @@ import sharpenAPI from '../../../utils/APISharpen'
         const [isModalOpen, setIsModalOpen] = useState(false);
         const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
 
+        const [currentApiOffset, setCurrentApiOffset] = useState(0);
+        const API_BATCH_SIZE = 5000; // Cuántos resultados pedir por cada llamada a la API (ajusta si es necesario)
+        const MAX_API_RESULTS = 20000; // Límite total de resultados que quieres obtener
+        const [isFetchingAllResults, setIsFetchingAllResults] = useState(false);
+
         const getLocalDatetimeString = (date: Date): string => {
         const year = date.getFullYear();
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -168,7 +174,8 @@ import sharpenAPI from '../../../utils/APISharpen'
         setCurrentAudioUrl(null); // Limpia la URL cuando se cierra
         };
 
-        const fetchData = useCallback(async () => {
+        const fetchData = useCallback(async (isInitialFetch: boolean = true) => {
+        if (isInitialFetch) {
             setLoading(true);
             setError(null);
             setData([]);
@@ -176,7 +183,16 @@ import sharpenAPI from '../../../utils/APISharpen'
             setFetchedCount(0);
             setCurrentPage(1);
             setMonitoringStatus(null); 
-
+            setCurrentApiOffset(0); // Reiniciar el offset para una nueva búsqueda
+            setIsFetchingAllResults(false); // Reiniciar el estado de carga total
+        } else {
+            if (isFetchingAllResults && currentApiOffset >= MAX_API_RESULTS) {
+                // Si ya alcanzamos el máximo deseado, no seguir pidiendo.
+                setLoading(false);
+                setIsFetchingAllResults(false);
+                return;
+            }
+        }
             let apiEndpoint: string;
             let apiPayload: { [key: string]: any; }; // Definimos el tipo del payload
         if (selectedQueryTemplate === 'liveStatus') { // Creamos una nueva plantilla para la consulta directa
@@ -189,7 +205,7 @@ import sharpenAPI from '../../../utils/APISharpen'
                 setLoading(false);
                 return;
             }
-            const { endpoint, payload } = QUERY_TEMPLATES.cdrReport(server, database, table, startDate, endDate);
+            const { endpoint, payload } = QUERY_TEMPLATES.cdrReport(server, database, table, startDate, endDate, API_BATCH_SIZE, currentApiOffset );
             apiEndpoint = endpoint;
             apiPayload = payload;
         } else if (selectedQueryTemplate === 'agentStatus') {
@@ -258,14 +274,28 @@ import sharpenAPI from '../../../utils/APISharpen'
                     row.queueCallManagerID !== null && row.queueCallManagerID !== undefined
                 );
             }
+        console.log("Datos finales para renderizar:", filteredData);
+        console.log("Datos recibidos en este lote:", filteredData.length);
 
         startTransition(() => {
-            setData(filteredData);
-            setAgentStatusData(filteredData[0] || null);
-            setFetchedCount(filteredData.length);
-            if (filteredData.length > 0) {
-                setResponse({ status: 'Complete', data: filteredData });
-            }
+            setData(prevData => [...prevData, ...filteredData]); // Añadir al estado existente
+            setFetchedCount(prev => prev + filteredData.length); // Actualizar contador total
+            setCurrentApiOffset(prevOffset => prevOffset + filteredData.length); // Actualizar offset para la próxima llamada
+            if (isInitialFetch && filteredData.length === 0) {
+                setError("No se encontraron resultados.");
+                }
+            setAgentStatusData(filteredData[0] || null); // Revisa si esto sigue siendo relevante para todos los casos
+
+            if (isFetchingAllResults) {
+                if (filteredData.length < API_BATCH_SIZE || (currentApiOffset + filteredData.length) >= MAX_API_RESULTS) {
+                    setIsFetchingAllResults(false); // Detener si no hay más o si alcanzamos el límite
+                    setLoading(false);
+                }else {
+                        setTimeout(() => {
+                            fetchData(false); // Llama a la siguiente página
+                        }, 200); // Pequeña pausa para evitar spamear el servidor
+                    }
+                }
         });
 
     } catch (err: any) {
@@ -273,15 +303,36 @@ import sharpenAPI from '../../../utils/APISharpen'
         setError(`Error al consultar la API: ${err.message || 'Revisa la consola para más detalles.'}`);
         if (err.response && err.response.data) {
             const apiError = err.response.data.error || 'Error desconocido';
-            const details = err.response.data.details || '';
+            const details = err.response.data.data?.details || '';
             setError(`Error de la API: ${apiError} - ${details}`);
         }
-    } finally {
+        setIsFetchingAllResults(false); // Detener la carga en caso de error
         setLoading(false);
+    } finally {
+        if (!isFetchingAllResults) { // Solo si no estamos en el modo de carga continua
+        setLoading(false);
+        }
     }
-}, [customQuery, selectedQueryTemplate, isValidRange, startDate, endDate, server, database, table, agentUsername]);
+}, [
+    customQuery, selectedQueryTemplate, isValidRange, startDate, endDate, server, database, table, agentUsername, currentApiOffset, 
+    API_BATCH_SIZE, MAX_API_RESULTS, isFetchingAllResults, getAgentsParams
+    ]);
+
+    const startFetchingAllResults = () => {
+        setData([]); // Limpia datos anteriores al iniciar una nueva carga total
+        setFetchedCount(0);
+        setCurrentApiOffset(0);
+        setError(null);
+        setLoading(true);
+        setIsFetchingAllResults(true); // Activa el modo de carga total
+        fetchData(true); // Inicia la primera llamada
+    };
 
     const startMonitoringCall = async (queueCallManagerID: string, extension: string) => {
+
+        console.log('QueueID:', queueCallManagerID)
+        const soloExtension = extension.substring(0, 3);
+        console.log('extension:', soloExtension)
             if (!queueCallManagerID || !extension) {
                 alert("Falta el ID de la llamada o la extensión del agente para poder monitorear.");
                 return;
@@ -294,7 +345,7 @@ import sharpenAPI from '../../../utils/APISharpen'
                     endpoint: 'V2/queueCallManager/listen',
                     payload: {
                         queueCallManagerID: queueCallManagerID,
-                        extension: extension,
+                        extension: soloExtension,
                     }
                 });
 
@@ -588,7 +639,10 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
             {/* --- BOTONES DE ACCIÓN --- */}
             <div className='flex flex-wrap items-center gap-4 mb-6 p-4 bg-gray-800 rounded-lg shadow-md'>
                 <button
-                    onClick={fetchData}
+                    onClick={() => {
+                        setIsFetchingAllResults(true);
+                        fetchData(true); 
+                    }}                    
                     disabled={loading || (selectedQueryTemplate === 'cdrReport' && !customQuery && !isValidRange())} // Disable if CDR and dates are invalid
                     className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[150px]"
                 >
