@@ -16,7 +16,7 @@ interface LoginResponse {
 
 
 interface AuthContextType {
-    user: { id: number | string; username: string; role: string; email: string } | null;
+    user: UserData | null;
     isAuthenticated: boolean;
     login: (accessToken: string, refreshToken: string, userData: AuthContextType['user']) => void;
     logout: () => void;

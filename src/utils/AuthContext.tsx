@@ -12,7 +12,7 @@ import API from '../utils/API'; // Asegúrate de que esta ruta sea correcta para
 
     export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<AuthContextType['user'] | null>(null);
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+    const isAuthenticated = !!user; 
     const [isLoading, setIsLoading] = useState<boolean>(true); // Nuevo estado de carga
 
     const decodeAccessToken = useCallback((token: string): { user: User, exp: number } | null => {
@@ -34,41 +34,7 @@ import API from '../utils/API'; // Asegúrate de que esta ruta sea correcta para
         return null;
         }
     }, []);    
-    
-    useEffect(() => {
-    // Convertimos la lógica en una función asíncrona para usar await
-    const validateToken = async () => {
-        const accessToken = localStorage.getItem('access_token');
 
-        if (!accessToken) {
-            setIsLoading(false); // No hay token, termina la carga.
-            return;
-        }
-
-        try {
-            // ✨ CAMBIO CLAVE: Validar el token con el backend.
-            // Usamos un endpoint protegido que devuelva los datos del usuario.
-            // Si el token es inválido, esta llamada fallará y irá al catch.
-            const response = await API.get<{data: User }>('api/protected/'); // O tu endpoint de perfil
-
-            // Si la llamada tiene éxito, tenemos datos de usuario frescos.
-            setUser(response.data.data);
-        if (response.data) {
-            const { id, username, role, email } = response.data.data;
-            setUser({ id, username, role, email });
-            } else {
-                setUser(null); // En caso de que data venga vacía o nula
-            }
-        } catch (error) {
-            console.error("La validación del token falló, cerrando sesión.", error);
-            logout();
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    validateToken();
-  }, []); // Se ejecuta solo una vez al montar
 
     const login = useCallback((accessToken: string, refreshToken: string, userData: AuthContextType['user']) => {
         if (!userData) {
@@ -79,92 +45,66 @@ import API from '../utils/API'; // Asegúrate de que esta ruta sea correcta para
         localStorage.setItem('refresh_token', refreshToken);
         localStorage.setItem('user', JSON.stringify(userData)); // Guarda el objeto de usuario completo
         setUser(userData);
-        setIsAuthenticated(true);
     },[]);
 
-    const logout = () => {
+    const logout = useCallback(() => {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user');
         setUser(null);
-        setIsAuthenticated(false);
-    };
+        window.location.pathname = '/login'
+    },[]);
     
     useEffect(() => {
-        const rehydrateAuth = async () => {
-            const storedAccessToken = localStorage.getItem('access_token');
-            const storedRefreshToken = localStorage.getItem('refresh_token');
-
-            if (storedAccessToken) {
-                const decoded = decodeAccessToken(storedAccessToken);
-                if (decoded && decoded.user) {
-                const currentTime = Date.now() / 1000; // Tiempo actual en segundos UNIX
-
-                if (decoded.exp > currentTime) {
-                    // Token de acceso válido y no expirado
-                    const storedUser = localStorage.getItem('user');
-                    if (storedUser) {
-                    try {
-                        const userData = JSON.parse(storedUser);
-                        setUser(userData);
-                        setIsAuthenticated(true);
-                    } catch (error) {
-                        console.error("Error parsing stored user data:", error);
-                        logout(); // Si no se puede parsear el usuario, considera la sesión inválida
-                    }
-                    } else {
-                    // Esto no debería ocurrir si `login` siempre guarda el usuario
-                    console.warn("Access token found but no user data in localStorage. Logging out.");
-                    logout();
-                    }
-                } else if (storedRefreshToken) {
-                    // Token de acceso expirado, intentar refrescarlo
-                    console.log("Access token expired, attempting to refresh...");
-                    try {
-                    const response = await API.post<RefreshTokenResponse>('/api/token/refresh/', { refresh: storedRefreshToken });
-                    const newAccessToken = response.data.refresh;
-                    localStorage.setItem('access_token', newAccessToken);
-
-                    // Decodificar el nuevo token para actualizar la info del usuario si es necesario
-                    const newDecoded = decodeAccessToken(newAccessToken);
-                    if (newDecoded && newDecoded.user) {
-                        // Aquí, si tu `refresh_token` API devuelve un `user` actualizado, úsalo.
-                        // Si solo devuelve un nuevo `access_token`, mantén el `user` original de localStorage
-                        // o decodifícalo del nuevo token si contiene toda la info del user.
-                        const storedUserAfterRefresh = localStorage.getItem('user');
-                        if (storedUserAfterRefresh) {
-                            const userData = JSON.parse(storedUserAfterRefresh);
-                            setUser(userData); // Usa el usuario que ya tienes en localStorage
-                            setIsAuthenticated(true);
-                        } else {
-                            // Si por alguna razón el usuario no está después del refresh, decodifica el nuevo token
-                            setUser(newDecoded.user);
-                            setIsAuthenticated(true);
+        const initializeAuth  = async () => {
+            const accessToken = localStorage.getItem('access_token');
+            const refreshToken = localStorage.getItem('refresh_token');
+            if (!accessToken) {
+                            setIsLoading(false);
+                            return;
                         }
-                    } else {
-                        console.error("Refreshed token is invalid or missing user data.");
-                        logout();
-                    }
-                    } catch (error) {
-                    console.error("Error refreshing token:", error);
-                    logout(); // El refresh token también falló, cerrar sesión
-                    }
-                } else {
-                    // No hay refresh token para un access token expirado
-                    console.log("Access token expired and no refresh token found. Logging out.");
-                    logout();
-                }
-                } else {
-                // El token de acceso existe pero es inválido (no decodificable)
-                console.warn("Invalid access token found. Logging out.");
-                logout();
-                }
-            }
-            setIsLoading(false); // La carga inicial ha terminado
-            };
 
-            rehydrateAuth();
-        }, [decodeAccessToken, logout]); // Dependencias: decodeAccessToken y logout
+            try {
+                // Primero, intenta validar el token de acceso actual con el backend.
+                // Esto es más seguro que solo decodificarlo.
+                const response = await API.get<UserData>('api/protected/'); // O tu endpoint de perfil
+                const userData = response.data;
+                console.log('respuesta api protected',response.data)
+                // Si la validación es exitosa, establece el usuario y termina la carga.
+                setUser(userData);
+                localStorage.setItem('user', JSON.stringify(userData)); // Asegura que el user en local storage esté fresco
+
+            } catch (error: any) {
+                // Si la validación falla (ej. token expirado), intenta refrescarlo.
+                console.warn("La validación del token de acceso falló. Intentando refrescar...");
+
+                if (refreshToken) {
+                    try {
+                        const refreshResponse = await API.post<{ access: string }>('/api/token/refresh/', { refresh: refreshToken });
+                        const newAccessToken = refreshResponse.data.access;
+                        localStorage.setItem('access_token', newAccessToken);
+
+                        // ✨ Después de refrescar, vuelve a pedir los datos del usuario con el nuevo token.
+                        const profileResponse = await API.get<UserData>('api/protected/');
+                        const newUserData = profileResponse.data;
+                        setUser(newUserData);
+                        localStorage.setItem('user', JSON.stringify(newUserData));
+
+                    } catch (refreshError) {
+                        console.error("No se pudo refrescar el token. Cerrando sesión.", refreshError);
+                        logout(); // Si el refresh token también falla, es un logout definitivo.
+                    }
+                } else {
+                    console.log("No hay token de refresco. Cerrando sesión.");
+                    logout(); // No hay token de acceso válido ni de refresco.
+                }
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        initializeAuth();
+    }, [logout]); // Solo depende de `logout` (que está cacheado con useCallback)
 
 
     return (

@@ -15,6 +15,7 @@ const LoginPage = () => {
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        setError(''); // Limpia errores previos
         try {
             const response = await API.post<LoginResponse>('api/token/', {
                 username,
@@ -26,11 +27,11 @@ const LoginPage = () => {
             const {access, refresh, user } = response.data
 
             if (!user) {
-            console.error("El campo 'user' no está presente en la respuesta:", response.data);
+                console.error("El campo 'user' no está presente en la respuesta:", response.data);
+                setError('Error en la respuesta del servidor.');
+                    return;    
             }
 
-            localStorage.setItem('access_token', access);
-            localStorage.setItem('refresh_token',refresh);
             login(access, refresh, user);
 
             navigate('/dashboard');

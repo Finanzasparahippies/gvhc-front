@@ -1,6 +1,4 @@
-import { useState, useEffect, ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
-import API from '../../utils/API';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../utils/AuthContext'; // Ajusta la ruta si es necesario
 
 
@@ -15,7 +13,9 @@ const loadingMessages = [
 const PrivateRoute:React.FC<PrivateRouteProps> = ({ children, requiredRoles }) => {
     
  
-    const { user, isAuthenticated, isLoading, logout  } = useAuth(); 
+    const { user, isAuthenticated, isLoading  } = useAuth(); 
+    const location = useLocation();
+
 
     if (isLoading) {
     // Si el AuthContext todavía está cargando el estado inicial del usuario,
@@ -54,26 +54,26 @@ const PrivateRoute:React.FC<PrivateRouteProps> = ({ children, requiredRoles }) =
   if (!isAuthenticated) {
     // Si no está autenticado, redirige al login
     console.log("No autenticado, redirigiendo al login.");
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // 🟢 Lógica de verificación de roles
-  if (requiredRoles && user) {
+    if (requiredRoles && requiredRoles.length > 0) {
     // Los roles de Django son en minúsculas ('agent', 'supervisor', 'teamleader')
     // Los roles que pasas a requiredRoles son con mayúsculas ('Agent', 'Supervisor', 'Team Leader')
     // 🟢 Normaliza los roles para la comparación (por ejemplo, a minúsculas)
     const normalizedRequiredRoles = requiredRoles.map(role => role.toLowerCase());
-    const userRoleLower = user.role.toLowerCase();
+    const userRoleLower = user?.role?.toLowerCase();
 
-    if (!normalizedRequiredRoles.includes(userRoleLower)) {
-      console.warn(`Acceso denegado. Rol del usuario: ${user.role}. Roles requeridos: ${requiredRoles.join(', ')}`);
+      if (!userRoleLower || !normalizedRequiredRoles.includes(userRoleLower)) {
+      console.warn(`Acceso denegado. Rol del usuario: ${user?.role}. Roles requeridos: ${requiredRoles.join(', ')}`);
       // Opcional: limpiar la sesión si se accede a una ruta no permitida inesperadamente
-      logout();
-      return <Navigate to="/dashboard" replace />; // O a una página de "Acceso Denegado"
+      return <Navigate to="/dashboard" replace />; // O a una página de error 403
     }
   }
-
   return <>{children}</>; // Si está autenticado y tiene el rol correcto, renderiza los hijos
-};
+}
+
+
 
 export default PrivateRoute;
