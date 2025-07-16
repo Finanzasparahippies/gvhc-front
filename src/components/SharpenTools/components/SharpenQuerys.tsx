@@ -3,13 +3,13 @@ import { saveAs } from 'file-saver';
 import sharpenAPI from '../../../utils/APISharpen'
 
         const SERVERS = [
-            { value: 'fathomvoice', label: 'Servidor Fathom Voice' },
+            { value: 'fathomvoice', label: 'Queues Server' },
             { value: 'fathomrb',    label: 'Servidor Fathom RB' }
         ];
         const DATABASES: { [key: string]: { value: string; label: string }[] } = {
             fathomvoice: [
-                { value: 'fathomQueues', label: '📊 Reportes de Colas (Queues)' },
-                { value: 'sipMonitor',   label: '📡 Monitoreo de Enlaces (SIP)' }
+                { value: 'fathomQueues', label: '📊 Queues Report' },
+                { value: 'sipMonitor',   label: '📡 SIP Monitor)' }
             ],
             fathomrb: [
                 { value: 'fathomrb', label: '👑 Reportes Principales (FathomRB)' }
@@ -18,10 +18,10 @@ import sharpenAPI from '../../../utils/APISharpen'
 
         const TABLES: { [key: string]: { value: string; label: string }[] } = {
             fathomQueues: [
-                { value: 'queueCDR',     label: 'Registros de Llamada (CDR)' },
-                { value: 'queueCDRLegs', label: 'Tramos de Llamada (Legs)' },
-                { value: 'queueADR',     label: 'Registros de Agente (ADR)' },
-                { value: 'queueAgents',  label: 'Agentes' }
+                { value: 'queueCDR',     label: 'Interaccion Report' },
+                { value: 'queueCDRLegs', label: 'Segments Report' },
+                { value: 'queueADR',     label: 'Agent Report' },
+                { value: 'queueAgents',  label: 'Agents' }
             ],
             sipMonitor: [
                 { value: 'sipLatency',       label: 'Latencia SIP' },
@@ -151,9 +151,13 @@ import sharpenAPI from '../../../utils/APISharpen'
         const [agentStatusData, setAgentStatusData] = useState<RowData | null>(null);
         const [isModalOpen, setIsModalOpen] = useState(false);
         const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
+        const indexOfLastItem = currentPage * itemsPerPage;
+        const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+        const currentItems = useMemo(() => data.slice(indexOfFirstItem, indexOfLastItem), [data, indexOfFirstItem, indexOfLastItem]);
+        const totalPages = useMemo(() => Math.ceil(data.length / itemsPerPage), [data.length, itemsPerPage]);
 
-        const API_BATCH_SIZE = 5000; // Cuántos resultados pedir por cada llamada a la API (ajusta si es necesario)
-        const MAX_API_RESULTS_TO_FETCH = 20000; // Límite total de resultados que quieres obtener del backend
+        const API_BATCH_SIZE = 20000; // Cuántos resultados pedir por cada llamada a la API (ajusta si es necesario)
+        const MAX_API_RESULTS_TO_FETCH = 150000; // Límite total de resultados que quieres obtener del backend
         const totalResultsAvailable = React.useRef<number | null>(null);
         const currentApiOffset = React.useRef<number>(0);
         const isFetchingAllResults = React.useRef<boolean>(false);
@@ -169,6 +173,31 @@ import sharpenAPI from '../../../utils/APISharpen'
         // Si lo necesitas, añade: const seconds = date.getSeconds().toString().padStart(2, '0');
         // Y concaténalos: `${hours}:${minutes}:${seconds}`
         return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
+
+        const handleNextPage = () => {
+            startTransition(() => {
+                if (currentPage < totalPages) {
+                    setCurrentPage(prevPage => prevPage + 1);
+                }
+            });
+        };
+
+        const handlePreviousPage = () => {
+            startTransition(() => {
+                if (currentPage > 1) {
+                    setCurrentPage(prevPage => prevPage - 1);
+                }
+            });
+        };
+
+    const handleGoToPage = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        const pageNumber = Number(event.target.value); // Extraer el valor y convertirlo a número
+        startTransition(() => {
+            if (pageNumber >= 1 && pageNumber <= totalPages) {
+                setCurrentPage(pageNumber);
+            }
+        });
     };
 
         useEffect(() => {
@@ -551,17 +580,14 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
     }
 };
 
-        const indexOfLastItem = currentPage * itemsPerPage;
-        const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-        const currentItems = useMemo(() => data.slice(indexOfFirstItem, indexOfLastItem), [data, indexOfFirstItem, indexOfLastItem]);
-        const totalPages = useMemo(() => Math.ceil(data.length / itemsPerPage), [data.length, itemsPerPage]);
-
         return (
         <div className='p-6 max-w-screen-xl mx-auto mt-[100px]'>
-            <h2 className='text-2xl font-semibold mb-6 text-white'>Generador de Reportes GVHC</h2>
+            <h2 className='text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-t from-gray-500 to-purple-600 mb-8 pb-2 border-y-4 rounded-lg border-gray-600 tracking-tight text-center'>
+                GVHC Report Generator
+            </h2>
 
             {/* --- SELECCIÓN DE PLANTILLA DE CONSULTA O CONSULTA AVANZADA --- */}
-            <div className="mb-6 p-4 bg-gray-800 rounded-lg shadow-md sharpen-query-report-container border-b border-t border-gray-200">
+            <div className="animate-fade-in-down mb-6 p-4 bg-gray-800 rounded-lg shadow-md sharpen-query-report-container border-b border-t border-gray-200">
                 <label htmlFor="queryTemplateSelect" className="text-lg font-medium text-white mb-3 block text-center">
                     Seleccionar Tipo de Reporte
                 </label>
@@ -572,7 +598,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                         const templateName = e.target.value as keyof typeof QUERY_TEMPLATES | 'cdrReport';
                         setSelectedQueryTemplate(templateName);
                     }}
-                    className="w-full p-2 border border-gray-300 rounded text-sm mb-4 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full text-center p-2 border border-gray-300 rounded text-sm mb-4 focus:ring-purple-500 focus:border-purple-500"
                 >
                     <option value="agentStatus">Buscar por Agente</option>
                     <option value="cdrReport">Reporte de Segmentos</option>
@@ -602,7 +628,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
 
                     {selectedQueryTemplate === 'agentStatus' && (
                         <div 
-                            className='flex flex-col max-w-[350px] mb-5'
+                            className='animate-fade-in-down flex flex-col max-w-[350px] mb-5'
                             >
                             <label 
                                 htmlFor="agentUsernameInput"
@@ -624,7 +650,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
     // Contenedor principal con animación de entrada
     <div className="animate-fade-in-down p-6 bg-gray-800 border border-gray-700 rounded-lg shadow-lg">
         <h3 className="text-xl font-semibold text-white mb-6 border-b border-gray-700 pb-3">
-            ⚙️ Configuración de Reporte de Segmentos (CDR)
+            ⚙️ Sharpen Queue Report Configuration
         </h3>
 
         {/* Grid responsivo para los campos del formulario */}
@@ -632,13 +658,13 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
 
             {/* --- Campo Servidor --- */}
             <div>
-                <label htmlFor="server-select" className="block text-sm font-medium text-gray-300 mb-1">Servidor</label>
+                <label htmlFor="server-select" className="block text-sm font-medium text-gray-300 mb-1">Server</label>
                 <div className="relative">
                     <select
                         id="server-select"
                         value={server}
                         onChange={(e) => setServer(e.target.value)}
-                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out"
+                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-150 ease-in-out"
                     >
                         {SERVERS.map((s) => (
                             <option key={s.value} value={s.value}>{s.label}</option>
@@ -652,14 +678,14 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
 
             {/* --- Campo Base de Datos --- */}
             <div>
-                <label htmlFor="database-select" className="block text-sm font-medium text-gray-300 mb-1">Base de Datos</label>
+                <label htmlFor="database-select" className="block text-sm font-medium text-gray-300 mb-1">Data Base</label>
                 <div className="relative">
                     <select
                         id="database-select"
                         value={database}
                         onChange={(e) => setDataBase(e.target.value)}
                         disabled={!DATABASES[server]} // Deshabilitar si no hay opciones
-                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {DATABASES[server]?.map((db) => (
                             <option key={db.value} value={db.value}>{db.label}</option>
@@ -673,14 +699,14 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
             
             {/* --- Campo Tabla --- */}
             <div>
-                <label htmlFor="table-select" className="block text-sm font-medium text-gray-300 mb-1">Tabla</label>
+                <label htmlFor="table-select" className="block text-sm font-medium text-gray-300 mb-1">Table</label>
                 <div className="relative">
                     <select
                         id="table-select"
                         value={table}
                         onChange={(e) => setTable(e.target.value)}
                         disabled={!TABLES[database]} // Deshabilitar si no hay opciones
-                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {TABLES[database]?.map((tbl) => (
                             <option key={tbl.value} value={tbl.value}>{tbl.label}</option>
@@ -694,14 +720,14 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
 
             {/* --- Campo Fecha de Inicio --- */}
             <div>
-                <label htmlFor="startDate" className="block text-sm font-medium text-gray-300 mb-1">Fecha y Hora de Inicio</label>
+                <label htmlFor="startDate" className="block text-sm font-medium text-gray-300 mb-1">Initial Date Time</label>
                 <div className="relative">
                     <input
                         type="datetime-local"
                         id="startDate"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
-                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 [color-scheme:dark]"
+                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 [color-scheme:dark]"
                     />
                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
                         <CalendarIcon />
@@ -711,7 +737,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
 
             {/* --- Campo Fecha Final --- */}
             <div>
-                <label htmlFor="endDate" className="block text-sm font-medium text-gray-300 mb-1">Fecha y Hora Final</label>
+                <label htmlFor="endDate" className="block text-sm font-medium text-gray-300 mb-1">Final Date Time</label>
                 <div className="relative">
                     <input
                         type="datetime-local"
@@ -719,7 +745,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
                         disabled={useCurrentEndDate}
-                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed [color-scheme:dark]"
+                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed [color-scheme:dark]"
                     />
                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
                         <CalendarIcon />
@@ -738,14 +764,14 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                         className="sr-only" // Ocultamos el checkbox por defecto
                     />
                     {/* Checkbox personalizado */}
-                    <span className={`h-5 w-5 rounded border-2 flex-shrink-0 mr-2 transition duration-150 ease-in-out ${useCurrentEndDate ? 'bg-indigo-600 border-indigo-500' : 'bg-gray-700 border-gray-600'}`}>
+                    <span className={`h-5 w-5 rounded border-2 flex-shrink-0 mr-2 transition duration-150 ease-in-out ${useCurrentEndDate ? 'bg-purple-600 border-purple-500' : 'bg-gray-700 border-gray-600'}`}>
                         {useCurrentEndDate && (
                             <svg className="w-full h-full text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                             </svg>
                         )}
                     </span>
-                    <span className="text-sm font-medium text-gray-300">Usar fecha y hora actual</span>
+                    <span className="text-sm font-medium text-gray-300">Until Now</span>
                 </label>
             </div>
         </div>
@@ -753,34 +779,34 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
 )}
 
             {/* --- BOTONES DE ACCIÓN --- */}
-            <div className='flex flex-wrap items-center gap-4 mb-6 p-4 bg-gray-800 rounded-lg shadow-md'>
+            <div className='animate-fade-in-down flex flex-wrap items-center gap-4 mb-6 p-4 bg-gray-800 rounded-lg shadow-md'>
                 <button
                     onClick={() => {
                         isFetchingAllResults.current = true; // Activate the flag in the ref
                         fetchData(); 
                     }}                    
                     disabled={loading || (selectedQueryTemplate === 'cdrReport' && !customQuery && !isValidRange())} // Disable if CDR and dates are invalid
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[150px]"
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-5 py-2 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[150px]"
                 >
                     {loading ? (
                         <svg className="animate-spin h-5 w-5 text-white mr-2" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                    ) : 'Ejecutar Consulta'}
+                    ) : 'Send Query'}
                 </button>
                 <button
                     onClick={downloadCSV}
                     disabled={data.length === 0 || loading}
                     className="bg-green-600 hover:bg-green-700 text-white font-bold px-5 py-2 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-w-[150px]"
                 >
-                    Descargar CSV ({data.length.toLocaleString()} registros)
+                    Download CSV ({data.length.toLocaleString()} registers)
                 </button>
             </div>
 
             {/* --- ESTADO DE MONITOREO Y MENSAJES --- */}
             {monitoringStatus && (
-                <div className={`p-4 my-4 rounded-lg text-white font-medium shadow-md ${
+                <div className={`animate-fade-in-down p-4 my-4 rounded-lg text-white font-medium shadow-md ${
                     monitoringStatus.type === 'error' ? 'bg-red-600' :
                     monitoringStatus.type === 'success' ? 'bg-green-600' :
                     'bg-blue-600'
@@ -790,29 +816,31 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
             )}
 
             {error && (
-                <div className="bg-red-800 text-white p-4 rounded-lg mb-6 shadow-md border border-red-700">
-                    <p className="font-bold mb-2">¡Error en la consulta!</p>
+                <div className="animate-fade-in-down bg-red-800 text-white p-4 rounded-lg mb-6 shadow-md border border-red-700">
+                    <p className="font-bold mb-2">¡Consult Error!</p>
                     <p>{error}</p>
-                    <p className="text-sm text-gray-300 mt-2">Por favor, revisa tu consulta o los parámetros seleccionados e inténtalo de nuevo.</p>
+                    <p className="text-sm text-gray-300 mt-2">Please, review your query or the selected parámeters and try again.</p>
                 </div>
             )}
             {loading && (
-                <p className="text-white text-lg font-medium text-center my-8">
-                    <span className="animate-pulse">Cargando datos...</span> Esto puede tomar unos segundos.
+                <p className="animate-fade-in-down text-white text-lg font-medium text-center my-8">
+                    <span className="animate-pulse">Loading data...</span> This maybe take a few seconds.
                 </p>
             )}
 
             {/* --- SECCIÓN DE RESULTADOS DE LA TABLA --- */}
             {data.length > 0 ? (
-                <div style={{ marginTop: '20px' }}>
-                    <h2>Resultados ({fetchedCount} filas)</h2>
+                <div
+                    className='animate-fade-in-down' 
+                    style={{ marginTop: '20px' }}>
+                    <h2>Resulted ({fetchedCount} rows)</h2>
                     <div className="overflow-x-auto relative shadow-md rounded-lg border border-gray-700">
                         <table className="min-w-full divide-y divide-gray-200 text-sm">
                         <thead className="text-gray-100 uppercase bg-gray-700 sticky top-0 z-10">
                             <tr className="">
                                 {/* COLUMNA DE ACCIONES - ¡AQUÍ ESTÁ EL CAMBIO! */}
                                 <th scope="col" className="px-6 py-3 font-semibold text-center text-gray-300 uppercase tracking-wider">
-                                    Acciones
+                                    Accions
                                 </th>
                                 {/* FIN DE COLUMNA DE ACCIONES */}
 
@@ -843,7 +871,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                                                         className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 mr-2"
                                                         title="Obtener Grabación"
                                                     >
-                                                        Grabación
+                                                        Record
                                                     </button>
                                                 )}
                                                 {row.recordingUrl && (
@@ -854,7 +882,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                                                         className="px-3 py-1 bg-indigo-500 text-white text-xs rounded hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
                                                         title="Reproducir Grabación"
                                                     >
-                                                        Reproducir
+                                                    🎧 Play Audio
                                                     </a>
                                                 )}
                                             </div>
@@ -865,7 +893,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                                                 className="px-3 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50"
                                                 title="Monitorear Llamada"
                                             >
-                                                Monitorear
+                                                📞 Monitor
                                             </button>
                                         )}
                                     </td>
@@ -887,30 +915,43 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                     {/* Controles de paginación */}
                     <div className="flex justify-center items-center gap-6 mt-6 p-4 bg-gray-800 rounded-lg shadow-md">
                         <button
-                            onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                            onClick={handlePreviousPage}
                             disabled={currentPage === 1}
                             className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            ← Anterior
+                            ← Before
                         </button>
                         <span className="text-white text-base font-medium">
-                            Página <span className="font-bold">{currentPage}</span> de <span className="font-bold">{totalPages}</span>
-                            <span className="ml-3 text-gray-400">({data.length.toLocaleString()} registros totales)</span>
+                            Page 
+                                <select
+                                    value={currentPage}
+                                    onChange={handleGoToPage}
+                                    className="bg-gray-700 mr-2 ml-2 hover:bg-gray-600 text-white rounded-md focus:ring-blue-500 focus:border-blue-500 text-base appearance-none cursor-pointer"
+                                    style={{ minWidth: '60px', textAlign: 'center' }} // Estilo inline para asegurar tamaño mínimo y centrado
+                                >
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                        <option key={page} value={page}>
+                                            {page}
+                                        </option>
+                                    ))}
+                                </select>                            
+                            of <span className="font-bold">{totalPages}</span>
+                            <span className="ml-3 text-gray-400">({data.length.toLocaleString()} total registers)</span>
                         </span>
                         <button
-                            onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                            onClick={handleNextPage}
                             disabled={currentPage === totalPages}
                             className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Siguiente →
+                            Next →
                         </button>
                     </div>
                 </div>
             ) : (
                 !loading && !error && (
-                    <div className="p-6 bg-gray-800 rounded-lg text-white text-center text-lg shadow-md">
-                        <p>No hay datos para mostrar. ¡Ejecuta una consulta para ver los resultados!</p>
-                        <p className="text-gray-400 mt-2">Puedes seleccionar una plantilla o introducir una consulta personalizada.</p>
+                    <div className="animate-fade-in-down p-6 bg-gray-800 rounded-lg text-white text-center text-lg shadow-md">
+                        <p>No data to Show. ¡Send a query to saw the results!</p>
+                        {/* <p className="text-gray-400 mt-2">Puedes seleccionar una plantilla o introducir una consulta personalizada.</p> */}
                     </div>
                 )
             )}

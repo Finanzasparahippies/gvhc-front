@@ -47,22 +47,22 @@ const TabsComponent = () => {
     return (
         <div className="overflow-visible mx-auto">
         {/* Barra de pestañas */}
-        <div className="relative top-20 ml-5">
+        <div className="relative top-20 ml-5 border border-gray-400 rounded-lg inline-flex items-center"> 
             <button 
             onClick={() => handleTabChange('reactflow')}
-            className={activeTab === 'reactflow' ? 'active px-2 bg-slate-200 border border-gray-400 cursor-pointer mr-5 rounded-md' : 'mr-5'}
+            className={activeTab === 'reactflow' ? 'active px-2 bg-slate-200 border border-gray-400 cursor-pointer mr-5 rounded-md' : 'mr-5 text-white px-2'}
             >
             Protocols
             </button>
             <button 
             onClick={() => handleTabChange('training')}
-            className={activeTab === 'training' ? 'active px-2 bg-slate-200 border border-gray-400 cursor-pointer mr-5 rounded-md' : 'mr-5'}
+            className={activeTab === 'training' ? 'active px-2 bg-slate-200 border border-gray-400 cursor-pointer mr-5 rounded-md' : 'mr-5 text-white px-2'}
             >
             Trainees
             </button>
             <button 
             onClick={() => handleTabChange('supervisors')}
-            className={activeTab === 'supervisors' ? 'active px-2 bg-slate-200 border border-gray-400 cursor-pointer mr-5 rounded-md' : 'mr-5'}
+            className={activeTab === 'supervisors' ? 'active px-2 bg-slate-200 border border-gray-400 cursor-pointer rounded-md' : ' text-white px-2'}
             >
             Supervisors
             </button>
