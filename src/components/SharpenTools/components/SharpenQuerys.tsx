@@ -2,17 +2,37 @@ import React, { useState, useEffect, startTransition, useCallback, useMemo } fro
 import { saveAs } from 'file-saver';
 import sharpenAPI from '../../../utils/APISharpen'
 
-        const SERVERS = ['fathomvoice', 'fathomrb'];
-        const DATABASES: { [ key: string]: string [] } = {
-            fathomvoice: ['fathomQueues', 'sipMonitor'],
-            fathomrb: ['fathomrb'],
-        };
-        const TABLES: { [ key: string]: string [] } = {
-            fathomQueues: ['queueCDR', 'queueCDRLegs', 'queueADR', 'queueAgents'],
-            sipMonitor: ['sipLatency', 'sipLatencyTotals'],
-            fathomrb: ['userGroups'],
+        const SERVERS = [
+            { value: 'fathomvoice', label: 'Servidor Fathom Voice' },
+            { value: 'fathomrb',    label: 'Servidor Fathom RB' }
+        ];
+        const DATABASES: { [key: string]: { value: string; label: string }[] } = {
+            fathomvoice: [
+                { value: 'fathomQueues', label: '📊 Reportes de Colas (Queues)' },
+                { value: 'sipMonitor',   label: '📡 Monitoreo de Enlaces (SIP)' }
+            ],
+            fathomrb: [
+                { value: 'fathomrb', label: '👑 Reportes Principales (FathomRB)' }
+            ],
         };
 
+        const TABLES: { [key: string]: { value: string; label: string }[] } = {
+            fathomQueues: [
+                { value: 'queueCDR',     label: 'Registros de Llamada (CDR)' },
+                { value: 'queueCDRLegs', label: 'Tramos de Llamada (Legs)' },
+                { value: 'queueADR',     label: 'Registros de Agente (ADR)' },
+                { value: 'queueAgents',  label: 'Agentes' }
+            ],
+            sipMonitor: [
+                { value: 'sipLatency',       label: 'Latencia SIP' },
+                { value: 'sipLatencyTotals', label: 'Totales de Latencia SIP' }
+            ],
+            fathomrb: [
+                { value: 'userGroups', label: 'Grupos de Usuarios' }
+            ],
+        };
+
+        
         const QUERY_TEMPLATES = {
             agentStatus: (username?: string) => ({
                 endpoint: "V2/queues/getAgentStatus/",
@@ -103,9 +123,9 @@ import sharpenAPI from '../../../utils/APISharpen'
     const SharpenQueryReport: React.FC = () => {
         //estados para seleccionar datos
         const [selectedQueryTemplate, setSelectedQueryTemplate] = useState<keyof typeof QUERY_TEMPLATES>('agentStatus'); // Nuevo estado para seleccionar la plantilla
-        const [server, setServer] = useState(SERVERS[0]);
-        const [database, setDataBase] = useState(DATABASES[server][0]);
-        const [table, setTable] = useState(TABLES[database][0]);
+        const [server, setServer] = useState<string>(SERVERS[0].value); // Guarda solo el string 'fathomvoice'
+        const [database, setDataBase] = useState<string>(DATABASES[SERVERS[0].value][0].value); // Guarda 'fathomQueues'
+        const [table, setTable] = useState<string>(TABLES[DATABASES[SERVERS[0].value][0].value][0].value); // Guarda 'queueCDR'
         const [customQuery, setCustomQuery] = useState(''); 
         const [startDate, setStartDate] = useState('');
         const [endDate, setEndDate] = useState('');
@@ -132,10 +152,11 @@ import sharpenAPI from '../../../utils/APISharpen'
         const [isModalOpen, setIsModalOpen] = useState(false);
         const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
 
-        const [currentApiOffset, setCurrentApiOffset] = useState(0);
         const API_BATCH_SIZE = 5000; // Cuántos resultados pedir por cada llamada a la API (ajusta si es necesario)
-        const MAX_API_RESULTS = 20000; // Límite total de resultados que quieres obtener
-        const [isFetchingAllResults, setIsFetchingAllResults] = useState(false);
+        const MAX_API_RESULTS_TO_FETCH = 20000; // Límite total de resultados que quieres obtener del backend
+        const totalResultsAvailable = React.useRef<number | null>(null);
+        const currentApiOffset = React.useRef<number>(0);
+        const isFetchingAllResults = React.useRef<boolean>(false);
 
         const getLocalDatetimeString = (date: Date): string => {
         const year = date.getFullYear();
@@ -151,11 +172,11 @@ import sharpenAPI from '../../../utils/APISharpen'
     };
 
         useEffect(() => {
-            setDataBase(DATABASES[server][0]);
+            setDataBase(DATABASES[server]?.[0]?.value);
         }, [server]);
 
         useEffect(() => {
-            setTable(TABLES[database][0]);
+            setTable(TABLES[database]?.[0]?.value);
         }, [database]);
 
         useEffect(() => {
@@ -174,49 +195,43 @@ import sharpenAPI from '../../../utils/APISharpen'
         setCurrentAudioUrl(null); // Limpia la URL cuando se cierra
         };
 
-        const fetchData = useCallback(async (isInitialFetch: boolean = true) => {
-        if (isInitialFetch) {
+        const fetchData = useCallback(async (offset: number = 0) => {
             setLoading(true);
             setError(null);
-            setData([]);
-            setResponse(null);
-            setFetchedCount(0);
-            setCurrentPage(1);
             setMonitoringStatus(null); 
-            setCurrentApiOffset(0); // Reiniciar el offset para una nueva búsqueda
-            setIsFetchingAllResults(false); // Reiniciar el estado de carga total
-        } else {
-            if (isFetchingAllResults && currentApiOffset >= MAX_API_RESULTS) {
-                // Si ya alcanzamos el máximo deseado, no seguir pidiendo.
-                setLoading(false);
-                setIsFetchingAllResults(false);
-                return;
-            }
-        }
+    
             let apiEndpoint: string;
             let apiPayload: { [key: string]: any; }; // Definimos el tipo del payload
+
         if (selectedQueryTemplate === 'liveStatus') { // Creamos una nueva plantilla para la consulta directa
                     const { endpoint, payload } = QUERY_TEMPLATES.liveStatus();
             apiEndpoint = endpoint;
             apiPayload = payload;
-        } else if (selectedQueryTemplate === 'cdrReport') {
+        } 
+
+        else if (selectedQueryTemplate === 'cdrReport') {
             if (!isValidRange()) {
                 alert('Para el reporte CDR, selecciona un rango de fechas válido.');
                 setLoading(false);
                 return;
             }
-            const { endpoint, payload } = QUERY_TEMPLATES.cdrReport(server, database, table, startDate, endDate, API_BATCH_SIZE, currentApiOffset );
+            const { endpoint, payload } = QUERY_TEMPLATES.cdrReport(server, database, table, startDate, endDate, API_BATCH_SIZE, offset);
             apiEndpoint = endpoint;
             apiPayload = payload;
-        } else if (selectedQueryTemplate === 'agentStatus') {
+        }
+
+        else if (selectedQueryTemplate === 'agentStatus') {
             const { endpoint, payload } = QUERY_TEMPLATES.agentStatus(agentUsername);
             apiEndpoint = endpoint;
             apiPayload = payload;
-        } else if (selectedQueryTemplate === 'getAgents') { // --- NUEVO: Manejar la plantilla getAgents ---
+        }
+        
+        else if (selectedQueryTemplate === 'getAgents') { // --- NUEVO: Manejar la plantilla getAgents ---
             const { endpoint, payload } = QUERY_TEMPLATES.getAgents(getAgentsParams);
             apiEndpoint = endpoint;
             apiPayload = payload;
-        } else {
+        } 
+        else {
             alert('Selecciona una plantilla de consulta válida.');
             setLoading(false);
             return;
@@ -231,28 +246,38 @@ import sharpenAPI from '../../../utils/APISharpen'
 
         const resp = apiResponse.data;
         let extractedData: RowData[] = [];
+        let currentBatchCount = 0; 
+        let totalCountFromApi = 0
 
         if (selectedQueryTemplate === 'getAgents') {
             if (resp && resp.getAgentsStatus === "Complete" && resp.getAgentsData) {
                     extractedData = Array.isArray(resp.getAgentsData) ? resp.getAgentsData : [resp.getAgentsData];
+                    currentBatchCount = extractedData.length;
+                    totalCountFromApi = resp.total_result_count || extractedData.length;
                 } else {
             setError("No se pudieron obtener los datos de los agentes.");
             }
         }else if (selectedQueryTemplate === 'agentStatus') {
                 if (resp && resp.getAgentStatusStatus  === "Complete" && resp.getAgentStatusData) {
                     extractedData = [resp.getAgentStatusData]; // Siempre se espera un único objeto, lo envolvemos en un array
+                    currentBatchCount = extractedData.length;
+                    totalCountFromApi = resp.total_result_count || extractedData.length;
                 } else {
                     setError("No se pudieron obtener los datos del agente (agentStatus).");
                 }
             }
         else if (selectedQueryTemplate === "liveStatus" || selectedQueryTemplate === "cdrReport") {
             if (resp?.data && Array.isArray(resp.data)) {
-                extractedData = Array.isArray(resp.data) ? resp.data : [resp.data];
+                extractedData = resp.data;
+                currentBatchCount = extractedData.length;
+                totalCountFromApi = resp.total_result_count || extractedData.length; // Captura total_result_count
             } else if (resp?.table && typeof resp.table === 'string') {
                 try {
                 const tableData = JSON.parse(resp.table);
                 if (Array.isArray(tableData)) {
                     extractedData = tableData;
+                    currentBatchCount = extractedData.length;
+                    totalCountFromApi = resp.total_result_count || extractedData.length;
                 }
             } catch (e) {
                 console.error("Error al parsear el JSON de la clave 'table':", e);
@@ -263,6 +288,7 @@ import sharpenAPI from '../../../utils/APISharpen'
             }
         } else if (resp?.raw_response) {
         setResponse({ raw_response: resp.raw_response } as responseData);
+        totalCountFromApi = resp.total_result_count || 0;
         } else {
             throw new Error('Formato de respuesta no reconocido o plantilla no manejada.');
         }
@@ -274,58 +300,72 @@ import sharpenAPI from '../../../utils/APISharpen'
                     row.queueCallManagerID !== null && row.queueCallManagerID !== undefined
                 );
             }
-        console.log("Datos finales para renderizar:", filteredData);
-        console.log("Datos recibidos en este lote:", filteredData.length);
+            console.log("Datos recibidos en este lote:", filteredData.length);
+            console.log("Datos totales disponibles en la API (según 'total_result_count'):", totalCountFromApi);
 
-        startTransition(() => {
-            setData(prevData => [...prevData, ...filteredData]); // Añadir al estado existente
-            setFetchedCount(prev => prev + filteredData.length); // Actualizar contador total
-            setCurrentApiOffset(prevOffset => prevOffset + filteredData.length); // Actualizar offset para la próxima llamada
-            if (isInitialFetch && filteredData.length === 0) {
-                setError("No se encontraron resultados.");
+       startTransition(() => {
+                // If this is the *first* batch of a multi-fetch, clear existing data
+                // Otherwise, append to existing data
+                setData(prevData => (offset === 0 && isFetchingAllResults.current) ? filteredData : [...prevData, ...filteredData]);
+
+                setFetchedCount(prev => prev + filteredData.length); // Update total fetched count
+
+                // Store total_result_count from the first API response if we are fetching all results
+                if (isFetchingAllResults.current && totalResultsAvailable.current === null) {
+                    totalResultsAvailable.current = totalCountFromApi;
                 }
-            setAgentStatusData(filteredData[0] || null); // Revisa si esto sigue siendo relevante para todos los casos
 
-            if (isFetchingAllResults) {
-                if (filteredData.length < API_BATCH_SIZE || (currentApiOffset + filteredData.length) >= MAX_API_RESULTS) {
-                    setIsFetchingAllResults(false); // Detener si no hay más o si alcanzamos el límite
+                // Check if more data needs to be fetched
+                const totalFetchedSoFar = offset + filteredData.length;
+                const totalExpected = Math.min(totalResultsAvailable.current || Infinity, MAX_API_RESULTS_TO_FETCH);
+
+                if (isFetchingAllResults.current && currentBatchCount === API_BATCH_SIZE && totalFetchedSoFar < totalExpected) {
+                    // Update offset for the next call in the ref
+                    currentApiOffset.current = totalFetchedSoFar;
+                    setMonitoringStatus({ message: `Cargando... ${totalFetchedSoFar} de aproximadamente ${totalExpected} resultados.`, type: 'info' });
+                    // Recursively call fetchData for the next batch
+                    setTimeout(() => {
+                        fetchData(currentApiOffset.current);
+                    }, 200); // Small pause to prevent overwhelming the server
+                } else {
+                    // All data fetched or limit reached
+                    isFetchingAllResults.current = false; // Turn off the flag
                     setLoading(false);
-                }else {
-                        setTimeout(() => {
-                            fetchData(false); // Llama a la siguiente página
-                        }, 200); // Pequeña pausa para evitar spamear el servidor
+                    if (totalFetchedSoFar >= totalExpected && totalResultsAvailable.current !== null && totalResultsAvailable.current > MAX_API_RESULTS_TO_FETCH) {
+                        setMonitoringStatus({ message: `Carga completa. Se cargaron ${totalFetchedSoFar} resultados (límite de ${MAX_API_RESULTS_TO_FETCH} alcanzado).`, type: 'success' });
+                    } else {
+                        setMonitoringStatus({ message: `Carga de ${totalFetchedSoFar} resultados completa.`, type: 'success' });
                     }
+                    totalResultsAvailable.current = null; // Reset for next fetch
+                    currentApiOffset.current = 0; // Reset offset for next fetch
                 }
-        });
+            });
 
-    } catch (err: any) {
-        console.error(err);
-        setError(`Error al consultar la API: ${err.message || 'Revisa la consola para más detalles.'}`);
-        if (err.response && err.response.data) {
-            const apiError = err.response.data.error || 'Error desconocido';
-            const details = err.response.data.data?.details || '';
-            setError(`Error de la API: ${apiError} - ${details}`);
+        } catch (err: any) {
+            console.error(err);
+            setError(`Error al consultar la API: ${err.message || 'Revisa la consola para más detalles.'}`);
+            if (err.response && err.response.data) {
+                const apiError = err.response.data.error || 'Error desconocido';
+                const details = err.response.data.data?.details || '';
+                setError(`Error de la API: ${apiError} - ${details}`);
+            }
+            isFetchingAllResults.current = false; // Stop the fetching loop on error
+            setLoading(false);
+            setMonitoringStatus({ message: 'Error durante la carga de datos.', type: 'error' });
+            totalResultsAvailable.current = null; // Reset for next fetch
+            currentApiOffset.current = 0; // Reset offset for next fetch
         }
-        setIsFetchingAllResults(false); // Detener la carga en caso de error
-        setLoading(false);
-    } finally {
-        if (!isFetchingAllResults) { // Solo si no estamos en el modo de carga continua
-        setLoading(false);
-        }
-    }
-}, [
-    customQuery, selectedQueryTemplate, isValidRange, startDate, endDate, server, database, table, agentUsername, currentApiOffset, 
-    API_BATCH_SIZE, MAX_API_RESULTS, isFetchingAllResults, getAgentsParams
-    ]);
+    }, [selectedQueryTemplate, isValidRange, startDate, endDate, server, database, table, agentUsername, API_BATCH_SIZE, MAX_API_RESULTS_TO_FETCH, getAgentsParams]);
+
 
     const startFetchingAllResults = () => {
         setData([]); // Limpia datos anteriores al iniciar una nueva carga total
         setFetchedCount(0);
-        setCurrentApiOffset(0);
+        currentApiOffset.current = 0; // Reset offset in the ref
         setError(null);
         setLoading(true);
-        setIsFetchingAllResults(true); // Activa el modo de carga total
-        fetchData(true); // Inicia la primera llamada
+        isFetchingAllResults.current = true; // Activate the flag in the ref
+        fetchData(0); // Inicia la primera llamada
     };
 
     const startMonitoringCall = async (queueCallManagerID: string, extension: string) => {
@@ -580,68 +620,144 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                             />
                         </div>
                     )}
-                    {selectedQueryTemplate === 'cdrReport' && (
-                <div style={{ marginBottom: '15px' }}>
-                    <h3>Configuración de CDR:</h3>
-                    <div style={{ marginBottom: '10px' }}>
-                        <label htmlFor="server-select" style={{ marginRight: '10px' }}>Servidor:</label>
-                        <select id="server-select" value={server} onChange={(e) => setServer(e.target.value)}>
-                            {SERVERS.map((s) => (
-                                <option key={s} value={s}>{s}</option>
-                            ))}
-                        </select>
+                   {selectedQueryTemplate === 'cdrReport' && (
+    // Contenedor principal con animación de entrada
+    <div className="animate-fade-in-down p-6 bg-gray-800 border border-gray-700 rounded-lg shadow-lg">
+        <h3 className="text-xl font-semibold text-white mb-6 border-b border-gray-700 pb-3">
+            ⚙️ Configuración de Reporte de Segmentos (CDR)
+        </h3>
+
+        {/* Grid responsivo para los campos del formulario */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-6">
+
+            {/* --- Campo Servidor --- */}
+            <div>
+                <label htmlFor="server-select" className="block text-sm font-medium text-gray-300 mb-1">Servidor</label>
+                <div className="relative">
+                    <select
+                        id="server-select"
+                        value={server}
+                        onChange={(e) => setServer(e.target.value)}
+                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out"
+                    >
+                        {SERVERS.map((s) => (
+                            <option key={s.value} value={s.value}>{s.label}</option>
+                        ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
+                        <ChevronDownIcon />
                     </div>
-                    <div style={{ marginBottom: '10px' }}>
-                        <label htmlFor="database-select" style={{ marginRight: '10px' }}>Base de Datos:</label>
-                        <select id="database-select" value={database} onChange={(e) => setDataBase(e.target.value)}>
-                            {DATABASES[server]?.map((db) => (
-                                <option key={db} value={db}>{db}</option>
-                            ))}
-                        </select>
+                </div>
+            </div>
+
+            {/* --- Campo Base de Datos --- */}
+            <div>
+                <label htmlFor="database-select" className="block text-sm font-medium text-gray-300 mb-1">Base de Datos</label>
+                <div className="relative">
+                    <select
+                        id="database-select"
+                        value={database}
+                        onChange={(e) => setDataBase(e.target.value)}
+                        disabled={!DATABASES[server]} // Deshabilitar si no hay opciones
+                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {DATABASES[server]?.map((db) => (
+                            <option key={db.value} value={db.value}>{db.label}</option>
+                        ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
+                        <ChevronDownIcon />
                     </div>
-                    <div style={{ marginBottom: '10px' }}>
-                        <label htmlFor="table-select" style={{ marginRight: '10px' }}>Tabla:</label>
-                        <select id="table-select" value={table} onChange={(e) => setTable(e.target.value)}>
-                            {TABLES[database]?.map((tbl) => (
-                                <option key={tbl} value={tbl}>{tbl}</option>
-                            ))}
-                        </select>
+                </div>
+            </div>
+            
+            {/* --- Campo Tabla --- */}
+            <div>
+                <label htmlFor="table-select" className="block text-sm font-medium text-gray-300 mb-1">Tabla</label>
+                <div className="relative">
+                    <select
+                        id="table-select"
+                        value={table}
+                        onChange={(e) => setTable(e.target.value)}
+                        disabled={!TABLES[database]} // Deshabilitar si no hay opciones
+                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {TABLES[database]?.map((tbl) => (
+                            <option key={tbl.value} value={tbl.value}>{tbl.label}</option>
+                        ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
+                        <ChevronDownIcon />
                     </div>
-                    <label htmlFor="startDate" style={{ marginRight: '10px' }}>Fecha y Hora de Inicio:</label>
+                </div>
+            </div>
+
+            {/* --- Campo Fecha de Inicio --- */}
+            <div>
+                <label htmlFor="startDate" className="block text-sm font-medium text-gray-300 mb-1">Fecha y Hora de Inicio</label>
+                <div className="relative">
                     <input
                         type="datetime-local"
                         id="startDate"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
-                        style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 [color-scheme:dark]"
                     />
-                <label htmlFor="endDate" className="block text-sm font-medium text-gray-200">
-                    Fecha Final:
-                </label>                    <input
+                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
+                        <CalendarIcon />
+                    </div>
+                </div>
+            </div>
+
+            {/* --- Campo Fecha Final --- */}
+            <div>
+                <label htmlFor="endDate" className="block text-sm font-medium text-gray-300 mb-1">Fecha y Hora Final</label>
+                <div className="relative">
+                    <input
                         type="datetime-local"
                         id="endDate"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
-                        className="mt-1 block w-[200px] rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        disabled={useCurrentEndDate} // Deshabilita si se usa la fecha actual
+                        disabled={useCurrentEndDate}
+                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed [color-scheme:dark]"
                     />
-                    <label htmlFor="useCurrentEndDate" className="ml-2 block text-sm text-gray-200">
-                        <input
-                            type="checkbox"
-                            checked={useCurrentEndDate}
-                            onChange={(e) => setUseCurrentEndDate(e.target.checked)}
-                        />
-                        Usar fecha y hora actual para el fin
-                    </label>
+                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
+                        <CalendarIcon />
+                    </div>
                 </div>
-            )}
+            </div>
+
+            {/* --- Checkbox para Usar Fecha Actual --- */}
+            <div className="flex items-end pb-2"> {/* Alineado para que el checkbox quede bien */}
+                <label htmlFor="useCurrentEndDate" className="flex items-center cursor-pointer select-none">
+                    <input
+                        type="checkbox"
+                        id="useCurrentEndDate"
+                        checked={useCurrentEndDate}
+                        onChange={(e) => setUseCurrentEndDate(e.target.checked)}
+                        className="sr-only" // Ocultamos el checkbox por defecto
+                    />
+                    {/* Checkbox personalizado */}
+                    <span className={`h-5 w-5 rounded border-2 flex-shrink-0 mr-2 transition duration-150 ease-in-out ${useCurrentEndDate ? 'bg-indigo-600 border-indigo-500' : 'bg-gray-700 border-gray-600'}`}>
+                        {useCurrentEndDate && (
+                            <svg className="w-full h-full text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                        )}
+                    </span>
+                    <span className="text-sm font-medium text-gray-300">Usar fecha y hora actual</span>
+                </label>
+            </div>
+        </div>
+    </div>
+)}
 
             {/* --- BOTONES DE ACCIÓN --- */}
             <div className='flex flex-wrap items-center gap-4 mb-6 p-4 bg-gray-800 rounded-lg shadow-md'>
                 <button
                     onClick={() => {
-                        setIsFetchingAllResults(true);
-                        fetchData(true); 
+                        isFetchingAllResults.current = true; // Activate the flag in the ref
+                        fetchData(); 
                     }}                    
                     disabled={loading || (selectedQueryTemplate === 'cdrReport' && !customQuery && !isValidRange())} // Disable if CDR and dates are invalid
                     className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[150px]"
@@ -803,3 +919,15 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
 };
 
 export default SharpenQueryReport;
+
+const ChevronDownIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-gray-400">
+        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+    </svg>
+);
+
+const CalendarIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-gray-400">
+        <path fillRule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c0-.414.336-.75.75-.75h10a.75.75 0 010 1.5h-10a.75.75 0 01-.75-.75z" clipRule="evenodd" />
+    </svg>
+);

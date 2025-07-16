@@ -1,13 +1,14 @@
 import { memo, useEffect, useState } from 'react';
 import { Handle, Position, NodeProps, Node } from '@xyflow/react';
 import { BasePayload } from '../../types/nodes';
+import { getCombinedNodeStyle } from '../../utils/nodeStyles';
 
 
 
 export const NonResizableNode: React.FC<NodeProps<Node<BasePayload>>> = ({ id, data }) => {
 
     const { imageUrl, excel_file, borderColor, keywords, response_type, questionText, answerText, title, template, NodeType, steps, onTemplateChange, onChange} = data
-
+    const nodeStyle = getCombinedNodeStyle(data.response_data, data.pinned);
     const [imageSize, setImageSize] = useState<{ width: number | string; height: number | string}>({ width: 'auto', height: 'auto' });
 
     useEffect(() => {
@@ -42,10 +43,11 @@ export const NonResizableNode: React.FC<NodeProps<Node<BasePayload>>> = ({ id, d
                 />
             <div
                 className='text-center w-full h-full overflow-hidden'
+                style={nodeStyle}
             >
                 <strong 
                     className={`absolute top-0 left-0 w-full h-8 flex items-center justify-center`}
-                    style={{ backgroundColor: borderColor || '#6C757D'}}
+                    style={{ backgroundColor:'#eefb9a'}}
                 >
                     {title}
                 </strong>

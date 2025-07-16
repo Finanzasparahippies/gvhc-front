@@ -1,12 +1,18 @@
 import React, { useState, memo } from 'react';
 import { Handle, Position, NodeProps, Node } from '@xyflow/react';
 import { BasePayload } from '../../types/nodes';
+import { getCombinedNodeStyle } from '../../utils/nodeStyles';
 
 
 export const NotesNode: React.FC<NodeProps<Node<BasePayload>>> = ({ id, data }) => {
     const {  setPanOnDrag, onChange, onPinToggle, note: initialNote } = data
     const [note, setNote] = useState<string>(data.note || ''); // Estado para la nota
     const [noteHistory, setNoteHistory] = useState<string[]>([]); 
+    const nodeStyle = getCombinedNodeStyle(data.response_data, data.pinned);
+
+    console.log('pinned?', data.pinned);
+
+
 
     const handleMouseEnter = () => {
         setPanOnDrag?.(false);
@@ -42,11 +48,11 @@ export const NotesNode: React.FC<NodeProps<Node<BasePayload>>> = ({ id, data }) 
             className="absolute top-0 right-0 p-2 text-sm text-gray-700 cursor-pointer"
             onClick={handlePinned}
             >
-                {data.pinned ? 'Unpin' : 'Pin'}
+                {data.pinned ? '📌' : '📍'} {/* Emoji de pin para indicar el estado */}
                 </div>
         <div 
-            className="p-4 h-[600px] w-[350px] border rounded bg-yellow-100 shadow-lg flex flex-col"
-            style={{ border: data.pinned ? '2px solid red' : '2px solid black' }}
+            className="p-4 h-full border rounde shadow-lg flex flex-col"
+            style={nodeStyle}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             >
@@ -57,7 +63,7 @@ export const NotesNode: React.FC<NodeProps<Node<BasePayload>>> = ({ id, data }) 
             value={note}
             onChange={handleNoteChange}
             placeholder="Escribe tu nota aquí..."
-            className="flex-grow nowheel w-full h-[480px] p-2 text-sm border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-grow nowheel w-full p-2 text-sm border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
         <button
             onClick={clearNote}

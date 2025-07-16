@@ -2,7 +2,7 @@ import { NodeDimensions, NodeTypeStyle } from "../types/nodes";
 
 const NODE_STYLES: { [key: string]: NodeTypeStyle } = {
     'CustomResizableNode': {
-        backgroundColor: '#007BFF', // Azul
+        backgroundColor: '#8ce7eb', // Azul
         borderColor: '#007BFF',
     },
     'Image': { // Esto se mapea desde faq.response_type que puede ser 'Image'
@@ -14,20 +14,20 @@ const NODE_STYLES: { [key: string]: NodeTypeStyle } = {
         borderColor: '#05e09c',
     },
     'TemplateNode': {
-        backgroundColor: '#ee015f', // Naranja
-        borderColor: '#ee015f',
+        backgroundColor: '#cfa5f7', // Naranja
+        borderColor: '#6F42C1',
     },
     'Process': { // Esto se mapea desde faq.response_type que puede ser 'Process'
         backgroundColor: '#6F42C1', // Púrpura
         borderColor: '#6F42C1',
     },
     'NonResizableNode': {
-        backgroundColor: '#FF1', // Amarillo
-        borderColor: '#FF1',
+        backgroundColor: '#eefb9a', // Amarillo
+        borderColor: '#cfcf12',
     },
     'NotesNode': {
-        backgroundColor: '#000142', // Azul oscuro
-        borderColor: '#000142',
+        backgroundColor: '#94ff9b', // Azul oscuro
+        borderColor: '#29a531',
     },
     'default': {
         backgroundColor: 'rgba(248, 249, 250, 0.9)', // Un gris claro por defecto

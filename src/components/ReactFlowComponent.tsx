@@ -230,7 +230,8 @@ export const ReactFlowComponent: React.FC = () => {
                   // 2. Crea el nodo con la estructura correcta
                   apiNodes.push({
                       id: answerNodeId,
-                      type: nodeType, // El tipo de componente a renderizar            
+                      type: nodeType, // El tipo de componente a renderizar     
+                      style: { width: 400, height: 450 },       
                       position: { x: answerX, y: answerY }, // <-- Posición ajustada
                       draggable: !isAnswerNodePinned,
                       data: answerNodeData, // 👈 Pasa el payload directamente aquí
@@ -335,13 +336,11 @@ return (
         <MiniMap
           nodeColor={(node: Node<BasePayload>) => {
                 const typeStyle = getCombinedNodeStyle(node.data?.response_data);
-                console.log(typeStyle)
                 return typeStyle.backgroundColor;
                 }}
           nodeBorderRadius={50}
           nodeStrokeColor={(node: Node<BasePayload>) => {
                 const typeStyle = getCombinedNodeStyle(node.data?.response_data);
-                console.log(typeStyle)
                 return typeStyle.borderColor;
                 }}
         />        

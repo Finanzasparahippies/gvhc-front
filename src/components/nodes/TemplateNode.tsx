@@ -164,12 +164,12 @@ export const TemplateNode: React.FC<NodeProps<Node<BasePayload>>> = (props) => {
                 id={'answer'}
             />
             <div 
-                className="bg-gray-700 text-white px-4 py-2 rounded-t-lg flex items-center justify-between cursor-grab" 
+                className="bg-#cfa5f7 text-white px-4 py-2 rounded-t-lg flex items-center justify-between cursor-grab" 
                 onMouseDown={handleMouseEnter} // Permite arrastrar el nodo desde la cabecera
                 onMouseUp={handleMouseLeave}
                 >
                     
-                <h3 className='absolute text-lg font-semibold text-white left-0 right-0 text-center
+                <h3 className='absolute text-lg font-semibold text-black left-0 right-0 text-center
                                 truncate px-12'>
                     {data.title}
                 </h3>

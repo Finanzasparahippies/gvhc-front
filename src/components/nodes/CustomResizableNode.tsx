@@ -1,6 +1,5 @@
 import { Handle, Position, NodeProps, Node, NodeResizeControl } from '@xyflow/react';
 import React, { memo } from 'react';
-import { FiMapPin } from 'react-icons/fi'; // Ícono para el pin
 import { CgArrowsExpandLeft } from "react-icons/cg";
 import { BasePayload } from '../../types/nodes';
 import  {getCombinedNodeStyle}  from '../../utils/nodeStyles'; // Asegúrate de la ruta correcta
@@ -13,24 +12,30 @@ const controlStyle = {
 
 export const CustomResizableNode: React.FC<NodeProps<Node<BasePayload>>> = (props) => {
 
-  const { id, data, type } = props;
+  const { id, data } = props;
   const nodeStyle = getCombinedNodeStyle(data.response_data, data.pinned);
   const onPinToggle = data.onPinToggle;
 
   return (
     <div
       style={nodeStyle}
-      className={`relative rounded-lg shadow-md flex flex-col overflow-hidden w-full h-full`} // Ajusta tus clases TailwindCSS
+      className={`relative rounded-lg shadow-md flex flex-col overflow-hidden`}
     >
-      <NodeResizeControl style={ controlStyle } minHeight={ 50 } minWidth={ 100 }>
+      <NodeResizeControl
+            style={ controlStyle }
+            minHeight={ 350 }
+            minWidth={ 300 }
+            // maxHeight={200}
+            // maxWidth={200}
+            >
         {/* <BsTextareaResize/> */}
         <ResizeIcon/>
       </NodeResizeControl>
-      <Handle 
-        type="source" 
-        position={Position.Bottom} 
+      <Handle
+        type="source"
+        position={Position.Bottom}
         id="output-handle"/>
-      
+
       <Handle
         type="target"
         position={Position.Top}
@@ -39,9 +44,16 @@ export const CustomResizableNode: React.FC<NodeProps<Node<BasePayload>>> = (prop
       {/* Botón de pin */}
       <button
         className="absolute top-2 right-2 text-gray-500 hover:text-red-500 z-10"
-        onClick={() => onPinToggle && onPinToggle(id)} 
+        onClick={() => onPinToggle && onPinToggle(id)}
       >
           {data.pinned ? '📌' : '📍'} {/* Emoji de pin para indicar el estado */}
+        <span className="
+          absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2
+          px-2 py-1 bg-gray-700 text-white text-xs rounded
+          opacity-0 transition-opacity duration-300 group-hover:opacity-100 whitespace-nowrap
+      ">
+          {data.pinned ? 'Desanclar' : 'Anclar'}
+      </span>
       </button>
 
       <div className="p-2 flex-grow">
@@ -68,23 +80,6 @@ function ResizeIcon() {
       size={13}
       className='text-[#ff0235]'
     />
-    // <svg
-    //   width="20"
-    //   xmlns="http://www.w3.org/2000/svg"
-    //   height="20"
-    //   viewBox="0 0 24 24"
-    //   strokeWidth="2"
-    //   stroke="#ff0071"
-    //   fill="none"
-    //   strokeLinecap="round"
-    //   strokeLinejoin="round"
-    // >
-    //   <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-    //   <polyline points="16 20 20 20 20 16" />
-    //   <line x1="14" y1="14" x2="20" y2="20" />
-    //   <polyline points="8 4 4 4 4 8" />
-    //   <line x1="4" y1="4" x2="10" y2="10" />
-    // </svg>
   );
 }
 
