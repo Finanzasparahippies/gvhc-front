@@ -1,6 +1,8 @@
 import React, { useState, useEffect, startTransition, useCallback, useMemo } from 'react';
 import { saveAs } from 'file-saver';
 import sharpenAPI from '../../../utils/APISharpen'
+import { GrStatusGood } from "react-icons/gr";
+import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
 
         const SERVERS = [
             { value: 'fathomvoice', label: 'Queues Server' },
@@ -32,6 +34,12 @@ import sharpenAPI from '../../../utils/APISharpen'
             ],
         };
 
+        const options = [
+            { id: 'agentStatus', name: 'Agent Individial Status' },
+            { id: 'cdrReport', name: 'Queues Reports' },
+            { id: 'liveStatus', name: 'Live Queue' },
+            { id: 'getAgents', name: 'Real Time Agents Disposition' },
+            ];
         
         const QUERY_TEMPLATES = {
             agentStatus: (username?: string) => ({
@@ -332,10 +340,10 @@ import sharpenAPI from '../../../utils/APISharpen'
             console.log("Datos recibidos en este lote:", filteredData.length);
             console.log("Datos totales disponibles en la API (según 'total_result_count'):", totalCountFromApi);
 
-       startTransition(() => {
+        startTransition(() => {
                 // If this is the *first* batch of a multi-fetch, clear existing data
                 // Otherwise, append to existing data
-                setData(prevData => (offset === 0 && isFetchingAllResults.current) ? filteredData : [...prevData, ...filteredData]);
+                setData(prevData => [...prevData, ...filteredData]);
 
                 setFetchedCount(prev => prev + filteredData.length); // Update total fetched count
 
@@ -587,24 +595,56 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
             </h2>
 
             {/* --- SELECCIÓN DE PLANTILLA DE CONSULTA O CONSULTA AVANZADA --- */}
-            <div className="animate-fade-in-down mb-6 p-4 bg-gray-800 rounded-lg shadow-md sharpen-query-report-container border-b border-t border-gray-200">
-                <label htmlFor="queryTemplateSelect" className="text-lg font-medium text-white mb-3 block text-center">
-                    Seleccionar Tipo de Reporte
+            <div className="animate-fade-in-down mb-8 p-6 bg-gradient-to-br from gray-700 to-gray-900 rounded-xl shadow-2xl sharpen-query-report-container border-b border-t border-gray-200">
+                <label htmlFor="queryTemplateSelect" className="text-lg font-bold text-white mb-4 block text-center drop-shadow-md">
+                    Select Report
                 </label>
-                <select
-                    id="queryTemplateSelect"
-                    value={selectedQueryTemplate}
-                    onChange={e => {
-                        const templateName = e.target.value as keyof typeof QUERY_TEMPLATES | 'cdrReport';
-                        setSelectedQueryTemplate(templateName);
-                    }}
-                    className="w-full text-center p-2 border border-gray-300 rounded text-sm mb-4 focus:ring-purple-500 focus:border-purple-500"
-                >
-                    <option value="agentStatus">Buscar por Agente</option>
-                    <option value="cdrReport">Reporte de Segmentos</option>
-                    <option value="liveStatus">Live Queue</option>
-                    <option value="getAgents">Disposition de Agentes (Tiempo Real)</option>
-                </select>
+                <Listbox value={selectedQueryTemplate} onChange={setSelectedQueryTemplate}>
+                    <div className="relative mt-1">
+                    <ListboxButton 
+                        className="relative w-full cursor-pointer rounded-md bg-gray-700 py-2 px-4 text-center shadow-md transition duration-200 ease-in-out text-white hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+                    >
+                        <span className="block truncate font-semibold">
+                        {options.find(o => o.id === selectedQueryTemplate)?.name}
+                        </span>
+                        <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                            {/* Assuming you have an SVG icon for dropdown, e.g., Heroicons ChevronDownIcon */}
+                            <svg className="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </span>
+                        </ListboxButton>
+                            <ListboxOptions className="absolute z-10 mt-2 max-h-60 w-full overflow-auto rounded-md bg-gray-700 py-1 text-base shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-base animate-fade-in-up">
+                        {options.map(option => (
+                            <ListboxOption
+                            key={option.id}
+                            value={option.id}
+                            className={({ focus }) =>
+                                `cursor-pointer select-none relative py-2 px-4 ${
+                                focus ? 'text-purple-700' : 'text-gray-200 hover:text-gray-600'
+                                }transition-colors duration-150 ease-in-out hover:bg-gray-300`
+                            }
+                            >
+                            {({ selected }) => (
+                                <>
+                                    <span className={` block truncate ${selected ? 'text-purple-500 font-semibold text-center' : 'font-normal text-center'}`}>
+                                        {option.name}
+                                    </span>
+                                    {selected ? (
+                                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-purple-700">
+                                            {/* Assuming you have an SVG icon for "selected", e.g., Heroicons CheckIcon */}
+                                            <svg className="h-5 w-5" fill="none" stroke="#a855f7" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                        </span>
+                                    ) : null}
+                                </>
+                            )}
+                            </ListboxOption>
+                        ))}
+                        </ListboxOptions>
+                    </div>
+                    </Listbox>
             </div>
             {/* -area de Consulta Personalizada */}
             {/* <div>
@@ -634,7 +674,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                                 htmlFor="agentUsernameInput"
                                 className='text-center bg-gray-800 border-t rounded-lg text-white font-semibold'
                                 >
-                                Nombre de Usuario del Agente:
+                                Agent Username:
                             </label>
                             <input
                                 type="text"
@@ -646,11 +686,11 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                             />
                         </div>
                     )}
-                   {selectedQueryTemplate === 'cdrReport' && (
+                    {selectedQueryTemplate === 'cdrReport' && (
     // Contenedor principal con animación de entrada
     <div className="animate-fade-in-down p-6 bg-gray-800 border border-gray-700 rounded-lg shadow-lg">
         <h3 className="text-xl font-semibold text-white mb-6 border-b border-gray-700 pb-3">
-            ⚙️ Sharpen Queue Report Configuration
+            ⚙️ Sharpen Queues Report Configuration
         </h3>
 
         {/* Grid responsivo para los campos del formulario */}
@@ -781,10 +821,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
             {/* --- BOTONES DE ACCIÓN --- */}
             <div className='animate-fade-in-down flex flex-wrap items-center gap-4 mb-6 p-4 bg-gray-800 rounded-lg shadow-md'>
                 <button
-                    onClick={() => {
-                        isFetchingAllResults.current = true; // Activate the flag in the ref
-                        fetchData(); 
-                    }}                    
+                    onClick={startFetchingAllResults}                    
                     disabled={loading || (selectedQueryTemplate === 'cdrReport' && !customQuery && !isValidRange())} // Disable if CDR and dates are invalid
                     className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-5 py-2 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[150px]"
                 >
@@ -806,12 +843,12 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
 
             {/* --- ESTADO DE MONITOREO Y MENSAJES --- */}
             {monitoringStatus && (
-                <div className={`animate-fade-in-down p-4 my-4 rounded-lg text-white font-medium shadow-md ${
+                <div className={`animate-fade-in-down p-4 flex items-center max-w-[300px] my-4 rounded-lg text-white font-medium shadow-md ${
                     monitoringStatus.type === 'error' ? 'bg-red-600' :
                     monitoringStatus.type === 'success' ? 'bg-green-600' :
-                    'bg-blue-600'
+                    'bg-purple-600'
                 }`}>
-                    {monitoringStatus.message}
+                    {monitoringStatus.message}<GrStatusGood className='ml-2' />
                 </div>
             )}
 
@@ -831,8 +868,8 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
             {/* --- SECCIÓN DE RESULTADOS DE LA TABLA --- */}
             {data.length > 0 ? (
                 <div
-                    className='animate-fade-in-down' 
-                    style={{ marginTop: '20px' }}>
+                    className='text-yellow-400 font-medium animate-fade-in-down mt-5' 
+                    >
                     <h2>Resulted ({fetchedCount} rows)</h2>
                     <div className="overflow-x-auto relative shadow-md rounded-lg border border-gray-700">
                         <table className="min-w-full divide-y divide-gray-200 text-sm">
@@ -926,7 +963,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                                 <select
                                     value={currentPage}
                                     onChange={handleGoToPage}
-                                    className="bg-gray-700 mr-2 ml-2 hover:bg-gray-600 text-white rounded-md focus:ring-blue-500 focus:border-blue-500 text-base appearance-none cursor-pointer"
+                                    className="bg-gray-700 mr-2 ml-2 hover:bg-gray-600 text-white rounded-md focus:ring-purple-500 focus:border-purple-500 text-base appearance-none cursor-pointer"
                                     style={{ minWidth: '60px', textAlign: 'center' }} // Estilo inline para asegurar tamaño mínimo y centrado
                                 >
                                     {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (

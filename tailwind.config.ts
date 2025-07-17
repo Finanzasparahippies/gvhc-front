@@ -21,7 +21,10 @@ const config: Config = {
       },
       animation: {
         'fade-in-down': 'fade-in-down 0.5s ease-out'
-      }
+      },
+      boxShadow: {
+          'purple-glow': '0 0 15px 5px rgba(128, 90, 213, 0.7)', // Ejemplo de sombra púrpura
+        },
     },
   },
   plugins: [],
