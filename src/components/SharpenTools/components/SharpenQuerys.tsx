@@ -861,7 +861,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
             )}
             {loading && (
                 <p className="animate-fade-in-down text-white text-lg font-medium text-center my-8">
-                    <span className="animate-pulse">Loading data...</span> This maybe take a few seconds.
+                    <span className="animate-pulse">Loading data...</span> This maybe take a moment. Remember You can breath
                 </p>
             )}
 
@@ -904,11 +904,11 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                                             <div className="flex flex-col space-y-1 items-center"> {/* Usa flexbox para alinear botones */}
                                                 {row.queueCallManagerID && !row.recordingUrl && (
                                                     <button
-                                                        onClick={() => fetchCallAudio((row), rowIndex)}
+                                                        onClick={() => fetchCallAudio(row, rowIndex)}
                                                         className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 mr-2"
                                                         title="Obtener Grabación"
                                                     >
-                                                        Record
+                                                        Get Record
                                                     </button>
                                                 )}
                                                 {row.recordingUrl && (
