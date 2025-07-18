@@ -861,7 +861,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
             )}
             {loading && (
                 <p className="animate-fade-in-down text-white text-lg font-medium text-center my-8">
-                    <span className="animate-pulse">Loading data...</span> This maybe take a moment. Remember You can breath
+                    <span className="animate-pulse">Loading data...</span> This maybe take a moment. Remember to stop and smell the flowers🌷
                 </p>
             )}
 

@@ -37,7 +37,7 @@ import getCombinedNodeStyle, { getNodeStyleByType, getGroupDimensionsByType } fr
 
 const INITIAL_X = 50; // Posición X inicial para el primer nodo
 const INITIAL_Y = 50; // Posición Y inicial para el primer nodo
-const COLUMNS = 10; // Número de grupos (pregunta + respuestas) por fila. Ajústalo a 8 si quieres 8 columnas.
+const COLUMNS = 5; // Número de grupos (pregunta + respuestas) por fila. Ajústalo a 8 si quieres 8 columnas.
 const QUESTION_NODE_HEIGHT = 40; // Altura estimada de tu QuestionNode. Ajusta si tu QuestionNode es más alto/bajo.
 const ANSWER_NODE_WIDTH_ESTIMATED = 600; // Ancho estimado de tus nodos de respuesta (TemplateNode, NotesNode, etc.)
 const ANSWER_NODE_HEIGHT_ESTIMATED = 500; // Alto estimado de tus nodos de respuesta. ¡Este es CRÍTICO para evitar solapamientos verticales!
