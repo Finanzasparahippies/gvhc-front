@@ -66,6 +66,7 @@ const TabsComponent = () => {
         {/* Barra de pestañas */}
          {isLoading ? (
                     <div className="px-2 text-gray-500">Cargando...</div>
+                
                 ) : user?.role === 'egs' ? (
                     // If user is 'egs', only show Food Station button
                     <button
@@ -76,7 +77,7 @@ const TabsComponent = () => {
                     </button>
                 ) : (
                     // For all other roles, show standard buttons with existing conditions
-                    <>
+                    <div className="relative top-20 ml-5 border border-gray-400 rounded-lg inline-flex items-center"> 
                         <button
                             onClick={() => handleTabChange('reactflow')}
                             className={activeTab === 'reactflow' ? 'active px-2 bg-slate-200 border border-gray-400 cursor-pointer mr-5 rounded-md' : 'mr-5 text-white px-2'}
@@ -112,7 +113,7 @@ const TabsComponent = () => {
                         >
                             Food Station
                         </button>
-                    </>
+                    </div>
                 )}
         {/* Contenido de la pestaña activa */}
         <div className="tab-content">

@@ -37,7 +37,7 @@ const App = (): JSX.Element => {
                 <Route
                       path="/dashboard"
                       element={
-                          <PrivateRoute requiredRoles={['agent', 'supervisor', 'teamleader']}>
+                          <PrivateRoute requiredRoles={['agent', 'supervisor', 'teamleader', 'egs']}>
                             <TabsComponent/>
                           </PrivateRoute>
                     }
@@ -45,7 +45,7 @@ const App = (): JSX.Element => {
                 <Route
                       path="/supervisors"
                       element={
-                          <PrivateRoute requiredRoles={['agent', 'supervisor', 'teamleader']}> {/* Ejemplo: solo supervisores y teamleaders */}
+                          <PrivateRoute requiredRoles={['supervisor', 'teamleader']}> {/* Ejemplo: solo supervisores y teamleaders */}
                             <SupervisorComponent/>
                           </PrivateRoute>
                         
