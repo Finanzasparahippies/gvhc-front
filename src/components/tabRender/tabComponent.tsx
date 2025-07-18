@@ -4,7 +4,7 @@ import { TrainingComponent } from '../TrainingComponent';
 import { SupervisorComponent } from '../SupervisorComponent';
 import { useAuth } from '../../utils/AuthContext'; // 🟢 Importa useAuth
 import QueueDashboard from '../SharpenTools/components/QueuesDashboard';
-import { FoodStation } from '../foodStation/foodStation';
+import { FoodStation } from '../foodStation/FoodStation';
 
 type TabType = 'reactflow' | 'training' | 'supervisors' | 'patientsQueues' | 'Food Station';
 
