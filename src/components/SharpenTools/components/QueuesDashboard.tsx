@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FiRefreshCw, FiAlertCircle, FiClock, FiPhoneIncoming } from 'react-icons/fi';
 import sharpenAPI from '../../../utils/APISharpen';
 
@@ -185,17 +185,27 @@ const QueueDashboard: React.FC = () => {
                                         <h2 className="text-gray-300 text-sm font-medium">{metric.title}</h2>
                                         {getIconForMetric(metric.type)}
                                     </div>
-                                    {data?.loading ? (
-                                        <div className="text-4xl font-bold text-gray-500 animate-pulse">--</div>
-                                    ) : data?.error ? (
+                                    {data?.error ? (
                                         <div className="flex items-center text-red-400">
                                             <FiAlertCircle className="mr-2" />
                                             <span>Error</span>
                                         </div>
                                     ) : (
-                                        <p className="text-5xl font-bold text-white truncate" title={String(data?.value || '0')}>
-                                            {data?.value ?? '0'}
-                                        </p>
+                                        <div className="flex items-center justify-between">
+                                            <p
+                                                className={`text-5xl font-bold truncate transition-all duration-200 ${
+                                                    data?.loading ? 'text-white/60' : 'text-white'
+                                                }`}
+                                                title={String(data?.value || '0')}
+                                            >
+                                                {data?.value ?? '0'}
+                                            </p>
+                                            {data?.loading && (
+                                                <div className="ml-2 animate-spin text-purple-400">
+                                                    <FiRefreshCw size={18} />
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                                 <div className="mt-4 h-1">
