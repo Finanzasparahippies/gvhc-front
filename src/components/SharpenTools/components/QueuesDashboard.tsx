@@ -52,11 +52,19 @@ const buildQuery = (metric: MetricConfig): string => {
 };
 
 const getElapsedSeconds = (startTime: string): number => {
-    const start = new Date(startTime).getTime();
+    if (!startTime) return 0;
+
+    // Si viene como "2025-07-19 14:30:00", convertirlo a ISO válido
+    const isoTimeUTC = startTime.replace(' ', 'T') + 'Z';
+    const start = new Date(isoTimeUTC).getTime();
     const now = Date.now();
+
+    if (isNaN(start) || start > now) {
+        return 0; // Si es inválida o es del futuro, considera 0 segundos
+    }
+
     return Math.floor((now - start) / 1000);
 };
-
 
 // --- COMPONENTE PRINCIPAL DEL DASHBOARD ---
 const QueueDashboard: React.FC = () => {
@@ -70,13 +78,14 @@ const QueueDashboard: React.FC = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true); // <--- CAMBIO: Estado para la barra lateral
     const [sidebarError, setSidebarError] = useState<string | null>(null); // <--- AÑADE ESTO
     const [now, setNow] = useState(Date.now());
+    const [leavingCalls, setLeavingCalls] = useState<string[]>([]);
 
     const userQueueNames = user?.queues.map(q => q.name) || [];
 
     const formatTime = (seconds: number): string => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
-            return `${mins}m ${secs}s`;
+        return `${mins}m ${secs.toString().padStart(2, '0')}s`;
     };
 
     const isUserMetric = (metric: MetricConfig): boolean => {
@@ -263,23 +272,37 @@ const QueueDashboard: React.FC = () => {
                                     }
                                 );
                     console.log('Respuesta completa:', response.data);
-
                     const data = response.data?.getCallsOnHoldData || [];
+                    const newCalls = data || [];
+                    const currentCallIds = callsOnHold.map(c => c.queueCallManagerID);
+                    const newCallIds = newCalls.map(c => c.queueCallManagerID);
+                    const removedCalls = currentCallIds.filter(id => !newCallIds.includes(id));
 
-                    console.log('calls on hold:', data)
-                    setCallsOnHold(data);
-                } catch (error: any) {
-                    console.error('Error fetching calls on hold:', error);
+                        if (removedCalls.length > 0) {
+                            // Añadir llamadas a la animación de salida
+                            setLeavingCalls(prev => [...prev, ...removedCalls]);
+
+                            // Esperar a que la animación termine (ej: 1s), luego limpiar del estado real
+                            setTimeout(() => {
+                                setLeavingCalls(prev => prev.filter(id => !removedCalls.includes(id)));
+                                setCallsOnHold(newCalls);
+                            }, 1000); // Duración de la animación
+                        } else {
+                            setCallsOnHold(newCalls); // No hubo cambios relevantes
+                        }
+
+                    } catch (error: any) {
+                        console.error('Error fetching calls on hold:', error);
                         setCallsOnHold([]);
                         setSidebarError(error.message || 'No se pudieron cargar los datos.');
-                }
-            };
+                    }
+                };
 
-            fetchCallsOnHold();
-            const interval = setInterval(fetchCallsOnHold, 15000); // cada 15 segundos
+                fetchCallsOnHold();
+                const interval = setInterval(fetchCallsOnHold, 15000);
 
-            return () => clearInterval(interval);
-        }, []);
+                return () => clearInterval(interval);
+            }, [callsOnHold]);
 
         const callCountsByQueue: Record<string, number> = callsOnHold.reduce((acc, call) => {
             const queue = call.queueName;
@@ -334,13 +357,20 @@ const QueueDashboard: React.FC = () => {
                             ) : callsOnHold.length === 0 ? (
                                 <p className="text-gray-400">No patients on hold.</p>
                             ) : (
-                                callsOnHold.map((call, idx) => {
-                                    const elapsed = getElapsedSeconds(call.startTime);
+                                callsOnHold
+                                .filter(call => !leavingCalls.includes(call.queueCallManagerID)) // Oculta durante la animación
+                                .map((call, _) => {
+                                    console.log("startTime:", call.startTime);
+                                    console.log("Parsed UTC:", new Date(call.startTime.replace(' ', 'T') + 'Z'));
+                                    const isLeaving = leavingCalls.includes(call.queueCallManagerID);
+                                    const safeElapsed = Math.max(0, getElapsedSeconds(call.startTime));
+
                                     return (
                                         <div
-                                            key={idx}
-                                            className="mb-4 p-4 bg-gradient-to-br from-gray-800 to-gray-700 rounded-lg shadow-md hover:shadow-lg transition-all border-l-4 border-purple-500"
-                                        >
+                                            key={call.queueCallManagerID}
+                                            className={`mb-4 p-4 bg-gradient-to-br from-gray-800 to-gray-700 rounded-lg shadow-md border-l-4 border-purple-500 transition-all duration-700 animate-fade-in-down ease-in-out
+                                                ${isLeaving ?  'fade-out' : ''}
+                                            `}>
                                             <p className="text-lg font-bold text-white flex items-center gap-2">
                                                 <MdSpatialAudioOff className='mr-2'/> {call.cidName || "Paciente desconocido"}
                                             </p>
@@ -351,7 +381,7 @@ const QueueDashboard: React.FC = () => {
                                                 <FcDepartment className='mr-2' /> {call.queueName}
                                             </p>
                                             <p className="text-sm text-purple-400 mt-2 flex items-center gap-2">
-                                                <FaClockRotateLeft className='mr-2' /> Tiempo en espera: {formatTime(elapsed)}
+                                                <FaClockRotateLeft className='mr-2' /> Tiempo en espera: {formatTime(safeElapsed)}
                                             </p>
                                         </div>
                                     );
