@@ -254,7 +254,7 @@ const QueueDashboard: React.FC = () => {
                         return (
                             <div 
                                 key={metric.id} 
-                                className={`rounded-xl shadow-lg p-5 flex flex-col justify-between transform hover:-translate-y-1 transition-transform duration-200
+                                className={`rounded-xl shadow-lg py-5 px-4 flex flex-col justify-between transform hover:-translate-y-1 transition-transform duration-200
                                                 ${isRelevant ? 'border-2 border-purple-400' : ''}
                                                 ${isActiveQueue ? 'bg-gradient-to-br from-purple-800 to-purple-600 border border-purple-400' : 'bg-gray-800'}
                                             `}
