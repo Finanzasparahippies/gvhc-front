@@ -26,6 +26,7 @@ import API from '../utils/API'; // Asegúrate de que esta ruta sea correcta para
             last_name: decoded.last_name,
             email: decoded.email,
             role: decoded.role, // ¡CRÍTICO! Asegúrate de que el rol esté en el token
+            queues: decoded.queues
             // Agrega otras propiedades del usuario si están en el token
         };
         return { user: userData, exp: decoded.exp };

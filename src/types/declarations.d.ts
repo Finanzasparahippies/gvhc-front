@@ -9,10 +9,10 @@ interface PrivateRouteProps {
 }
 
 interface LoginResponse {
-  access: string;
-  refresh: string;
-  user: User;
-}
+    access: string;
+    refresh: string;
+    user: User;
+    }
 
 
 interface AuthContextType {
@@ -29,6 +29,7 @@ interface User {
     email: string;
     first_name: string;
     last_name: string;
+    queues: string[];
 }
 
 interface UserData {
@@ -38,5 +39,35 @@ interface UserData {
     email: string;
     first_name: string;
     last_name: string;
+    queues: Queue[];
     // Añade cualquier otro campo que UserSerializer esté incluyendo
+}
+
+type MetricType = 'COUNT' | 'LCW';
+
+interface MetricConfig {
+    id: string;
+    title: string;
+    type: MetricType;
+    queueName: string;
+}
+
+interface MetricResult {
+    value: string | number | null;
+    loading: boolean;
+    error: string | null;
+}
+
+interface AllMetricsState {
+    [key: string]: MetricResult;
+}
+
+interface QuoteResponse {
+    q: string;
+    a: string;
+}
+
+interface Queue {
+    name: string;
+  // puedes agregar otros campos si existen
 }
