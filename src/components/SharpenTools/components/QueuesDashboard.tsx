@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FiRefreshCw, FiAlertCircle, FiClock, FiPhoneIncoming } from 'react-icons/fi';
 import sharpenAPI from '../../../utils/APISharpen';
+import API from '../../../utils/API';
 
 type MetricType = 'COUNT' | 'LCW';
 
@@ -21,6 +22,10 @@ interface AllMetricsState {
     [key: string]: MetricResult;
 }
 
+interface QuoteResponse {
+    q: string;
+    a: string;
+}
 
 // --- CONFIGURACIÓN DE LOS WIDGETS DEL DASHBOARD ---
 // Aquí defines cada tarjeta que aparecerá en el dashboard.
@@ -69,6 +74,8 @@ const QueueDashboard: React.FC = () => {
     const [metricsData, setMetricsData] = useState<AllMetricsState>({});
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [isFetching, setIsFetching] = useState(false);
+    const [quote, setQuote] = useState<string | null>(null);
+    const [author, setAuthor] = useState<string | null>(null);
 
     const fetchAllMetrics = useCallback(async () => {
         setIsFetching(true);
@@ -153,6 +160,32 @@ const QueueDashboard: React.FC = () => {
         }
     };
 
+    useEffect(() => {
+        const fetchQuote = async () => {
+                try {
+                    const response = await API.get<QuoteResponse | QuoteResponse[]>('api/dashboards/quote/');
+                    const data = response.data;
+                    console.log('quote:', data)
+                    if (Array.isArray(data)) {
+                            if (data.length > 0) {
+                                setQuote(data[0].q);
+                                setAuthor(data[0].a);
+                            }
+                        } else if (data.q && data.a) {
+                            setQuote(data.q);
+                            setAuthor(data.a);
+                        }
+                    } catch (error) {
+                        console.error('Error fetching quote:', error);
+                    }
+                };
+
+            fetchQuote();
+
+            const intervalId = setInterval(fetchQuote, 30000); // Llama cada 30 segundos
+            return () => clearInterval(intervalId); // Limpia el intervalo al desmontar
+        }, []);
+
     return (
         <div className="bg-gray-900 min-h-screen p-4 sm:p-6 lg:p-8 font-sans text-white mt-[120px] animate-fade-in-down">
             <div className="max-w-7xl mx-auto">
@@ -215,6 +248,12 @@ const QueueDashboard: React.FC = () => {
                         );
                     })}
                 </div>
+                    {quote && (
+                        <div className="mt-12 text-center max-w-xl mx-auto px-4 py-6 bg-gray-800 rounded-lg shadow-md">
+                            <p className="text-xl italic text-white">"{quote}"</p>
+                            <p className="mt-2 text-sm text-purple-400">— {author}</p>
+                        </div>
+                    )}
             </div>
         </div>
     );
