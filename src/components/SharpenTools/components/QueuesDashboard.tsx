@@ -182,7 +182,7 @@ const QueueDashboard: React.FC = () => {
 
             fetchQuote();
 
-            const intervalId = setInterval(fetchQuote, 180000); // Llama cada 180 segundos
+            const intervalId = setInterval(fetchQuote, 300000); // Llama cada 5 min
             return () => clearInterval(intervalId); // Limpia el intervalo al desmontar
         }, []);
 
