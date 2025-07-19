@@ -43,12 +43,12 @@ const TabsComponent = () => {
             return <FoodStation />;
         }
         switch (activeTab) {
+        case 'patientsQueues':
+            return <QueueDashboard />;
         case 'reactflow':
             return <ReactFlowComponent />;
         case 'training':
             return <TrainingComponent />;
-        case 'patientsQueues':
-            return <QueueDashboard />;
             case 'supervisors':
                 // 🟢 Solo renderiza SupervisorComponent si el rol es 'supervisor' o 'teamleader'
                 if (user?.role === 'supervisor' || user?.role === 'teamleader') {
@@ -98,14 +98,14 @@ const TabsComponent = () => {
                                 >
                                     Supervisors
                                 </button>
-                                <button
-                                    onClick={() => handleTabChange('patientsQueues')}
-                                    className={activeTab === 'patientsQueues' ? 'active px-2 bg-slate-200 border border-gray-400 cursor-pointer rounded-md' : ' text-white px-2'}
-                                >
-                                    Patients Queue's
-                                </button>
                             </>
                         )}
+                        <button
+                            onClick={() => handleTabChange('patientsQueues')}
+                            className={activeTab === 'patientsQueues' ? 'active px-2 bg-slate-200 border border-gray-400 cursor-pointer rounded-md' : ' text-white px-2'}
+                        >
+                            Patients Queue's
+                        </button>
                         {/* Always show Food Station for non-egs roles, if needed */}
                         <button
                             onClick={() => handleTabChange('Food Station')}

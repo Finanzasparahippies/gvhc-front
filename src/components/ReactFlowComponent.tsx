@@ -303,7 +303,7 @@ return (
       style={{ height: 'calc(100vh - 120px)' }}
       >
   <div className='flex flex-row justify-around mx-5 items-center'>
-    <div className='translate-x-[50px] lg:translate-x-[150px] xl:translate-x-[200px]'>
+      <div className='flex flex-row justify-between items-center px-5 mb-8 relative z-10'> 
     <ColorPicker
             onChangeColor={setBackgroundColor}/>
     </div>
