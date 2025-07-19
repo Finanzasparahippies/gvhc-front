@@ -71,3 +71,41 @@ interface Queue {
     name: string;
   // puedes agregar otros campos si existen
 }
+
+interface CallsOnHoldData {
+    getCallsonHoldStatus: string;
+    getCallsonHolddescription: string;
+    getCallsOnHoldData: CallOnHold[];
+}
+interface CallOnHold {
+    queueCallManagerID: string;
+    username: string;
+    queueID: string;
+    queueName: string;
+    vbxName: string;
+    channel: string;
+    cidNumber: string;
+    cidName: string;
+    startTime: string;
+    answerTime: string;
+    lastActionTime: string;
+    queueCallback: string;
+    callbackNumber: string;
+    queuePoints: string;
+    loopCounter: string;
+    timeOut: string;
+    timeOutTime: string;
+    callerCity: string;
+    callerState: string;
+    callerCountry: string;
+    currentLocation: string;
+    queueSkills: string;
+    commType: string;
+    uKey: string;
+    queueType: string;
+    agentCall: string;
+    switch: string;
+    startTimeInSeconds: string;
+    interactionButton: string;
+    // Agrega más propiedades si las hay
+}

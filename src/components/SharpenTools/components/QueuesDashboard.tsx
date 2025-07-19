@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiRefreshCw, FiAlertCircle, FiClock, FiPhoneIncoming } from 'react-icons/fi';
+import { FiRefreshCw, FiAlertCircle, FiClock, FiPhoneIncoming, FiSidebar } from 'react-icons/fi';
 import sharpenAPI from '../../../utils/APISharpen';
 import API from '../../../utils/API';
 import { useAuth } from '../../../utils/AuthContext';
+import { MdSpatialAudioOff } from "react-icons/md";
+import { SlCallIn } from "react-icons/sl";
+import { FcDepartment } from "react-icons/fc";
+import { FaClockRotateLeft } from "react-icons/fa6";
 
 
 
@@ -47,6 +51,12 @@ const buildQuery = (metric: MetricConfig): string => {
     return '';
 };
 
+const getElapsedSeconds = (startTime: string): number => {
+    const start = new Date(startTime).getTime();
+    const now = Date.now();
+    return Math.floor((now - start) / 1000);
+};
+
 
 // --- COMPONENTE PRINCIPAL DEL DASHBOARD ---
 const QueueDashboard: React.FC = () => {
@@ -56,14 +66,32 @@ const QueueDashboard: React.FC = () => {
     const [quote, setQuote] = useState<string | null>(null);
     const [author, setAuthor] = useState<string | null>(null);
     const { user } = useAuth();  // Dentro de tu componente `QueueDashboard`
+    const [callsOnHold, setCallsOnHold] = useState<CallOnHold[]>([]);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true); // <--- CAMBIO: Estado para la barra lateral
+    const [sidebarError, setSidebarError] = useState<string | null>(null); // <--- AÑADE ESTO
+    const [now, setNow] = useState(Date.now());
 
     const userQueueNames = user?.queues.map(q => q.name) || [];
+
+    const formatTime = (seconds: number): string => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+            return `${mins}m ${secs}s`;
+    };
 
     const isUserMetric = (metric: MetricConfig): boolean => {
         return userQueueNames.some(queueName =>
             metric.queueName.toLowerCase().includes(queueName.toLowerCase())
     );
     };
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setNow(Date.now());
+        }, 1000); // actualiza cada segundo
+
+        return () => clearInterval(interval);
+    }, []);
 
     const fetchSingleMetric = useCallback(async (metric: MetricConfig) => {
         setIsFetching(true);
@@ -223,92 +251,182 @@ const QueueDashboard: React.FC = () => {
             return () => clearInterval(intervalId); // Limpia el intervalo al desmontar
         }, []);
 
+        useEffect(() => {
+            const fetchCallsOnHold = async () => {
+                try {
+                    setSidebarError(null); 
+                    const response = await API.post<CallsOnHoldData>(
+                                    'api/dashboards/proxy/generic/', // URL de tu proxy genérico
+                                    {
+                                        endpoint: 'V2/queues/getCallsOnHold/', // El endpoint específico de Sharpen
+                                        payload: {} // Este endpoint no necesita un payload, enviamos uno vacío
+                                    }
+                                );
+                    console.log('Respuesta completa:', response.data);
+
+                    const data = response.data?.getCallsOnHoldData || [];
+
+                    console.log('calls on hold:', data)
+                    setCallsOnHold(data);
+                } catch (error: any) {
+                    console.error('Error fetching calls on hold:', error);
+                        setCallsOnHold([]);
+                        setSidebarError(error.message || 'No se pudieron cargar los datos.');
+                }
+            };
+
+            fetchCallsOnHold();
+            const interval = setInterval(fetchCallsOnHold, 15000); // cada 15 segundos
+
+            return () => clearInterval(interval);
+        }, []);
+
+        const callCountsByQueue: Record<string, number> = callsOnHold.reduce((acc, call) => {
+            const queue = call.queueName;
+            acc[queue] = (acc[queue] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+
     return (
-        <div className="bg-gray-900 min-h-screen p-4 sm:p-6 lg:p-8 font-sans text-white mt-[120px] animate-fade-in-down">
-            <div className="max-w-7xl mx-auto">
+        <div className="bg-gray-900 min-h-screen p-4 sm:p-6 lg:py-6 font-sans text-white mt-[120px] animate-fade-in-down">
+            <div className="max-w-full mx-auto">
                 {/* --- Cabecera --- */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
                     <div>
-                        <h1 className='text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-t from-gray-500 to-purple-600 mb-8 pb-2 border-y-4 rounded-lg border-gray-600 tracking-tight text-center'>GVHC Patient's on Queue</h1>
+                        <h1 className='text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-t from-gray-500 to-purple-600 mb-4 pb-2'>GVHC Patient's on Queue</h1>
                         <p className="text-gray-400 mt-1">
                             Last update: {lastUpdated ? lastUpdated.toLocaleTimeString() : 'Cargando...'}
                         </p>
                     </div>
-                    <button
-                        onClick={fetchAllMetrics}
-                        disabled={isFetching}
-                        className="mt-4 sm:mt-0 flex items-center px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 disabled:bg-purple-900 disabled:cursor-not-allowed transition-all duration-200"
-                    >
-                        <FiRefreshCw className={`mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-                        {isFetching ? 'Updating...' : 'Update Now'}
-                    </button>
+                    <div className="flex items-center gap-4 mt-4 sm:mt-0">
+                        {/* <--- CAMBIO: Botón para controlar la barra lateral ---> */}
+                        <button
+                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                            className="flex items-center px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+                            title={isSidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}
+                        >
+                            <FiSidebar className="mr-2" />
+                            <span>On Hold ({callsOnHold.length})</span>
+                        </button>
+                        <button
+                            onClick={fetchAllMetrics}
+                            disabled={isFetching}
+                            className="flex items-center px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 disabled:bg-purple-900 disabled:cursor-not-allowed transition-all duration-200"
+                        >
+                            <FiRefreshCw className={`mr-2 ${isFetching ? 'animate-spin' : ''}`} />
+                            {isFetching ? 'Updating...' : 'Update Now'}
+                        </button>
+                    </div>
                 </div>
 
-                {/* --- Grid de Métricas --- */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                    {dashboardMetrics.map((metric) => {
-                        const data = metricsData[metric.id];
-                        const isRelevant = isUserMetric(metric); // ⬅️ Aquí lo usamos
-                        const isActiveQueue = data?.value !== '0' && data?.value !== null && data?.value !== undefined;
+                {/* <--- CAMBIO: Contenedor principal con Flexbox ---> */}
+                <div className="flex flex-col lg:flex-row gap-8">
 
-                        return (
-                            <div 
-                                key={metric.id} 
-                                className={`rounded-xl shadow-lg py-5 px-4 flex flex-col justify-between transform hover:-translate-y-1 transition-transform duration-200
-                                                ${isRelevant ? 'border-2 border-purple-400' : ''}
-                                                ${isActiveQueue ? 'bg-gradient-to-br from-purple-800 to-purple-600 border border-purple-400' : 'bg-gray-800'}
-                                            `}
-                                        >                                
-                                    <div>
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h2 className="text-gray-300 text-sm font-medium">{metric.title}</h2>
-                                        {getIconForMetric(metric.type)}
-                                    </div>
-                                    {data?.error ? (
-                                        <div className="flex items-center justify-between text-red-400">
-                                            <div className="flex items-center">
-                                                <FiAlertCircle className="mr-2" />
-                                                <span>Error</span>
-                                            </div>
-                                            <button
-                                                onClick={() => fetchSingleMetric(metric)}
-                                                className="hover:text-white transition-colors"
-                                                title="Reintentar"
-                                            >
-                                                <FiRefreshCw />
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center justify-between">
-                                            <p
-                                                className={`text-5xl font-bold truncate transition-all duration-200 ${
-                                                    data?.loading ? 'text-white/60' : 'text-white'
-                                                }`}
-                                                title={String(data?.value || '0')}
-                                            >
-                                                {data?.value ?? '0'}
+                    {/* <--- CAMBIO: Barra lateral ---> */}
+                    <aside className={`bg-gray-800 rounded-lg shadow-lg p-4 flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-full lg:w-80' : 'w-0 p-0 overflow-hidden'}`}>
+                        <h2 className={`text-2xl font-bold mb-4 border-b border-gray-700 pb-2 transition-opacity ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>Patients on Hold</h2>
+                        <div className={`flex-grow overflow-y-auto transition-opacity ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
+                            {sidebarError ? (
+                                <div className="p-3 bg-red-500/20 text-red-300 rounded-md">
+                                    <p className="font-bold">Error al cargar</p>
+                                    <p className="text-sm">{sidebarError}</p>
+                                </div>
+                            ) : callsOnHold.length === 0 ? (
+                                <p className="text-gray-400">No patients on hold.</p>
+                            ) : (
+                                callsOnHold.map((call, idx) => {
+                                    const elapsed = getElapsedSeconds(call.startTime);
+                                    return (
+                                        <div
+                                            key={idx}
+                                            className="mb-4 p-4 bg-gradient-to-br from-gray-800 to-gray-700 rounded-lg shadow-md hover:shadow-lg transition-all border-l-4 border-purple-500"
+                                        >
+                                            <p className="text-lg font-bold text-white flex items-center gap-2">
+                                                <MdSpatialAudioOff className='mr-2'/> {call.cidName || "Paciente desconocido"}
                                             </p>
-                                            {data?.loading && (
-                                                <div className="ml-2 animate-spin text-purple-400">
-                                                    <FiRefreshCw size={18} />
+                                            <p className="text-sm text-gray-300 flex items-center gap-2">
+                                                <SlCallIn className='mr-2'/> {call.callbackNumber}
+                                            </p>
+                                            <p className="text-sm text-gray-300 flex items-center gap-2">
+                                                <FcDepartment className='mr-2' /> {call.queueName}
+                                            </p>
+                                            <p className="text-sm text-purple-400 mt-2 flex items-center gap-2">
+                                                <FaClockRotateLeft className='mr-2' /> Tiempo en espera: {formatTime(elapsed)}
+                                            </p>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </aside>
+
+                    {/* <--- CAMBIO: Contenido principal que se expande ---> */}
+                    <main className="flex-1">
+                        {/* --- Grid de Métricas --- */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3">
+                            {dashboardMetrics.map((metric) => {
+                                const data = metricsData[metric.id];
+                                const isRelevant = isUserMetric(metric);
+                                const isActiveQueue = data?.value !== '0' && data?.value !== null && data?.value !== undefined;
+
+                                return (
+                                    <div
+                                        key={metric.id}
+                                        className={`rounded-xl shadow-lg py-5 px-4 flex flex-col justify-between transform hover:-translate-y-1 transition-transform duration-200
+                                            ${isRelevant ? 'border-2 border-purple-400' : ''}
+                                            ${isActiveQueue ? 'bg-gradient-to-br from-purple-800 to-purple-600 border border-purple-400' : 'bg-gray-800'}
+                                        `}
+                                    >
+                                        <div>
+                                            <div className="flex items-center justify-between mb-3">
+                                                <h2 className="text-gray-300 text-sm font-medium">{metric.title}</h2>
+                                                {getIconForMetric(metric.type)}
+                                            </div>
+                                            {data?.error ? (
+                                                <div className="flex items-center justify-between text-red-400">
+                                                    <div className="flex items-center">
+                                                        <FiAlertCircle className="mr-2" size={10} />
+                                                        <span>Error</span>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => fetchSingleMetric(metric)}
+                                                        className="hover:text-white transition-colors"
+                                                        title="Reintentar"
+                                                    >
+                                                        <FiRefreshCw />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center justify-between">
+                                                    <p
+                                                        className={`text-5xl font-bold truncate text-center transition-all duration-200 ${data?.loading ? 'text-white/60' : 'text-white'}`}
+                                                        title={String(data?.value || '0')}
+                                                    >
+                                                        {data?.value ?? '0'}
+                                                    </p>
+                                                    {data?.loading && (
+                                                        <div className="ml-2 animate-spin text-purple-400">
+                                                            <FiRefreshCw size={18} />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
-                                    )}
-                                </div>
-                                <div className="mt-4 h-1">
-                                    {data?.loading && <div className="w-full bg-purple-500 h-1 rounded-full animate-pulse"></div>}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-                    {quote && (
-                        <div className="mt-12 text-center max-w-xl mx-auto px-4 py-6 bg-gray-800 rounded-lg shadow-md">
-                            <p className="text-xl italic text-white">"{quote}"</p>
-                            <p className="mt-2 text-sm text-purple-400">— {author}</p>
+                                        <div className="mt-4 h-1">
+                                            {data?.loading && <div className="w-full bg-purple-500 h-1 rounded-full animate-pulse"></div>}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
-                    )}
+                        {quote && (
+                            <div className="animate-fade-in-down mt-12 text-center max-w-xl mx-auto px-4 py-6 bg-gray-800 rounded-lg shadow-md">
+                                <p className="text-xl italic text-white">"{quote}"</p>
+                                <p className="mt-2 text-sm text-purple-400">— {author}</p>
+                            </div>
+                        )}
+                    </main>
+                </div>
             </div>
         </div>
     );
