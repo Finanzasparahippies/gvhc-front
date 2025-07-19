@@ -1,7 +1,7 @@
 import React, { useState, useEffect, startTransition, useCallback, useMemo } from 'react';
 import { saveAs } from 'file-saver';
 import sharpenAPI from '../../../utils/APISharpen'
-import { GrStatusGood } from "react-icons/gr";
+import { GrStatusGood, GrStatusCritical  } from "react-icons/gr";
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react';
 
         const SERVERS = [
@@ -146,41 +146,44 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
         const [fetchedCount, setFetchedCount] = useState(0);
         const [currentPage, setCurrentPage] = useState(1);
         const itemsPerPage = 100;
-        const [monitoringStatus, setMonitoringStatus] = useState<{message: string, type: 'info' | 'error' | 'success'} | null>(null);
+        const [monitoringStatus, setMonitoringStatus] = useState<{message: string, type: 'info' | 'error' | 'success' | ''} | null>(null);
         const [agentUsername, setAgentUsername] = useState<string>(''); // Add this line
         const [getAgentsParams, setGetAgentsParams] = useState({
-        getActiveCalls: true,
-        getDayCallCount: true,
-        queueLogin: true,
-        onlineOnly: true,
-        orderBy: 'asc' as 'asc' | 'desc',
-        orderByCol: 'activeCall',
+            getActiveCalls: true,
+            getDayCallCount: true,
+            queueLogin: true,
+            onlineOnly: true,
+            orderBy: 'asc' as 'asc' | 'desc',
+            orderByCol: 'activeCall',
         });
         const [agentStatusData, setAgentStatusData] = useState<RowData | null>(null);
         const [isModalOpen, setIsModalOpen] = useState(false);
         const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
-        const indexOfLastItem = currentPage * itemsPerPage;
-        const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-        const currentItems = useMemo(() => data.slice(indexOfFirstItem, indexOfLastItem), [data, indexOfFirstItem, indexOfLastItem]);
-        const totalPages = useMemo(() => Math.ceil(data.length / itemsPerPage), [data.length, itemsPerPage]);
+        // const indexOfLastItem = currentPage * itemsPerPage;
+        // const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+        // const currentItems = useMemo(() => data.slice(indexOfFirstItem, indexOfLastItem), [data, indexOfFirstItem, indexOfLastItem]);
+        // const totalPages = useMemo(() => Math.ceil(data.length / itemsPerPage), [data.length, itemsPerPage]);
+        const [usernameFilter, setUsernameFilter] = useState<string>('');
 
         const API_BATCH_SIZE = 20000; // Cuántos resultados pedir por cada llamada a la API (ajusta si es necesario)
         const MAX_API_RESULTS_TO_FETCH = 150000; // Límite total de resultados que quieres obtener del backend
+        const MESSAGE_DISPLAY_TIME = 5000; // 5 segundos
         const totalResultsAvailable = React.useRef<number | null>(null);
         const currentApiOffset = React.useRef<number>(0);
         const isFetchingAllResults = React.useRef<boolean>(false);
 
+
         const getLocalDatetimeString = (date: Date): string => {
-        const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const day = date.getDate().toString().padStart(2, '0');
-        const hours = date.getHours().toString().padStart(2, '0');
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        // No incluimos segundos o milisegundos si el input es solo hasta minutos
-        // Si tu input es 'datetime-local' y no 'datetime-local-seconds', entonces no necesitas segundos.
-        // Si lo necesitas, añade: const seconds = date.getSeconds().toString().padStart(2, '0');
-        // Y concaténalos: `${hours}:${minutes}:${seconds}`
-        return `${year}-${month}-${day}T${hours}:${minutes}`;
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            // No incluimos segundos o milisegundos si el input es solo hasta minutos
+            // Si tu input es 'datetime-local' y no 'datetime-local-seconds', entonces no necesitas segundos.
+            // Si lo necesitas, añade: const seconds = date.getSeconds().toString().padStart(2, '0');
+            // Y concaténalos: `${hours}:${minutes}:${seconds}`
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
     };
 
         const handleNextPage = () => {
@@ -207,6 +210,24 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
             }
         });
     };
+
+    useEffect(() => {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        if (monitoringStatus && monitoringStatus.message) {
+            // Si hay un mensaje, establece un temporizador para borrarlo
+            timer = setTimeout(() => {
+                setMonitoringStatus({ message: '', type: '' });
+            }, MESSAGE_DISPLAY_TIME);
+        }
+
+        // Función de limpieza: se ejecuta cuando el componente se desmonta
+        // o antes de que el efecto se vuelva a ejecutar (si las dependencias cambian)
+        return () => {
+            if (timer) {
+                clearTimeout(timer);
+            }
+        };
+    }, [monitoringStatus?.message]);
 
         useEffect(() => {
             setDataBase(DATABASES[server]?.[0]?.value);
@@ -352,6 +373,15 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
                     totalResultsAvailable.current = totalCountFromApi;
                 }
 
+                if (offset === 0 && filteredData.length === 0 && totalCountFromApi === 0) {
+                    setMonitoringStatus({ message: 'No results provided.', type: 'error' });
+                    isFetchingAllResults.current = false;
+                    setLoading(false);
+                    totalResultsAvailable.current = null;
+                    currentApiOffset.current = 0;
+                    return; // Detiene la ejecución aquí
+                }
+
                 // Check if more data needs to be fetched
                 const totalFetchedSoFar = offset + filteredData.length;
                 const totalExpected = Math.min(totalResultsAvailable.current || Infinity, MAX_API_RESULTS_TO_FETCH);
@@ -369,9 +399,9 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
                     isFetchingAllResults.current = false; // Turn off the flag
                     setLoading(false);
                     if (totalFetchedSoFar >= totalExpected && totalResultsAvailable.current !== null && totalResultsAvailable.current > MAX_API_RESULTS_TO_FETCH) {
-                        setMonitoringStatus({ message: `Carga completa. Se cargaron ${totalFetchedSoFar} resultados (límite de ${MAX_API_RESULTS_TO_FETCH} alcanzado).`, type: 'success' });
+                        setMonitoringStatus({ message: `Fetch complete. Loaded ${totalFetchedSoFar} results (límit of ${MAX_API_RESULTS_TO_FETCH} reached).`, type: 'success' });
                     } else {
-                        setMonitoringStatus({ message: `Carga de ${totalFetchedSoFar} resultados completa.`, type: 'success' });
+                        setMonitoringStatus({ message: `Fetch of ${totalFetchedSoFar} results complete.`, type: 'success' });
                     }
                     totalResultsAvailable.current = null; // Reset for next fetch
                     currentApiOffset.current = 0; // Reset offset for next fetch
@@ -587,6 +617,38 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
         alert("No se pudo obtener la URL final del audio. Por favor, inténtalo de nuevo.");
     }
 };
+
+    const filteredData = useMemo(() => {
+        let currentFilteredData = data;
+
+        if (selectedQueryTemplate === 'cdrReport' || selectedQueryTemplate === 'liveStatus') {
+            currentFilteredData = currentFilteredData.filter(row =>
+                row.queueCallManagerID !== null && row.queueCallManagerID !== undefined
+            );
+        }
+
+        // Apply the general usernameFilter to agentName or queueName
+        if (usernameFilter) {
+            const lowerCaseFilter = usernameFilter.toLowerCase();
+            currentFilteredData = currentFilteredData.filter(row =>
+                (row.agentName && String(row.agentName).toLowerCase().includes(lowerCaseFilter)) ||
+                (row.queueName && String(row.queueName).toLowerCase().includes(lowerCaseFilter)) ||
+                (row.queueCallManagerID && String(row.queueCallManagerID).toString().includes(lowerCaseFilter))
+            );
+        }
+        return currentFilteredData;
+    }, [data, selectedQueryTemplate, usernameFilter]);
+
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+
+    // --- You might also want to reset currentPage when usernameFilter changes ---
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [usernameFilter]);
 
         return (
         <div className='p-6 max-w-screen-xl mx-auto mt-[100px]'>
@@ -846,9 +908,18 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                 <div className={`animate-fade-in-down p-4 flex items-center max-w-[300px] my-4 rounded-lg text-white font-medium shadow-md ${
                     monitoringStatus.type === 'error' ? 'bg-red-600' :
                     monitoringStatus.type === 'success' ? 'bg-green-600' :
-                    'bg-purple-600'
+                    'bg-purple-600 hidden'
                 }`}>
-                    {monitoringStatus.message}<GrStatusGood className='ml-2' />
+                    {monitoringStatus.message}
+                    {monitoringStatus.type === 'error' ? (
+                        <GrStatusCritical className='ml-2 text-xl animate-pulse' /> // Icono de error (ajusta el tamaño si es necesario)
+                    ) : monitoringStatus.type === 'success' ? (
+                        <GrStatusGood className='ml-2 text-xl animate-pulse' /> // Icono de éxito
+                    ) : (
+                        // Aquí puedes poner un icono para 'info', 'loading', o simplemente dejarlo vacío si no quieres uno por defecto
+                        // Por ejemplo, <FaInfoCircle className='ml-2' /> o un spinner para carga
+                        <span className='ml-2 hidden'>💡</span> 
+                    )}
                 </div>
             )}
 
@@ -863,6 +934,21 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                 <p className="animate-fade-in-down text-white text-lg font-medium text-center my-8">
                     <span className="animate-pulse">Loading data...</span> This maybe take a moment. Remember to stop and smell the flowers🌷
                 </p>
+            )}
+              {selectedQueryTemplate !== 'agentStatus' && ( // Don't show filter if we're querying a single agent
+                <div className="mb-4 bg-gray-800 p-4 rounded-lg shadow-md">
+                    <label htmlFor="usernameFilter" className="block text-gray-300 text-sm font-bold mb-2">
+                        Filtrar por Username:
+                    </label>
+                    <input
+                        type="text"
+                        id="usernameFilter"
+                        value={usernameFilter}
+                        onChange={(e) => startTransition(() => setUsernameFilter(e.target.value))}
+                        placeholder="Escribe un username para filtrar..."
+                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-gray-300"
+                    />
+                </div>
             )}
 
             {/* --- SECCIÓN DE RESULTADOS DE LA TABLA --- */}
@@ -977,7 +1063,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                         </span>
                         <button
                             onClick={handleNextPage}
-                            disabled={currentPage === totalPages}
+                            disabled={currentPage === totalPages || loading}
                             className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Next →
