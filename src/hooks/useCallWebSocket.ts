@@ -55,7 +55,8 @@ export const useCallsWebSocket = () => {
     // useEffect para gestionar la conexión del WebSocket
     useEffect(() => {
         // Reemplaza con la URL de tu WebSocket
-        const websocketUrl = 'ws://localhost:8001/ws/calls'; // O la URL de producción
+        // const websocketUrl = 'ws://localhost:8001/ws/calls'; // O la URL de producción
+        const websocketUrl = 'ws://gvhc-backend.onrender.com/calls'; // O la URL de producción
 
         const socket = new WebSocket(websocketUrl);
 
