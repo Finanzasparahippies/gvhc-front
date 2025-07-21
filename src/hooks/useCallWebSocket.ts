@@ -58,7 +58,7 @@ export const useCallsWebSocket = () => {
         const socket = new WebSocket(websocketUrl);
 
         socket.onopen = () => {
-            console.log('WebSocket connected:', websocketUrl);
+            console.log(':', websocketUrl);
             setWsError(null);
         };
 
