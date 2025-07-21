@@ -1,10 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 // Define the structure of the WebSocket message payload
-interface WebSocketMessage {
-    type: 'add' | 'remove' | 'update';
-    payload: CallOnHold | { id: string }; // For 'remove', we just need the ID
-}
 
 /**
  * Custom React hook to manage real-time call data via WebSocket.
@@ -55,8 +51,9 @@ export const useCallsWebSocket = () => {
     // useEffect para gestionar la conexión del WebSocket
     useEffect(() => {
         // Reemplaza con la URL de tu WebSocket
-        // const websocketUrl = 'ws://localhost:8001/ws/calls'; // O la URL de producción
-        const websocketUrl = 'wss://gvhc-backend.onrender.com/ws/calls'; // O la URL de producción
+
+        // const websocketUrl = 'ws://localhost:8001/ws/calls/'; // O la URL de producción
+        const websocketUrl = 'wss://gvhc-backend.onrender.com/ws/calls/'; // O la URL de producción
 
         const socket = new WebSocket(websocketUrl);
 
@@ -66,6 +63,7 @@ export const useCallsWebSocket = () => {
         };
 
         socket.onmessage = handleMessage;
+        console.log('calls', calls)
 
         socket.onerror = (event) => {
             console.error('WebSocket error:', event);

@@ -81,12 +81,9 @@ const QueueDashboard: React.FC = () => {
     const [quote, setQuote] = useState<string | null>(null);
     const [author, setAuthor] = useState<string | null>(null);
     const { user } = useAuth();  // Dentro de tu componente `QueueDashboard`
-    // const [callsOnHold, setCallsOnHold] = useState<CallOnHold[]>([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true); // <--- CAMBIO: Estado para la barra lateral
     const [sidebarError, setSidebarError] = useState<string | null>(null); // <--- AÑADE ESTO
     const [now, setNow] = useState(Date.now());
-    // const [leavingCalls, setLeavingCalls] = useState<string[]>([]);
-    // const callsOnHold = useCallsWebSocket();
     const { calls: callsOnHold, leavingCalls, wsError } = useCallsWebSocket();
 
     const userQueueNames = user?.queues.map(q => q.name) || [];
@@ -99,47 +96,6 @@ const QueueDashboard: React.FC = () => {
             // You might want to display wsError in the UI if it's critical
         }
     }, [callsOnHold, leavingCalls, wsError]);
-
-
-//     const SidebarCalls = () => {
-//             console.log(callsOnHold)
-//              return (
-//         <div>
-//             <h2>Patients on Hold: {callsOnHold.length}</h2>
-//             {callsOnHold.length === 0 && leavingCalls.length === 0 ? ( // Si no hay llamadas y no hay animaciones pendientes
-//                 <p className="text-gray-400">No patients on hold.</p>
-//             ) : (
-//                 // Mostrar todas las llamadas, aplicando la clase 'fade-out' si están saliendo
-//                 callsOnHold.map( (call: CallOnHold) => {
-//                     const isLeaving = leavingCalls.includes(call.queueCallManagerID);
-//                     const safeElapsed = Math.max(0, getElapsedSeconds(call.startTime)); // Asegúrate de que getElapsedSeconds esté definido y funcione
-
-//                     return (
-//                         <div
-//                             key={call.queueCallManagerID}
-//                             className={`mb-4 p-4 bg-gradient-to-br from-gray-800 to-gray-700 rounded-lg shadow-md border-l-4 border-purple-500 transition-all duration-700 ease-in-out
-//                                 ${isLeaving ? 'opacity-0 transform -translate-x-full' : 'opacity-100 transform translate-x-0 animate-fade-in-down'}
-//                             `}>
-//                             {/* ... tu contenido de llamada ... */}
-//                             <p className="text-lg font-bold text-white flex items-center gap-2">
-//                                 <MdSpatialAudioOff className='mr-2'/> {call.cidName || "Paciente desconocido"}
-//                             </p>
-//                             <p className="text-sm text-gray-300 flex items-center gap-2">
-//                                 <SlCallIn className='mr-2'/> {call.callbackNumber}
-//                             </p>
-//                             <p className="text-sm text-gray-300 flex items-center gap-2">
-//                                 <FcDepartment className='mr-2' /> {call.queueName}
-//                             </p>
-//                             <p className="text-sm text-purple-400 mt-2 flex items-center gap-2">
-//                                 <FaClockRotateLeft className='mr-2' /> Tiempo en espera: {formatTime(safeElapsed)}
-//                             </p>
-//                         </div>
-//                     );
-//                 })
-//             )}
-//         </div>
-//     );
-// };
 
     const formatTime = (seconds: number): string => {
         const mins = Math.floor(seconds / 60);
