@@ -109,3 +109,17 @@ interface CallOnHold {
     interactionButton: string;
     // Agrega más propiedades si las hay
 }
+
+interface CallsWebSocketData {
+    calls: CallOnHold[];
+    leavingCalls: string[];
+}
+
+interface CallsUpdateMessage {
+    type: 'callsUpdate';
+    payload: {
+        getCallsOnHoldData: {
+            getCallsOnHoldData: CallOnHold[]; // Este es el array que nos interesa
+        };
+    };
+}

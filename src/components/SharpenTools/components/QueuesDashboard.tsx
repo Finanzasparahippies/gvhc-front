@@ -7,7 +7,7 @@ import { MdSpatialAudioOff } from "react-icons/md";
 import { SlCallIn } from "react-icons/sl";
 import { FcDepartment } from "react-icons/fc";
 import { FaClockRotateLeft } from "react-icons/fa6";
-
+import { useCallsWebSocket } from '../../../hooks/useCallWebSocket';
 
 
 // --- CONFIGURACIÓN DE LOS WIDGETS DEL DASHBOARD ---
@@ -66,6 +66,13 @@ const getElapsedSeconds = (startTime: string): number => {
     return Math.floor((now - start) / 1000);
 };
 
+const formatTime = (totalSeconds: number) => {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+};
+
+
 // --- COMPONENTE PRINCIPAL DEL DASHBOARD ---
 const QueueDashboard: React.FC = () => {
     const [metricsData, setMetricsData] = useState<AllMetricsState>({});
@@ -74,13 +81,65 @@ const QueueDashboard: React.FC = () => {
     const [quote, setQuote] = useState<string | null>(null);
     const [author, setAuthor] = useState<string | null>(null);
     const { user } = useAuth();  // Dentro de tu componente `QueueDashboard`
-    const [callsOnHold, setCallsOnHold] = useState<CallOnHold[]>([]);
+    // const [callsOnHold, setCallsOnHold] = useState<CallOnHold[]>([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true); // <--- CAMBIO: Estado para la barra lateral
     const [sidebarError, setSidebarError] = useState<string | null>(null); // <--- AÑADE ESTO
     const [now, setNow] = useState(Date.now());
-    const [leavingCalls, setLeavingCalls] = useState<string[]>([]);
+    // const [leavingCalls, setLeavingCalls] = useState<string[]>([]);
+    // const callsOnHold = useCallsWebSocket();
+    const { calls: callsOnHold, leavingCalls, wsError } = useCallsWebSocket();
 
     const userQueueNames = user?.queues.map(q => q.name) || [];
+
+    useEffect(() => {
+        console.log('QueueDashboard - callsOnHold:', callsOnHold);
+        console.log('QueueDashboard - leavingCalls:', leavingCalls);
+        if (wsError) {
+            console.error('WebSocket Error in QueueDashboard:', wsError);
+            // You might want to display wsError in the UI if it's critical
+        }
+    }, [callsOnHold, leavingCalls, wsError]);
+
+
+//     const SidebarCalls = () => {
+//             console.log(callsOnHold)
+//              return (
+//         <div>
+//             <h2>Patients on Hold: {callsOnHold.length}</h2>
+//             {callsOnHold.length === 0 && leavingCalls.length === 0 ? ( // Si no hay llamadas y no hay animaciones pendientes
+//                 <p className="text-gray-400">No patients on hold.</p>
+//             ) : (
+//                 // Mostrar todas las llamadas, aplicando la clase 'fade-out' si están saliendo
+//                 callsOnHold.map( (call: CallOnHold) => {
+//                     const isLeaving = leavingCalls.includes(call.queueCallManagerID);
+//                     const safeElapsed = Math.max(0, getElapsedSeconds(call.startTime)); // Asegúrate de que getElapsedSeconds esté definido y funcione
+
+//                     return (
+//                         <div
+//                             key={call.queueCallManagerID}
+//                             className={`mb-4 p-4 bg-gradient-to-br from-gray-800 to-gray-700 rounded-lg shadow-md border-l-4 border-purple-500 transition-all duration-700 ease-in-out
+//                                 ${isLeaving ? 'opacity-0 transform -translate-x-full' : 'opacity-100 transform translate-x-0 animate-fade-in-down'}
+//                             `}>
+//                             {/* ... tu contenido de llamada ... */}
+//                             <p className="text-lg font-bold text-white flex items-center gap-2">
+//                                 <MdSpatialAudioOff className='mr-2'/> {call.cidName || "Paciente desconocido"}
+//                             </p>
+//                             <p className="text-sm text-gray-300 flex items-center gap-2">
+//                                 <SlCallIn className='mr-2'/> {call.callbackNumber}
+//                             </p>
+//                             <p className="text-sm text-gray-300 flex items-center gap-2">
+//                                 <FcDepartment className='mr-2' /> {call.queueName}
+//                             </p>
+//                             <p className="text-sm text-purple-400 mt-2 flex items-center gap-2">
+//                                 <FaClockRotateLeft className='mr-2' /> Tiempo en espera: {formatTime(safeElapsed)}
+//                             </p>
+//                         </div>
+//                     );
+//                 })
+//             )}
+//         </div>
+//     );
+// };
 
     const formatTime = (seconds: number): string => {
         const mins = Math.floor(seconds / 60);
@@ -260,50 +319,6 @@ const QueueDashboard: React.FC = () => {
             return () => clearInterval(intervalId); // Limpia el intervalo al desmontar
         }, []);
 
-        useEffect(() => {
-            const fetchCallsOnHold = async () => {
-                try {
-                    setSidebarError(null); 
-                    const response = await API.post<CallsOnHoldData>(
-                                    'api/dashboards/proxy/generic/', // URL de tu proxy genérico
-                                    {
-                                        endpoint: 'V2/queues/getCallsOnHold/', // El endpoint específico de Sharpen
-                                        payload: {} // Este endpoint no necesita un payload, enviamos uno vacío
-                                    }
-                                );
-                    console.log('Respuesta completa:', response.data);
-                    const data = response.data?.getCallsOnHoldData || [];
-                    const newCalls = data || [];
-                    const currentCallIds = callsOnHold.map(c => c.queueCallManagerID);
-                    const newCallIds = newCalls.map(c => c.queueCallManagerID);
-                    const removedCalls = currentCallIds.filter(id => !newCallIds.includes(id));
-
-                        if (removedCalls.length > 0) {
-                            // Añadir llamadas a la animación de salida
-                            setLeavingCalls(prev => [...prev, ...removedCalls]);
-
-                            // Esperar a que la animación termine (ej: 1s), luego limpiar del estado real
-                            setTimeout(() => {
-                                setLeavingCalls(prev => prev.filter(id => !removedCalls.includes(id)));
-                                setCallsOnHold(newCalls);
-                            }, 1000); // Duración de la animación
-                        } else {
-                            setCallsOnHold(newCalls); // No hubo cambios relevantes
-                        }
-
-                    } catch (error: any) {
-                        console.error('Error fetching calls on hold:', error);
-                        setCallsOnHold([]);
-                        setSidebarError(error.message || 'No se pudieron cargar los datos.');
-                    }
-                };
-
-                fetchCallsOnHold();
-                const interval = setInterval(fetchCallsOnHold, 15000);
-
-                return () => clearInterval(interval);
-            }, [callsOnHold]);
-
         const callCountsByQueue: Record<string, number> = callsOnHold.reduce((acc, call) => {
             const queue = call.queueName;
             acc[queue] = (acc[queue] || 0) + 1;
@@ -346,19 +361,21 @@ const QueueDashboard: React.FC = () => {
                 <div className="flex flex-col lg:flex-row gap-8">
 
                     {/* <--- CAMBIO: Barra lateral ---> */}
-                    <aside className={`bg-gray-800 rounded-lg shadow-lg p-4 flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-full lg:w-80' : 'w-0 p-0 overflow-hidden'}`}>
+                    <aside className={`bg-gray-800 rounded-lg shadow-lg p-4 flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-full max-h-screen lg:w-80' : 'w-0 p-0 overflow-hidden'}`}>
                         <h2 className={`text-2xl font-bold mb-4 border-b border-gray-700 pb-2 transition-opacity ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>Patients on Hold</h2>
                         <div className={`flex-grow overflow-y-auto transition-opacity ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
-                            {sidebarError ? (
-                                <div className="p-3 bg-red-500/20 text-red-300 rounded-md">
-                                    <p className="font-bold">Error al cargar</p>
-                                    <p className="text-sm">{sidebarError}</p>
+                            {wsError && (
+                                <div className="p-3 bg-red-500/20 text-red-300 rounded-md mb-4">
+                                    <p className="font-bold">WebSocket Error:</p>
+                                    <p className="text-sm">{wsError}</p>
                                 </div>
-                            ) : callsOnHold.length === 0 ? (
+                            )}
+                            {callsOnHold.length === 0 ? (
                                 <p className="text-gray-400">No patients on hold.</p>
                             ) : (
                                 callsOnHold
                                 .filter(call => !leavingCalls.includes(call.queueCallManagerID)) // Oculta durante la animación
+                                .sort((a, b) => getElapsedSeconds(b.startTime) - getElapsedSeconds(a.startTime)) // Sort by elapsed time (descending)
                                 .map((call, _) => {
                                     console.log("startTime:", call.startTime);
                                     console.log("Parsed UTC:", new Date(call.startTime.replace(' ', 'T') + 'Z'));
