@@ -120,6 +120,28 @@ interface CallsUpdateMessage {
     payload: {
         getCallsOnHoldData: {
             getCallsOnHoldData: CallOnHold[]; // Este es el array que nos interesa
+            // ...otras propiedades como getCallsOnHoldStatus
         };
+    };
+}
+
+interface QueueConfig {
+    id: string; // Un ID único para la tarjeta
+    title: string; // Título de la tarjeta (ej: 'Appointment Line')
+    queueName: string; // Nombre de la cola real en la DB
+}
+
+// Define cómo se almacenarán los datos de cada métrica (Count, Lcw)
+interface MetricData {
+    value: string | number | null;
+    loading: boolean;
+    error: string | null;
+}
+
+// Define el estado completo de todas las métricas, ahora agrupadas por cola
+interface AllMetricsState {
+    [queueId: string]: {
+        count: MetricData;
+        lcw: MetricData;
     };
 }
