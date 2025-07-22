@@ -332,17 +332,15 @@ const QueueDashboard: React.FC = () => {
                                 callsOnHold
                                 .filter(call => !leavingCalls.includes(call.queueCallManagerID)) // Oculta durante la animación
                                 .sort((a, b) => getElapsedSeconds(b.startTime) - getElapsedSeconds(a.startTime)) // Sort by elapsed time (descending)
-                                .map((call, _) => {
-                                    console.log("startTime:", call.startTime);
-                                    console.log("Parsed UTC:", new Date(call.startTime.replace(' ', 'T') + 'Z'));
+                                .map((call) => {
                                     const isLeaving = leavingCalls.includes(call.queueCallManagerID);
                                     const safeElapsed = Math.max(0, getElapsedSeconds(call.startTime));
 
                                     return (
                                         <div
                                             key={call.queueCallManagerID}
-                                            className={`mb-4 p-4 bg-gradient-to-br from-gray-800 to-gray-700 rounded-lg shadow-md border-l-4 border-purple-500 transition-all duration-700 animate-fade-in-down ease-in-out
-                                                ${isLeaving ?  'fade-out' : ''}
+                                            className={`mb-4 p-4 bg-gradient-to-br from-gray-800 to-gray-700 rounded-lg shadow-md border-l-4 border-purple-500 transition-all duration-700 ease-in-out   
+                                                ${isLeaving ? 'opacity-0 transform -translate-x-full' : 'animate-fade-in-down'}
                                             `}>
                                             <p className="text-lg font-bold text-white flex items-center gap-2">
                                                 <MdSpatialAudioOff className='mr-2'/> {call.cidName || "Paciente desconocido"}

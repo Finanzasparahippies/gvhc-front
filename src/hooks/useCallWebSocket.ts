@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 // Define the structure of the WebSocket message payload
 
@@ -17,6 +17,7 @@ export const useCallsWebSocket = () => {
     const [calls, setCalls] = useState<CallOnHold[]>([]);
     const [wsError, setWsError] = useState<string | null>(null);
     const [leavingCalls, setLeavingCalls] = useState<string[]>([]); 
+    const prevCallsRef = useRef<CallOnHold[]>([]);
 
     // NOTA: La lógica de animación 'leavingCalls' es compleja con este tipo de mensaje
     // (requiere comparar arrays). La he quitado por ahora para darte una solución
@@ -37,7 +38,20 @@ export const useCallsWebSocket = () => {
                 // 3. Validamos que sea un array y actualizamos el estado
                 if (Array.isArray(newCallsArray)) {
                     // Simplemente reemplazamos el estado anterior con la nueva lista completa
+                    const currentCallIds = new Set(prevCallsRef.current.map(call => call.queueCallManagerID));
+                    const newCallIds = new Set(newCallsArray.map(call => call.queueCallManagerID));
+                    const callsThatAreLeaving = prevCallsRef.current.filter(call =>
+                        !newCallIds.has(call.queueCallManagerID)
+                    ).map(call => call.queueCallManagerID);
+                    setLeavingCalls(prev => {
+                        const updatedLeaving = [...new Set([...prev, ...callsThatAreLeaving])];
+                        return updatedLeaving;
+                    });
+                    setTimeout(() => {
                     setCalls(newCallsArray);
+                    setLeavingCalls(prev => prev.filter(id => newCallIds.has(id)));
+                }, 500);
+                    prevCallsRef.current = newCallsArray;
                 } else {
                     console.warn('Received callsUpdate but payload data is not an array.');
                 }
