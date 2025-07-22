@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * Custom React hook to manage real-time call data via WebSocket.
- * It connects to a WebSocket server, processes incoming call events (add, remove, update),
- * and provides the current list of calls on hold and a list of calls that are leaving (for animation).
  *
  * @returns An object containing:
  * - calls: An array of CallOnHold objects currently on hold.
@@ -16,51 +14,32 @@ export const useCallsWebSocket = () => {
     // El estado 'calls' contendrá el array de llamadas extraído
     const [calls, setCalls] = useState<CallOnHold[]>([]);
     const [wsError, setWsError] = useState<string | null>(null);
-    const [leavingCalls, setLeavingCalls] = useState<string[]>([]); 
-    const prevCallsRef = useRef<CallOnHold[]>([]);
 
-    // NOTA: La lógica de animación 'leavingCalls' es compleja con este tipo de mensaje
-    // (requiere comparar arrays). La he quitado por ahora para darte una solución
-    // clara y funcional. Se puede añadir después si es necesario.
-
-    // Función para procesar el mensaje del WebSocket
     const handleMessage = useCallback((event: MessageEvent) => {
         try {
             const message: CallsUpdateMessage = JSON.parse(event.data);
-            console.log('WebSocket message received:', message);
+            console.log('✅ WebSocket message received:', message);
 
-            // 1. Verificamos que el mensaje sea del tipo 'callsUpdate'
-            if (message.type === 'callsUpdate' && message.payload?.getCallsOnHoldData?.getCallsOnHoldData) {
+            // 1. Verificamos que el mensaje sea del tipo correcto y tenga datos
+            if (message.type === 'callsUpdate' && Array.isArray(message.payload?.getCallsOnHoldData?.getCallsOnHoldData)) {
                 
-                // 2. Extraemos el array de llamadas de la estructura anidada
+                // 2. Extraemos el nuevo array de llamadas
                 const newCallsArray = message.payload.getCallsOnHoldData.getCallsOnHoldData;
+                
+                // 3. Reemplazamos el estado anterior con la nueva lista. ¡Eso es todo!
+                setCalls(newCallsArray);
 
-                // 3. Validamos que sea un array y actualizamos el estado
-                if (Array.isArray(newCallsArray)) {
-                    // Simplemente reemplazamos el estado anterior con la nueva lista completa
-                    const currentCallIds = new Set(prevCallsRef.current.map(call => call.queueCallManagerID));
-                    const newCallIds = new Set(newCallsArray.map(call => call.queueCallManagerID));
-                    const callsThatAreLeaving = prevCallsRef.current.filter(call =>
-                        !newCallIds.has(call.queueCallManagerID)
-                    ).map(call => call.queueCallManagerID);
-                    setLeavingCalls(prev => {
-                        const updatedLeaving = [...new Set([...prev, ...callsThatAreLeaving])];
-                        return updatedLeaving;
-                    });
-                    setTimeout(() => {
-                    setCalls(newCallsArray);
-                    setLeavingCalls(prev => prev.filter(id => newCallIds.has(id)));
-                }, 500);
-                    prevCallsRef.current = newCallsArray;
-                } else {
-                    console.warn('Received callsUpdate but payload data is not an array.');
-                }
+            } else if (message.type !== 'callsUpdate') {
+                // Ignoramos mensajes que no son de actualización de llamadas, como el de bienvenida.
+                console.log('Ignoring non-callsUpdate message:', message.type);
             }
+
         } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
+            console.error('❌ Error parsing WebSocket message:', error);
             setWsError('Error processing incoming data.');
         }
-    }, []);
+    }, []); // El array de dependencias vacío está correcto aquí
+
 
     // useEffect para gestionar la conexión del WebSocket
     useEffect(() => {
@@ -77,7 +56,6 @@ export const useCallsWebSocket = () => {
         };
 
         socket.onmessage = handleMessage;
-        console.log('calls', calls)
 
         socket.onerror = (event) => {
             console.error('WebSocket error:', event);
@@ -98,5 +76,5 @@ export const useCallsWebSocket = () => {
 
     // Devuelve los datos que el componente necesita.
     // 'leavingCalls' se puede añadir de nuevo si se implementa la lógica de comparación.
-    return { calls, leavingCalls, wsError };
+    return { calls, wsError };
 };

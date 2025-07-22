@@ -84,18 +84,9 @@ const QueueDashboard: React.FC = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true); // <--- CAMBIO: Estado para la barra lateral
     const [sidebarError, setSidebarError] = useState<string | null>(null); // <--- AÑADE ESTO
     const [now, setNow] = useState(Date.now());
-    const { calls: callsOnHold, leavingCalls, wsError } = useCallsWebSocket();
+    const { calls: callsOnHold, wsError } = useCallsWebSocket();
 
     const userQueueNames = user?.queues.map(q => q.name) || [];
-
-    useEffect(() => {
-        console.log('QueueDashboard - callsOnHold:', callsOnHold);
-        console.log('QueueDashboard - leavingCalls:', leavingCalls);
-        if (wsError) {
-            console.error('WebSocket Error in QueueDashboard:', wsError);
-            // You might want to display wsError in the UI if it's critical
-        }
-    }, [callsOnHold, leavingCalls, wsError]);
 
     const formatTime = (seconds: number): string => {
         const mins = Math.floor(seconds / 60);
@@ -108,6 +99,10 @@ const QueueDashboard: React.FC = () => {
             metric.queueName.toLowerCase().includes(queueName.toLowerCase())
     );
     };
+
+    useEffect(() => {
+        console.log('🔄️ Component re-rendered with new calls:', callsOnHold);
+    }, [callsOnHold]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -330,18 +325,15 @@ const QueueDashboard: React.FC = () => {
                                 <p className="text-gray-400">No patients on hold.</p>
                             ) : (
                                 callsOnHold
-                                .filter(call => !leavingCalls.includes(call.queueCallManagerID)) // Oculta durante la animación
                                 .sort((a, b) => getElapsedSeconds(b.startTime) - getElapsedSeconds(a.startTime)) // Sort by elapsed time (descending)
                                 .map((call) => {
-                                    const isLeaving = leavingCalls.includes(call.queueCallManagerID);
                                     const safeElapsed = Math.max(0, getElapsedSeconds(call.startTime));
 
                                     return (
                                         <div
                                             key={call.queueCallManagerID}
-                                            className={`mb-4 p-4 bg-gradient-to-br from-gray-800 to-gray-700 rounded-lg shadow-md border-l-4 border-purple-500 transition-all duration-700 ease-in-out   
-                                                ${isLeaving ? 'opacity-0 transform -translate-x-full' : 'animate-fade-in-down'}
-                                            `}>
+                                            className={`mb-4 p-4 bg-gradient-to-br from-gray-800 to-gray-700 rounded-lg shadow-md border-l-4 border-purple-500 transition-all duration-300 ease-in-out animate-fade-in-down`}
+                                            >
                                             <p className="text-lg font-bold text-white flex items-center gap-2">
                                                 <MdSpatialAudioOff className='mr-2'/> {call.cidName || "Paciente desconocido"}
                                             </p>
