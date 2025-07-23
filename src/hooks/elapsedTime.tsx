@@ -21,7 +21,7 @@ const ElapsedTime: React.FC<ElapsedTimeProps> = ({ startTime }) => {
 
     return (
         <p className="text-sm text-purple-400 mt-2 flex items-center gap-2">
-            <FaClockRotateLeft className='mr-2' /> Tiempo en espera: {formatTime(elapsedSeconds)}
+            <FaClockRotateLeft className='mr-2' /> Waiting Time: {formatTime(elapsedSeconds)}
         </p>
     );
 };

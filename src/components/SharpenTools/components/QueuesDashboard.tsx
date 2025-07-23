@@ -248,7 +248,7 @@ const QueueDashboard: React.FC = () => {
                                     >
                                         <div>
                                             <div className="flex items-center justify-between mb-3">
-                                                <h2 className="text-gray-300 text-sm font-medium">{metric.title}</h2>
+                                                <h2 className="text-gray-300 text-2xl font-semibold">{metric.title}</h2>
                                                 {/* Puedes decidir qué icono mostrar aquí, quizás uno para la cola en general */}
                                                 <FcDepartment className="text-blue-400" size={24} />
                                             </div>
@@ -257,10 +257,10 @@ const QueueDashboard: React.FC = () => {
                                             <div className="mb-3">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center">
-                                                        <FiPhoneIncoming className="text-purple-400 mr-2" size={20} />
-                                                        <span className="text-gray-300 text-xs">Calls in Queue:</span>
+                                                        <FiPhoneIncoming className="text-purple-400 mr-2" size={30} />
+                                                        <span className="text-gray-300 text-lg font-semibold">Calls in Queue:</span>
                                                     </div>
-                                                        <p className={`text-3xl font-bold transition-all duration-200 ${false /* countData?.loading */ ? 'text-white/60' : 'text-white'}`}>
+                                                        <p className={`text-5xl font-bold mr-5 transition-all duration-200 ${false /* countData?.loading */ ? 'text-white/60' : 'text-white'}`}>
                                                             {countValue} {/* ¡Usa countValue aquí! */}
                                                         </p>
                                                 </div>
@@ -270,8 +270,8 @@ const QueueDashboard: React.FC = () => {
                                             <div>
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center">
-                                                        <FiClock className="text-orange-400 mr-2" size={20} />
-                                                        <span className="text-gray-300 text-xs">Longest Wait:</span>
+                                                        <FiClock className="text-orange-400 mr-2" size={30} />
+                                                        <span className="text-gray-300 text-lg font-semibold">Longest Wait:</span>
                                                     </div>
                                                         <p className={`text-3xl font-bold transition-all duration-200 ${false /* lcWData?.loading */ ? 'text-white/60' : 'text-white'}`}>
                                                             {lcwValue} {/* ¡Usa lcwValue aquí! */}
