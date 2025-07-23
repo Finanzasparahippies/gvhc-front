@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+//src/components/SharpenTools/components/QueuesDashboard.tsx
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FiRefreshCw, FiAlertCircle, FiClock, FiPhoneIncoming, FiSidebar } from 'react-icons/fi';
-import sharpenAPI from '../../../utils/APISharpen';
 import API from '../../../utils/API';
 import { useAuth } from '../../../utils/AuthContext';
 import { MdSpatialAudioOff } from "react-icons/md";
 import { SlCallIn } from "react-icons/sl";
 import { FcDepartment } from "react-icons/fc";
-import { FaClockRotateLeft } from "react-icons/fa6";
 import { useCallsWebSocket } from '../../../hooks/useCallWebSocket';
+import ElapsedTime from '../../../hooks/elapsedTime'; // 👈 Asegúrate de importar el nuevo componente
+import { formatTime, getElapsedSeconds } from '../../../utils/helpers'
 
 interface QueueConfig {
     id: string; // Un ID único para la tarjeta
@@ -57,49 +58,36 @@ const buildQuery = (queueName: string, type: 'COUNT' | 'LCW'): string => {
     return '';
 };
 
-const getElapsedSeconds = (startTime: string): number => {
-    if (!startTime) return 0;
-
-    // Si viene como "2025-07-19 14:30:00", convertirlo a ISO válido
-    const isoTimeUTC = startTime.replace(' ', 'T') + 'Z';
-    const start = new Date(isoTimeUTC).getTime();
-    const now = Date.now();
-
-    if (isNaN(start) || start > now) {
-        return 0; // Si es inválida o es del futuro, considera 0 segundos
-    }
-
-    return Math.floor((now - start) / 1000);
-};
-
-const formatTime = (totalSeconds: number) => {
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-};
-
-
 // --- COMPONENTE PRINCIPAL DEL DASHBOARD ---
 const QueueDashboard: React.FC = () => {
-    const [metricsData, setMetricsData] = useState<AllMetricsState>({});
+    // const [metricsData, setMetricsData] = useState<AllMetricsState>({});
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [isFetching, setIsFetching] = useState(false);
     const [quote, setQuote] = useState<string | null>(null);
     const [author, setAuthor] = useState<string | null>(null);
     const { user } = useAuth();  // Dentro de tu componente `QueueDashboard`
     const [isSidebarOpen, setIsSidebarOpen] = useState(true); // <--- CAMBIO: Estado para la barra lateral
-    const [sidebarError, setSidebarError] = useState<string | null>(null); // <--- AÑADE ESTO
-    const [now, setNow] = useState(Date.now());
+    // const [sidebarError, setSidebarError] = useState<string | null>(null); // <--- AÑADE ESTO
     const { calls: callsOnHold, wsError } = useCallsWebSocket();
 
     const userQueueNames = user?.queues.map(q => q.name) || [];
 
-    const formatTime = (seconds: number): string => {
-        const hours = Math.floor(seconds / 3600)
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${hours}h ${mins}m ${secs.toString().padStart(2, '0')}s`;
-    };
+    const longestWaitTimesByQueue = useMemo(() => {
+        console.log('🔄 Recalculando LCW desde WebSocket...');
+        const lcw: { [queueName: string]: number } = {};
+        for (const call of callsOnHold) {
+            const elapsed = getElapsedSeconds(call.startTime);
+            if (elapsed > (lcw[call.queueName] || 0)) {
+                lcw[call.queueName] = elapsed;
+            }
+        }
+        // Convertir segundos a formato "HH:MM:SS" si es necesario para mostrar
+        const formattedLcw: { [queueName: string]: string } = {};
+        for (const queueName in lcw) {
+            formattedLcw[queueName] = formatTime(lcw[queueName]);
+        }
+        return formattedLcw;
+    }, [callsOnHold]); // Depende de callsOnHold
 
     const isUserMetric = (queueConfig: QueueConfig): boolean => {
         return userQueueNames.some(queueName =>
@@ -111,119 +99,14 @@ const QueueDashboard: React.FC = () => {
         console.log('🔄️ Component re-rendered with new calls:', callsOnHold);
     }, [callsOnHold]);
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setNow(Date.now());
-        }, 1000); // actualiza cada segundo
-
-        return () => clearInterval(interval);
-    }, []);
-
-    const fetchAllMetrics = useCallback(async () => {
-        setIsFetching(true);
-
-        setMetricsData(prev => {
-            const loadingState: AllMetricsState = {};
-            for (const queue of dashboardQueues) {
-                loadingState[queue.id] = {
-                    count: { ...prev[queue.id]?.count, loading: true, error: null },
-                    lcw: { ...prev[queue.id]?.lcw, loading: true, error: null }
-                };
-            }
-            return loadingState;
-        });
-
-        const promises = dashboardQueues.flatMap(queue => {
-            // Promesa para la métrica COUNT
-            const countPromise = (async () => {
-                const sqlQuery = buildQuery(queue.queueName, 'COUNT');
-                try {
-                    const response: any = await sharpenAPI.post('dashboards/proxy/generic/', {
-                        endpoint: "V2/query/",
-                        payload: {
-                            method: "query",
-                            q: sqlQuery,
-                            global: "false"
-                        }
-                    });
-                    const value = response.data?.data?.[0]?.['countqueueCallManagerID'] ?? 0;
-                    setMetricsData(prev => ({
-                        ...prev,
-                        [queue.id]: {
-                            ...prev[queue.id],
-                            count: { value, loading: false, error: null }
-                        }
-                    }));
-                } catch (error) {
-                    console.error(`Error fetching COUNT for ${queue.id}:`, error);
-                    setMetricsData(prev => ({
-                        ...prev,
-                        [queue.id]: {
-                            ...prev[queue.id],
-                            count: { value: null, loading: false, error: 'Error' }
-                        }
-                    }));
-                }
-            })();
-
-            // Promesa para la métrica LCW
-            const lcwPromise = (async () => {
-                const sqlQuery = buildQuery(queue.queueName, 'LCW');
-                try {
-                    const response: any = await sharpenAPI.post('dashboards/proxy/generic/', {
-                        endpoint: "V2/query/",
-                        payload: {
-                            method: "query",
-                            q: sqlQuery,
-                            global: "false"
-                        }
-                    });
-                    const value = response.data?.data?.[0]?.['LCW'] ?? '00:00:00'; // LCW devuelve un string de tiempo
-                    setMetricsData(prev => ({
-                        ...prev,
-                        [queue.id]: {
-                            ...prev[queue.id],
-                            lcw: { value, loading: false, error: null }
-                        }
-                    }));
-                } catch (error) {
-                    console.error(`Error fetching LCW for ${queue.id}:`, error);
-                    setMetricsData(prev => ({
-                        ...prev,
-                        [queue.id]: {
-                            ...prev[queue.id],
-                            lcw: { value: null, loading: false, error: 'Error' }
-                        }
-                    }));
-                }
-            })();
-
-            return [countPromise, lcwPromise];
-        });
-
-        await Promise.all(promises);
-        setLastUpdated(new Date());
-        setIsFetching(false);
-    }, []);
-
-    // Efecto para la carga inicial y para establecer el intervalo de actualización
-    useEffect(() => {
-        fetchAllMetrics(); // Carga inicial
-        const intervalId = setInterval(fetchAllMetrics, 15000); // Actualiza cada 15 segundos
-
-        return () => clearInterval(intervalId); // Limpia el intervalo al desmontar
-    }, [fetchAllMetrics]);
-
-    const getIconForMetric = (type: MetricType) => {
-        switch (type) {
-            case 'COUNT':
-                return <FiPhoneIncoming className="text-purple-400" size={24} />;
-            case 'LCW':
-                return <FiClock className="text-orange-400" size={24} />;
-            default:
-                return null;
+    const countsFromWebSocket = useMemo(() => {
+        console.log('🔄 Recalculando conteos desde WebSocket...');
+        const counts: { [queueName: string]: number } = {};
+        for (const call of callsOnHold) {
+            counts[call.queueName] = (counts[call.queueName] || 0) + 1;
         }
-    };
+        return counts;
+    }, [callsOnHold]);
 
     useEffect(() => {
         const fetchQuote = async () => {
@@ -250,6 +133,18 @@ const QueueDashboard: React.FC = () => {
             const intervalId = setInterval(fetchQuote, 300000); // Llama cada 5 min
             return () => clearInterval(intervalId); // Limpia el intervalo al desmontar
         }, []);
+
+        const handleRefreshClick = useCallback(() => {
+            // In a WebSocket-driven app, "refresh" often means re-establishing connection
+            // or re-requesting initial data if the WebSocket provides it.
+            // Since useCallsWebSocket handles reconnects, a simple update of lastUpdated
+            // might be enough to give visual feedback.
+            setLastUpdated(new Date());
+            // If you had other non-WebSocket data, you would call their fetch functions here.
+            // For example: fetchOtherDataViaAPI();
+            console.log("Refresh button clicked. Displaying latest WebSocket data.");
+        }, []);
+
 
         const callCountsByQueue: Record<string, number> = callsOnHold.reduce((acc, call) => {
             const queue = call.queueName;
@@ -279,7 +174,7 @@ const QueueDashboard: React.FC = () => {
                             <span>On Hold ({callsOnHold.length})</span>
                         </button>
                         <button
-                            onClick={fetchAllMetrics}
+                            onClick={handleRefreshClick} // Use the new handler
                             disabled={isFetching}
                             className="flex items-center px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 disabled:bg-purple-900 disabled:cursor-not-allowed transition-all duration-200"
                         >
@@ -296,12 +191,12 @@ const QueueDashboard: React.FC = () => {
                     <aside className={`bg-gray-800 rounded-lg shadow-lg p-4 flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-full max-h-screen lg:w-80' : 'w-0 p-0 overflow-hidden'}`}>
                         <h2 className={`text-2xl font-bold mb-4 border-b border-gray-700 pb-2 transition-opacity ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>Patients on Hold</h2>
                         <div className={`flex-grow overflow-y-auto transition-opacity ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
-                            {wsError && (
+                            {/* {wsError && (
                                 <div className="p-3 bg-red-500/20 text-red-300 rounded-md mb-4">
                                     <p className="font-bold">WebSocket Error:</p>
                                     <p className="text-sm">{wsError}</p>
                                 </div>
-                            )}
+                            )} */}
                             {callsOnHold.length === 0 ? (
                                 <p className="text-gray-400">No patients on hold.</p>
                             ) : (
@@ -324,9 +219,7 @@ const QueueDashboard: React.FC = () => {
                                             <p className="text-sm text-gray-300 flex items-center gap-2">
                                                 <FcDepartment className='mr-2' /> {call.queueName}
                                             </p>
-                                            <p className="text-sm text-purple-400 mt-2 flex items-center gap-2">
-                                                <FaClockRotateLeft className='mr-2' /> Tiempo en espera: {formatTime(safeElapsed)}
-                                            </p>
+                                            <ElapsedTime startTime={call.startTime} /> 
                                         </div>
                                     );
                                 })
@@ -339,11 +232,11 @@ const QueueDashboard: React.FC = () => {
                         {/* --- Grid de Métricas --- */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3">
                             {dashboardQueues.map((metric) => {
-                                const data = metricsData[metric.id];
-                                const countData = data?.count;
-                                const lcwData = data?.lcw;
+                                // const data = metricsData[metric.id];
+                                const countValue = countsFromWebSocket[metric.queueName] ?? 0;
+                                const lcwValue = longestWaitTimesByQueue[metric.queueName] ?? '00:00:00'; // Usa el LCW calculado del WebSocket
                                 const isRelevant = isUserMetric(metric);
-                                const isActiveQueue = (countData?.value && Number(countData.value) > 0) || (lcwData?.value && lcwData.value !== '00:00:00');
+                                const isActiveQueue = countValue > 0 || lcwValue !== '00:00:00';
 
                                 return (
                                     <div
@@ -367,16 +260,9 @@ const QueueDashboard: React.FC = () => {
                                                         <FiPhoneIncoming className="text-purple-400 mr-2" size={20} />
                                                         <span className="text-gray-300 text-xs">Calls in Queue:</span>
                                                     </div>
-                                                    {countData?.error ? (
-                                                        <div className="flex items-center text-red-400 text-sm">
-                                                            <FiAlertCircle className="mr-1" size={10} />
-                                                            <span>Error</span>
-                                                        </div>
-                                                    ) : (
-                                                        <p className={`text-3xl font-bold transition-all duration-200 ${countData?.loading ? 'text-white/60' : 'text-white'}`}>
-                                                            {countData?.value ?? '0'}
+                                                        <p className={`text-3xl font-bold transition-all duration-200 ${false /* countData?.loading */ ? 'text-white/60' : 'text-white'}`}>
+                                                            {countValue} {/* ¡Usa countValue aquí! */}
                                                         </p>
-                                                    )}
                                                 </div>
                                             </div>
 
@@ -387,21 +273,14 @@ const QueueDashboard: React.FC = () => {
                                                         <FiClock className="text-orange-400 mr-2" size={20} />
                                                         <span className="text-gray-300 text-xs">Longest Wait:</span>
                                                     </div>
-                                                    {lcwData?.error ? (
-                                                        <div className="flex items-center text-red-400 text-sm">
-                                                            <FiAlertCircle className="mr-1" size={10} />
-                                                            <span>Error</span>
-                                                        </div>
-                                                    ) : (
-                                                        <p className={`text-3xl font-bold transition-all duration-200 ${lcwData?.loading ? 'text-white/60' : 'text-white'}`}>
-                                                            {lcwData?.value ?? '00:00:00'}
+                                                        <p className={`text-3xl font-bold transition-all duration-200 ${false /* lcWData?.loading */ ? 'text-white/60' : 'text-white'}`}>
+                                                            {lcwValue} {/* ¡Usa lcwValue aquí! */}
                                                         </p>
-                                                    )}
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="mt-4 h-1">
-                                            {(countData?.loading || lcwData?.loading) && <div className="w-full bg-purple-500 h-1 rounded-full animate-pulse"></div>}
+                                            { countValue && <div className="w-full bg-purple-500 h-1 rounded-full animate-pulse"></div>}
                                         </div>
                                     </div>
                                 );

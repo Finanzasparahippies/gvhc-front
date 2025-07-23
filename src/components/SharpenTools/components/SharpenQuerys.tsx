@@ -571,6 +571,9 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
             const mixmonFileName = interactionResponse.data?.data?.cdr?.mixmonFileName;
             const extension = interactionResponse.data?.data?.cdr?.context;
 
+            console.log("DEBUG: mixmonFileName obtenido:", mixmonFileName); // <-- AGREGAR ESTO
+            console.log("DEBUG: callId usado:", callId); // <-- Y ESTO
+
             if (!mixmonFileName && !extension) {
                     alert(`No se pudo obtener el 'mixmonFileName' de la API 'getInteraction' para la llamada con ID: ${callId}.`);
                     return;
@@ -579,14 +582,16 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
             const awsResponse = await sharpenAPI.post<RecordingUrlResponse>(
                 'dashboards/proxy/generic/',
                 {
-                    endpoint: 'V2/voice/callRecordings/createRecordingURL',
+                    endpoint: 'V2/voice/callRecordings/createRecordingURL/',
                     payload: {
-                        queueCallManagerID: callId,
+                        uniqueID: callId,
                         // Para llamadas recientes, a menudo se usa el mismo ID
                         fileName: mixmonFileName
                     }
                 }
             );
+
+            console.log("awsResponse.data =", awsResponse.data);
 
 
             if (awsResponse.data?.status === 'successful' && awsResponse.data.url) {

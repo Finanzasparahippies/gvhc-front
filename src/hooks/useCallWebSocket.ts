@@ -1,3 +1,4 @@
+//src/components/hooks/useCallWebSockets.ts
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 // Define the structure of the WebSocket message payload
@@ -19,30 +20,48 @@ export const useCallsWebSocket = () => {
     const MAX_RECONNECT_ATTEMPTS = 5; // Número máximo de intentos antes de rendirse
     const RECONNECT_INTERVAL_MS = 3000; // Intervalo entre intentos de reconexión (3 segundos)
 
+    const getWebSocketUrl = () => {
+    // Para desarrollo, podrías usar localhost o una URL de desarrollo específica
+        if (process.env.NODE_ENV === 'development') {
+            // Asegúrate de que tu backend Django Channels esté corriendo en localhost:8000
+            return 'ws://localhost:8001/ws/calls/'; 
+        } else {
+            // Para producción, usa la URL de tu backend en Render
+            return 'wss://gvhc-backend.onrender.com/ws/calls/'; 
+        }
+    };
+
     const handleMessage = useCallback((event: MessageEvent) => {
         try {
             const message: CallsUpdateMessage = JSON.parse(event.data);
             console.log('✅ WebSocket message received:', message);
 
             // 1. Verificamos que el mensaje sea del tipo correcto y tenga datos
-            if (message.type === 'callsUpdate' && Array.isArray(message.payload?.getCallsOnHoldData)) {
-                
-                // 2. Extraemos el nuevo array de llamadas
-                const newCallsArray = message.payload.getCallsOnHoldData;
-                
-                // 3. Reemplazamos el estado anterior con la nueva lista. ¡Eso es todo!
-                setCalls(newCallsArray);
+            if (message.type === 'callsUpdate') {
+                const callsUpdateMsg = message as CallsUpdateMessage; 
 
-            } else if (message.type !== 'callsUpdate') {
-                // Ignoramos mensajes que no son de actualización de llamadas, como el de bienvenida.
-                console.log('Ignoring non-callsUpdate message:', message.type);
+                if (callsUpdateMsg.payload && Array.isArray(callsUpdateMsg.payload.getCallsOnHoldData)) {
+                    setCalls(callsUpdateMsg.payload.getCallsOnHoldData);
+                    setWsError(null); // Clear error on successful data update
+                } else {
+                    console.warn('⚠️ WebSocket "callsUpdate" message received, but payload is malformed:', callsUpdateMsg);
+                    setWsError('Received malformed call data.');
+                }
+            } else if ('message' in message && message.message === 'WebSocket conectado') {
+                // This is the initial connection confirmation message from the backend.
+                // We just log it and don't update `calls` state.
+                console.log('Backend confirmed WebSocket connection.');
+                setWsError(null); // Clear any connection errors once confirmed
+            } else {
+                // For any other unexpected message types
+                console.warn('Ignoring unknown or non-callsUpdate WebSocket message type:', message);
             }
 
         } catch (error) {
-            console.error('❌ Error parsing WebSocket message:', error);
-            setWsError('Error processing incoming data.');
+            console.error('❌ Error parsing WebSocket message or unexpected format:', error, event.data);
+            setWsError('Error processing incoming data from server.');
         }
-    }, []); // El array de dependencias vacío está correcto aquí
+    }, []); // `handleMessage` is stable as it has no dependencies
 
     const connectWebSocket = useCallback(() => {
         // Cierra cualquier conexión existente antes de intentar una nueva
@@ -50,11 +69,10 @@ export const useCallsWebSocket = () => {
             ws.current.close();
         }
 
-        const websocketUrl = 'wss://gvhc-backend.onrender.com/ws/calls/'; 
-        const socket = new WebSocket(websocketUrl);
+        const socket =  new WebSocket(getWebSocketUrl());
 
         socket.onopen = () => {
-            console.log('🔗 WebSocket connected:', websocketUrl);
+            console.log('🔗 WebSocket connected:', getWebSocketUrl());
             setWsError(null);
             reconnectAttempts.current = 0; // Resetear intentos al conectar con éxito
             ws.current = socket; // Guarda la instancia del socket
