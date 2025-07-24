@@ -12,6 +12,7 @@ import { GoAlert } from "react-icons/go";
 import { TbFaceIdError } from "react-icons/tb";
 import { GiNestBirds } from "react-icons/gi";
 import { MdSupervisedUserCircle } from "react-icons/md";
+import { formatTime, getElapsedSeconds } from '../../../utils/helpers';
 
 // Re-usa la interfaz LiveStatusAgent del dashboard principal
 interface LiveStatusAgent {
@@ -71,6 +72,50 @@ const statusStyles: { [key: string]: { color: string; bgColor: string; icon: JSX
     'break': { color: 'text-red-300', bgColor: 'bg-red-800/20', icon: <FiClock className="mr-1" /> },
     // Puedes añadir más razones de pausa aquí con sus propios estilos
 };
+
+const statesWithElapsedTime = [
+    'on call', // Esto ya lo tenías, pero ahora puedes usar el mismo método de lastStatusChange
+    'ringing', // Si también quieres ver cuánto tiempo lleva sonando
+    'approved busy',
+    'training',
+    'technical issue',
+    'meeting',
+    'nesting',
+    'supervisor',
+    'auto pause: 1 missed call.',
+    'offline', // Si también quieres tiempo transcurrido para offline
+    'off-line work', // Si también quieres tiempo transcurrido para off-line work
+    // Añade aquí cualquier otro estado que quieras monitorear con lastStatusChange
+];
+
+const statesUsingActiveCallTime = [
+    'on hold',
+    'wrap up',
+    'ringing'
+];
+
+const ElapsedStatusTime: React.FC<{ startTime: string; label?: string }> = ({ startTime, label }) => {
+    const [elapsed, setElapsed] = useState(() => getElapsedSeconds(startTime));
+
+    useEffect(() => {
+        const intervalId = setInterval(() => {
+            setElapsed(getElapsedSeconds(startTime));
+        }, 1000);
+        return () => clearInterval(intervalId);
+    }, [startTime]);
+
+    if (!startTime) {
+        return null;
+    }
+
+    // Puedes ajustar el estilo de este texto si quieres que sea diferente al de "Paused for"
+    return (
+        <span className="text-lg text-blue-300 ml-1 text-center">
+            ({formatTime(elapsed)}) {label && <span className="text-orange-300">{label}</span>}
+        </span>
+    );
+};
+
 // 2. Función para formatear los datos de un agente en un elemento JSX
 const formatAgentStatus = (agent: LiveStatusAgent): JSX.Element => {
     // console.log('agents:', agent)
@@ -102,21 +147,41 @@ const formatAgentStatus = (agent: LiveStatusAgent): JSX.Element => {
 
     const style = statusStyles[displayStatusKey] ||
                     (isPaused ? statusStyles.paused : { color: 'text-gray-400', bgColor: 'bg-gray-800/20', icon: <FiAlertCircle className="mr-1" /> });
+    const showActiveCallTime = statesUsingActiveCallTime.includes(currentStatus) && agent.activeCall?.lastActionTime;
 
+    const showElapsedTime = statesWithElapsedTime.includes(displayStatusKey) && agent.lastStatusChange;
+
+    let timeLabel = '';
+    if (currentStatus === 'on hold') timeLabel = 'On Hold';
+    if (currentStatus === 'wrap up') timeLabel = 'Wrap Up';
+    if (currentStatus === 'ringing') timeLabel = 'Ringing';
+    
     return (
         // Cambiamos a un div para permitir múltiples líneas y mejor estructura de tarjeta
         <div className={`flex flex-col items-start p-3 rounded-lg shadow-md min-w-[250px] max-w-[350px] ${style.bgColor} border border-transparent`}>
             {/* Línea principal de estado */}
-            <div className={`flex items-center text-sm font-medium ${style.color} mb-1`}>
+            <div className={`flex items-center text-lg font-medium ${style.color} mb-1`}>
                 {style.icon}
                 <span className="truncate font-semibold text-white">{agent.fullName}</span>: <span className="ml-1 font-semibold">{statusText}</span>
-                {!isPaused && <span className="text-xs text-gray-400 ml-1">{agent.statusDuration}</span>}
             </div>
-            {isPaused && agent.pauseTime && (
-                <div className="pl-5"> {/* Indentación para que se vea como parte de los detalles */}
-                    <PausedTime pauseStartTime={agent.pauseTime} />
-                </div>
-            )}
+            {isPaused && agent.pauseTime ? (
+                    // Tiempo de pausa del agente (usa PausedTime, que interpreta como hora local)
+                    <div className="text-lg text-gray-400 ml-1">
+                        <PausedTime pauseStartTime={agent.pauseTime} />
+                    </div>
+                ) : showActiveCallTime  ? (
+                    // Tiempo de llamada en hold (usa activeCall.lastActionTime)
+                    <span className="text-lg text-orange-300 ml-1 text-center">
+                        <ElapsedStatusTime startTime={agent.activeCall!.lastActionTime!} /> 
+                        On Hold
+                    </span>
+                ) : showElapsedTime ? (
+                    // Tiempo transcurrido para otros estados basados en lastStatusChange
+                    <ElapsedStatusTime startTime={agent.lastStatusChange!} />
+                ) : (
+                    // Fallback: Si no es ninguno de los casos anteriores, muestra el statusDuration de la API
+                    <span className="text-md text-gray-400 ml-1">{agent.statusDuration}</span>
+                )}
             {/* Información de llamada activa */}
             {
             // agent.activeCall && (
@@ -137,10 +202,10 @@ const formatAgentStatus = (agent: LiveStatusAgent): JSX.Element => {
 
             {/* Colas loggeadas */}
             {agent.queues && agent.queues.length > 0 && (
-                <div className="text-xs text-gray-400 pl-5"> {/* Indentado */}
+                <div className="text-xs font-semibold text-gray-400 pl-5"> {/* Indentado */}
                     <div className="flex items-center mb-0.5">
-                        <FiUsers className="mr-1 text-gray-400" />
-                        <span>Active Queues:</span>
+                        <FiUsers className="mr-1 text-gray-400" size={15} />
+                        <span className='font-semibold text-sm '>Active Queues:</span>
                     </div>
                     <ul className="list-disc list-inside ml-2">
                         {agent.queues.map((queue) => (
@@ -296,7 +361,7 @@ const AgentTicker: React.FC<AgentTickerProps> = ({ agents, error, loading }) => 
             </div>
             <div 
                 ref={tickerRef} // <-- NUEVO: Asignamos la referencia
-                className="relative w-full h-[230px] flex items-center overflow-x-auto scrollbar-hide cursor-grab"
+                className="relative w-full h-[240px] flex items-center overflow-x-auto scrollbar-hide cursor-grab"
                 onMouseDown={handleMouseDown}
                 onMouseLeave={handleMouseUpOrLeave}
                 onMouseUp={handleMouseUpOrLeave}

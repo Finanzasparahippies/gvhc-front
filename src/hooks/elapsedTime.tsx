@@ -27,3 +27,4 @@ const ElapsedTime: React.FC<ElapsedTimeProps> = ({ startTime }) => {
 };
 
 export default ElapsedTime;
+

@@ -23,7 +23,7 @@ const [elapsed, setElapsed] = useState(() => getElapsedSeconds(pauseStartTime, t
     return null;
 }
 return (
-    <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
+    <p className="text-lg text-gray-400 flex items-center gap-1 mt-1">
         <FiClock className="text-orange-300" /> Paused for: {formatTime(elapsed)}
     </p>
 );
