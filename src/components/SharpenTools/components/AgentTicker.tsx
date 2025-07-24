@@ -1,6 +1,8 @@
 // src/components/SharpenTools/components/AgentTicker.tsx
 
 import React, { useEffect, useRef, useState } from 'react';
+import PausedTime from '../../../hooks/PausedTime'; // <--- ¡Asegúrate de que esta ruta sea correcta!
+
 import { FiAlertCircle, FiLoader, FiUser, FiPhoneCall, FiCoffee, FiPauseCircle, FiClock, FiPhoneIncoming, FiHash, FiUsers } from 'react-icons/fi'; // Más iconos para estados
 import { MdDinnerDining } from "react-icons/md";
 import { MdWorkHistory } from "react-icons/md";
@@ -23,6 +25,7 @@ interface LiveStatusAgent {
     paused: string | number; // Cambiado a string | number para manejar "0" o "1"
     fullName: string;
     lastStatusChange?: string;
+    pauseTime?: string; // <--- ¡Asegúrate de que esta línea esté presente!
     // Nuevas propiedades para información detallada
     queues?: { queueID: string; queueName: string }[]; // Array de objetos de cola
     activeCall?: { // Objeto para detalles de llamada activa
@@ -68,7 +71,6 @@ const statusStyles: { [key: string]: { color: string; bgColor: string; icon: JSX
     'break': { color: 'text-red-300', bgColor: 'bg-red-800/20', icon: <FiClock className="mr-1" /> },
     // Puedes añadir más razones de pausa aquí con sus propios estilos
 };
-860804
 // 2. Función para formatear los datos de un agente en un elemento JSX
 const formatAgentStatus = (agent: LiveStatusAgent): JSX.Element => {
     // console.log('agents:', agent)
@@ -108,9 +110,13 @@ const formatAgentStatus = (agent: LiveStatusAgent): JSX.Element => {
             <div className={`flex items-center text-sm font-medium ${style.color} mb-1`}>
                 {style.icon}
                 <span className="truncate font-semibold text-white">{agent.fullName}</span>: <span className="ml-1 font-semibold">{statusText}</span>
-                <span className="text-xs text-gray-400 ml-1">{agent.statusDuration}</span>
+                {!isPaused && <span className="text-xs text-gray-400 ml-1">{agent.statusDuration}</span>}
             </div>
-
+            {isPaused && agent.pauseTime && (
+                <div className="pl-5"> {/* Indentación para que se vea como parte de los detalles */}
+                    <PausedTime pauseStartTime={agent.pauseTime} />
+                </div>
+            )}
             {/* Información de llamada activa */}
             {
             // agent.activeCall && (

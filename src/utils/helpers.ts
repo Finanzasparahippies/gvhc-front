@@ -1,9 +1,9 @@
 // src/utils/helpers.ts
 export const getElapsedSeconds = (startTime: string): number => {
     if (!startTime) return 0;
-    const isoTimeUTC = startTime.replace(' ', 'T') + 'Z';
-    const start = new Date(isoTimeUTC).getTime();
+    const start = new Date(startTime.replace(' ', 'T')).getTime(); // Quitamos el '+ 'Z''
     const now = Date.now();
+
     if (isNaN(start) || start > now) {
         return 0;
     }
