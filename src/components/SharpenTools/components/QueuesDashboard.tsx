@@ -352,24 +352,6 @@ const QueueDashboard: React.FC = () => {
                                     </div>
                                 );
                             })}
-                            {/* {agentLiveStatus.length > 0 && (
-                                <div className="mt-8">
-                                    <h2 className="text-xl font-semibold text-white mb-4">Agent Live Status</h2>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {agentLiveStatus.map((agent, index) => (
-                                            <div key={index} className="bg-gray-800 p-4 rounded-lg shadow-md">
-                                                <p><span className="font-bold text-purple-400">Agent:</span> {agent.fullName}</p>
-                                                <p><span className="font-bold text-purple-400">Queue:</span> {agent.queueName}</p>
-                                                <p><span className="font-bold text-purple-400">Status:</span> {agent.status}</p>
-                                                <p><span className="font-bold text-purple-400">Duration:</span> {agent.statusDuration}</p>
-                                                {agent.interactionType && <p><span className="font-bold text-purple-400">Interaction:</span> {agent.interactionType}</p>}
-                                                {agent.callType && <p><span className="font-bold text-purple-400">Call Type:</span> {agent.callType}</p>}
-                                                {agent.pauseReason && <p><span className="font-bold text-purple-400">Pause Reason:</span> {agent.pauseReason}</p>}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )} */}
                         </div>
                         {quote && (
                             <div className="animate-fade-in-down mt-12 text-center max-w-xl mx-auto px-4 py-6 bg-gray-800 rounded-lg shadow-md">

@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { FiAlertCircle, FiLoader, FiUser, FiPhoneCall, FiCoffee, FiPauseCircle, FiClock, FiPhoneIncoming, FiHash, FiUsers } from 'react-icons/fi'; // Más iconos para estados
+import { MdDinnerDining } from "react-icons/md";
+import { RiWifiOffLine } from "react-icons/ri";
 
 // Re-usa la interfaz LiveStatusAgent del dashboard principal
 interface LiveStatusAgent {
@@ -42,18 +44,18 @@ const statusStyles: { [key: string]: { color: string; bgColor: string; icon: JSX
     'ringing': { color: 'text-blue-400', bgColor: 'bg-blue-800/20', icon: <FiPhoneCall className="mr-1" /> },
     // Estilo genérico de pausa, se usará si no hay una razón específica o si la razón no tiene un estilo definido
     paused: { color: 'text-orange-400', bgColor: 'bg-orange-800/20', icon: <FiPauseCircle className="mr-1" /> },
-    offline: { color: 'text-red-400', bgColor: 'bg-red-800/20', icon: <FiAlertCircle className="mr-1" /> },
-    'Offline-work': { color: 'text-red-400', bgColor: 'bg-red-800/20', icon: <FiAlertCircle className="mr-1" /> }, // Added for specific 'Offline-work' status
+    offline: { color: 'text-red-400', bgColor: 'bg-red-800/20', icon: <RiWifiOffLine className="mr-1" /> },
+    'Offline-work': { color: 'text-red-400', bgColor: 'bg-red-800/20', icon: <RiWifiOffLine className="mr-1" /> }, // Added for specific 'Offline-work' status
     'wrap up': { color: 'text-yellow-400', bgColor: 'bg-yellow-800/20', icon: <FiCoffee className="mr-1" /> },
     'on hold': { color: 'text-blue-400', bgColor: 'bg-blue-800/20', icon: <FiPhoneCall className="mr-1" /> }, // Added for 'on hold' status
 
     // Estilos específicos para razones de pausa (pauseReason)
     'bathroom': { color: 'text-purple-400', bgColor: 'bg-purple-800/20', icon: <FiCoffee className="mr-1" /> },
-    'lunch': { color: 'text-pink-400', bgColor: 'bg-pink-800/20', icon: <FiCoffee className="mr-1" /> },
+    'lunch': { color: 'text-pink-400', bgColor: 'bg-pink-800/20', icon: <MdDinnerDining className="mr-1" /> },
     'break': { color: 'text-pink-400', bgColor: 'bg-pink-800/20', icon: <FiClock className="mr-1" /> },
     // Puedes añadir más razones de pausa aquí con sus propios estilos
 };
-
+860804
 // 2. Función para formatear los datos de un agente en un elemento JSX
 const formatAgentStatus = (agent: LiveStatusAgent): JSX.Element => {
     // console.log('agents:', agent)
@@ -271,7 +273,7 @@ const AgentTicker: React.FC<AgentTickerProps> = ({ agents, error, loading }) => 
     return (
         <div className="mt-8 mb-4 bg-gray-800 rounded-lg shadow-xl overflow-hidden animate-fade-in-up">
             <div className="p-4 border-b border-gray-700">
-                <h2 className="text-xl font-bold text-white">Agent Dispositions</h2>
+                <h2 className="text-xl font-bold text-white text-center">Agent Dispositions</h2>
             </div>
             <div 
                 ref={tickerRef} // <-- NUEVO: Asignamos la referencia
