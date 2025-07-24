@@ -330,8 +330,8 @@ const QueueDashboard: React.FC = () => {
                                                         <span className="text-gray-300 text-lg font-semibold">Calls in Queue:</span>
                                                     </div>
                                                         <p className={`text-3xl font-bold transition-all duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
-                                                        {isLoading && countValue === 0 ? <FiLoader className="animate-spin text-purple-400" /> : countValue} {/* Modificado para countValue */}
-                                                    </p>
+                                                        {isLoading && countValue === 0 ? <FiLoader className="animate-spin text-purple-400" /> : countValue}
+                                                        </p>
                                                 </div>
                                             </div>
 
@@ -343,7 +343,7 @@ const QueueDashboard: React.FC = () => {
                                                         <span className="text-gray-300 text-lg font-semibold">Longest Wait:</span>
                                                     </div>
                                                         <p className={`text-3xl font-bold transition-all duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
-                                                            {isLoading && lcwValue === '00:00:00' ? <FiLoader className="animate-spin text-purple-400" /> : lcwValue} {/* Modificado para lcwValue */}
+                                                            {isLoading && lcwValue === '00:00:00' ? <FiLoader className="animate-spin text-purple-400" /> : lcwValue}                                                                   
                                                         </p>
                                                 </div>
                                             </div>
