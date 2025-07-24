@@ -361,7 +361,7 @@ const AgentTicker: React.FC<AgentTickerProps> = ({ agents, error, loading }) => 
             </div>
             <div 
                 ref={tickerRef} // <-- NUEVO: Asignamos la referencia
-                className="relative w-full h-[240px] flex items-center overflow-x-auto scrollbar-hide cursor-grab"
+                className="relative w-full min-h-[240px] max-h-[270px] flex items-center overflow-hidden overflow-x-auto scrollbar-hide cursor-grab"
                 onMouseDown={handleMouseDown}
                 onMouseLeave={handleMouseUpOrLeave}
                 onMouseUp={handleMouseUpOrLeave}
