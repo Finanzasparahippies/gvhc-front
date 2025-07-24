@@ -3,7 +3,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FiAlertCircle, FiLoader, FiUser, FiPhoneCall, FiCoffee, FiPauseCircle, FiClock, FiPhoneIncoming, FiHash, FiUsers } from 'react-icons/fi'; // Más iconos para estados
 import { MdDinnerDining } from "react-icons/md";
-import { RiWifiOffLine } from "react-icons/ri";
+import { MdWorkHistory } from "react-icons/md";
+import { GiWeightLiftingUp } from "react-icons/gi";
+import { PiToiletDuotone } from "react-icons/pi";
+import { GoAlert } from "react-icons/go";
+import { TbFaceIdError } from "react-icons/tb";
+import { GiNestBirds } from "react-icons/gi";
+import { MdSupervisedUserCircle } from "react-icons/md";
 
 // Re-usa la interfaz LiveStatusAgent del dashboard principal
 interface LiveStatusAgent {
@@ -43,16 +49,23 @@ const statusStyles: { [key: string]: { color: string; bgColor: string; icon: JSX
     'on call': { color: 'text-green-400', bgColor: 'bg-green-800/20', icon: <FiPhoneCall className="mr-1" /> },
     'ringing': { color: 'text-blue-400', bgColor: 'bg-blue-800/20', icon: <FiPhoneCall className="mr-1" /> },
     // Estilo genérico de pausa, se usará si no hay una razón específica o si la razón no tiene un estilo definido
-    paused: { color: 'text-orange-400', bgColor: 'bg-orange-800/20', icon: <FiPauseCircle className="mr-1" /> },
-    offline: { color: 'text-red-400', bgColor: 'bg-red-800/20', icon: <RiWifiOffLine className="mr-1" /> },
-    'Offline-work': { color: 'text-red-400', bgColor: 'bg-red-800/20', icon: <RiWifiOffLine className="mr-1" /> }, // Added for specific 'Offline-work' status
-    'wrap up': { color: 'text-yellow-400', bgColor: 'bg-yellow-800/20', icon: <FiCoffee className="mr-1" /> },
+    offline: { color: 'text-red-400', bgColor: 'bg-red-800/20', icon: <MdWorkHistory className="mr-1" /> },
+    'off-line work': { color: 'text-orange-400', bgColor: 'bg-orange-800/20', icon: <MdWorkHistory className="mr-1" /> }, // Added for specific 'Offline-work' status
+    'wrap up': { color: 'text-yellow-400', bgColor: 'bg-yellow-800/20', icon: <GoAlert className="mr-1" /> },
+    'approved busy': { color: 'text-yellow-400', bgColor: 'bg-yellow-800/20', icon: <GoAlert className="mr-1" /> },
     'on hold': { color: 'text-blue-400', bgColor: 'bg-blue-800/20', icon: <FiPhoneCall className="mr-1" /> }, // Added for 'on hold' status
-
+    'training': { color: 'text-blue-400', bgColor: 'bg-blue-800/20', icon: <GiWeightLiftingUp className="mr-1" /> }, // Added for 'on hold' status
+    'technical issue': { color: 'text-red-500', bgColor: 'bg-red-800/20', icon: <TbFaceIdError className="mr-1" /> }, // Added for 'on hold' status
+    'meeting': { color: 'text-yellow-400', bgColor: 'bg-yellow-800/20', icon: <TbFaceIdError className="mr-1" /> }, // Added for 'on hold' status
+    'nesting': { color: 'text-yellow-400', bgColor: 'bg-yellow-800/20', icon: <GiNestBirds  className="mr-1" /> }, // Added for 'on hold' status
+    'supervisor': { color: 'text-indigo-400', bgColor: 'bg-indigo-800/20', icon: <MdSupervisedUserCircle className="mr-1" /> }, // Added for 'on hold' status
+    'auto pause: 1 missed call.': { color: 'text-pink-800', bgColor: 'bg-pink-800/20', icon: <MdSupervisedUserCircle className="mr-1" /> }, // Added for 'on hold' status
+    
     // Estilos específicos para razones de pausa (pauseReason)
-    'bathroom': { color: 'text-purple-400', bgColor: 'bg-purple-800/20', icon: <FiCoffee className="mr-1" /> },
-    'lunch': { color: 'text-pink-400', bgColor: 'bg-pink-800/20', icon: <MdDinnerDining className="mr-1" /> },
-    'break': { color: 'text-pink-400', bgColor: 'bg-pink-800/20', icon: <FiClock className="mr-1" /> },
+    paused: { color: 'text-orange-400', bgColor: 'bg-orange-800/20', icon: <FiPauseCircle className="mr-1" /> },
+    'bathroom': { color: 'text-purple-400', bgColor: 'bg-purple-800/20', icon: <PiToiletDuotone className="mr-1" /> },
+    'lunch': { color: 'text-red-300', bgColor: 'bg-red-800/20', icon: <MdDinnerDining className="mr-1" /> },
+    'break': { color: 'text-red-300', bgColor: 'bg-red-800/20', icon: <FiClock className="mr-1" /> },
     // Puedes añadir más razones de pausa aquí con sus propios estilos
 };
 860804
@@ -90,12 +103,12 @@ const formatAgentStatus = (agent: LiveStatusAgent): JSX.Element => {
 
     return (
         // Cambiamos a un div para permitir múltiples líneas y mejor estructura de tarjeta
-        <div className={`flex flex-col items-start p-3 rounded-lg shadow-md min-w-[250px] max-w-[300px] ${style.bgColor} border border-transparent`}>
+        <div className={`flex flex-col items-start p-3 rounded-lg shadow-md min-w-[250px] max-w-[350px] ${style.bgColor} border border-transparent`}>
             {/* Línea principal de estado */}
             <div className={`flex items-center text-sm font-medium ${style.color} mb-1`}>
                 {style.icon}
                 <span className="truncate font-semibold text-white">{agent.fullName}</span>: <span className="ml-1 font-semibold">{statusText}</span>
-                <span className="text-xs text-gray-400 ml-1">({agent.statusDuration})</span>
+                <span className="text-xs text-gray-400 ml-1">{agent.statusDuration}</span>
             </div>
 
             {/* Información de llamada activa */}
