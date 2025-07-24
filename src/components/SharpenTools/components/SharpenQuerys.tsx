@@ -41,7 +41,7 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
             { id: 'getAgents', name: 'Real Time Agents Disposition' },
             ];
         
-        const QUERY_TEMPLATES = {
+        export const QUERY_TEMPLATES = {
             agentStatus: (username?: string) => ({
                 endpoint: "V2/queues/getAgentStatus/",
                 payload: {
@@ -1039,6 +1039,8 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                         </tbody>
                     </table>
                     </div>
+
+                    
 
                     {/* Controles de paginación */}
                     <div className="flex justify-center items-center gap-6 mt-6 p-4 bg-gray-800 rounded-lg shadow-md">

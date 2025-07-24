@@ -1,14 +1,17 @@
 //src/components/SharpenTools/components/QueuesDashboard.tsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { FiRefreshCw, FiAlertCircle, FiClock, FiPhoneIncoming, FiSidebar } from 'react-icons/fi';
+import { FiRefreshCw, FiAlertCircle, FiClock, FiPhoneIncoming, FiSidebar, FiLoader } from 'react-icons/fi';
 import API from '../../../utils/API';
 import { useAuth } from '../../../utils/AuthContext';
 import { MdSpatialAudioOff } from "react-icons/md";
 import { SlCallIn } from "react-icons/sl";
 import { FcDepartment } from "react-icons/fc";
-import { useCallsWebSocket } from '../../../hooks/useCallWebSocket';
+import { useCallsWebSocket } from '../../../hooks/useCallWebSocket'; 
 import ElapsedTime from '../../../hooks/elapsedTime'; // 👈 Asegúrate de importar el nuevo componente
 import { formatTime, getElapsedSeconds } from '../../../utils/helpers'
+import { QUERY_TEMPLATES } from "./SharpenQuerys"; // o como lo importes
+import sharpenAPI from '../../../utils/APISharpen';
+import AgentTicker from './AgentTicker'; // Creamos este archivo en el paso 2
 
 interface QueueConfig {
     id: string; // Un ID único para la tarjeta
@@ -30,6 +33,20 @@ interface AllMetricsState {
         lcw: MetricData;
     };
 }
+
+interface LiveStatusAgent {
+    username: string;
+    queueName: string;
+    statusDuration: string;
+    status: string;
+    interactionType: string;
+    callType: string;
+    pauseReason: string;
+    paused: string;
+    fullName: string;
+}
+
+
 
 const dashboardQueues: QueueConfig[] = [
     { id: 'appt_line', title: 'Appointment Line', queueName: 'Appointment Line RP1200' },
@@ -62,15 +79,71 @@ const buildQuery = (queueName: string, type: 'COUNT' | 'LCW'): string => {
 const QueueDashboard: React.FC = () => {
     // const [metricsData, setMetricsData] = useState<AllMetricsState>({});
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-    const [isFetching, setIsFetching] = useState(false);
     const [quote, setQuote] = useState<string | null>(null);
     const [author, setAuthor] = useState<string | null>(null);
     const { user } = useAuth();  // Dentro de tu componente `QueueDashboard`
     const [isSidebarOpen, setIsSidebarOpen] = useState(true); // <--- CAMBIO: Estado para la barra lateral
     // const [sidebarError, setSidebarError] = useState<string | null>(null); // <--- AÑADE ESTO
-    const { calls: callsOnHold, wsError } = useCallsWebSocket();
-
+    const { calls: callsOnHold, isLoading, wsError } = useCallsWebSocket(); 
     const userQueueNames = user?.queues.map(q => q.name) || [];
+    const [agentLiveStatus, setAgentLiveStatus] = useState<LiveStatusAgent[]>([]);
+    const [agentError, setAgentError] = useState<string | null>(null);
+    const [agentLoading, setAgentLoading] = useState<boolean>(true); // New loading state for agents
+
+    const defaultGetAgentsParams = useMemo(() => ({
+        getActiveCalls: true,
+        getDayCallCount: true,
+        queueLogin: true,
+        onlineOnly: true,
+        orderBy: 'asc' as 'asc' | 'desc',
+        orderByCol: 'activeCall',
+    }), []);
+
+    const fetchLiveStatus = async () => {
+        setAgentLoading(true); // Start loading
+        try {
+            const { endpoint, payload } = QUERY_TEMPLATES.getAgents(defaultGetAgentsParams);
+            const response = await sharpenAPI.post<SharpenApiResponseData>('dashboards/proxy/generic/', { 
+                            endpoint: endpoint, // El endpoint real de Sharpen
+                            payload: payload,   // El payload real para Sharpen
+            });
+            console.log("respuesta del getAgents (fetchLiveStatus):", response.data);
+
+            // La respuesta de la API de Sharpen para getAgents viene en `getAgentsData`
+            if (response.data && response.data.getAgentsStatus === "Complete" && response.data.getAgentsData) {
+                // `getAgentsData` puede ser un objeto o un array de objetos.
+                // Asegurémonos de que siempre sea un array para `setAgentLiveStatus`.
+                const extractedData = Array.isArray(response.data.getAgentsData)
+                    ? response.data.getAgentsData
+                    : [response.data.getAgentsData]; // Si es un solo objeto, conviértelo a array
+
+                // Filtra cualquier entrada con username nulo/indefinido si es necesario
+                const filteredData = extractedData.filter((item: any) => item.username !== null && item.username !== undefined);
+
+                setAgentLiveStatus(filteredData);
+            } else {
+                console.warn("Unexpected response format in getAgents (fetchLiveStatus):", response.data);
+                setAgentLiveStatus([]);
+                setAgentError("Failed to fetch agent live status. Unexpected data format.");
+            }
+            setAgentError(null);
+        } catch (error) {
+            console.error("Error fetching liveStatus (getAgents):", error);
+            setAgentError("Failed to fetch agent live status. Check console for details.");
+            setAgentLiveStatus([]); // Clear agents on error
+        } finally {
+            setAgentLoading(false); // End loading
+        }
+    };
+
+    useEffect(() => {
+        fetchLiveStatus();
+        // Agrega un intervalo para refrescar el estado de los agentes periódicamente si es un dashboard "Live"
+        const intervalId = setInterval(fetchLiveStatus, 15000); // Refresca cada 15 segundos
+
+        return () => clearInterval(intervalId); // Limpia el intervalo al desmontar el componente
+    }, [defaultGetAgentsParams]); // Dependencia del efecto para que se ejecute si cambian los parámetros por defecto
+
 
     const longestWaitTimesByQueue = useMemo(() => {
         console.log('🔄 Recalculando LCW desde WebSocket...');
@@ -96,8 +169,12 @@ const QueueDashboard: React.FC = () => {
     };
 
     useEffect(() => {
+        // Establecer la última actualización cuando callsOnHold cambie y no esté cargando
         console.log('🔄️ Component re-rendered with new calls:', callsOnHold);
-    }, [callsOnHold]);
+        if (!isLoading) {
+            setLastUpdated(new Date());
+        }
+    }, [callsOnHold, isLoading]); // Añade isLoading como dependencia
 
     const countsFromWebSocket = useMemo(() => {
         console.log('🔄 Recalculando conteos desde WebSocket...');
@@ -145,13 +222,6 @@ const QueueDashboard: React.FC = () => {
             console.log("Refresh button clicked. Displaying latest WebSocket data.");
         }, []);
 
-
-        const callCountsByQueue: Record<string, number> = callsOnHold.reduce((acc, call) => {
-            const queue = call.queueName;
-            acc[queue] = (acc[queue] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
-
     return (
         <div className="bg-gray-900 min-h-screen p-4 sm:p-6 lg:py-6 font-sans text-white mt-[120px] animate-fade-in-down">
             <div className="max-w-full mx-auto">
@@ -173,14 +243,14 @@ const QueueDashboard: React.FC = () => {
                             <FiSidebar className="mr-2" />
                             <span>On Hold ({callsOnHold.length})</span>
                         </button>
-                        <button
+                        {/* <button
                             onClick={handleRefreshClick} // Use the new handler
-                            disabled={isFetching}
+                            disabled={isLoading}
                             className="flex items-center px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 disabled:bg-purple-900 disabled:cursor-not-allowed transition-all duration-200"
                         >
-                            <FiRefreshCw className={`mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-                            {isFetching ? 'Updating...' : 'Update Now'}
-                        </button>
+                            <FiRefreshCw className={`mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                            {isLoading ? 'Updating...' : 'Update Now'}
+                        </button> */}
                     </div>
                 </div>
 
@@ -191,20 +261,20 @@ const QueueDashboard: React.FC = () => {
                     <aside className={`bg-gray-800 rounded-lg shadow-lg p-4 flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-full max-h-screen lg:w-80' : 'w-0 p-0 overflow-hidden'}`}>
                         <h2 className={`text-2xl font-bold mb-4 border-b border-gray-700 pb-2 transition-opacity ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>Patients on Hold</h2>
                         <div className={`flex-grow overflow-y-auto transition-opacity ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
-                            {/* {wsError && (
-                                <div className="p-3 bg-red-500/20 text-red-300 rounded-md mb-4">
-                                    <p className="font-bold">WebSocket Error:</p>
-                                    <p className="text-sm">{wsError}</p>
-                                </div>
-                            )} */}
+                            {
+                            // wsError && (
+                            //     <div className="p-3 bg-yellow-500/20 text-yellow-300 rounded-md mb-4 flex items-center justify-center">
+                            //         <FiLoader className="animate-spin mr-2 text-xl" />
+                            //         <p className="font-bold">Reconnecting...</p> {/* Mensaje más amigable */}
+                            //     </div>
+                            // )
+                            }
                             {callsOnHold.length === 0 ? (
                                 <p className="text-gray-400">No patients on hold.</p>
                             ) : (
                                 callsOnHold
                                 .sort((a, b) => getElapsedSeconds(b.startTime) - getElapsedSeconds(a.startTime)) // Sort by elapsed time (descending)
                                 .map((call) => {
-                                    const safeElapsed = Math.max(0, getElapsedSeconds(call.startTime));
-
                                     return (
                                         <div
                                             key={call.queueCallManagerID}
@@ -260,9 +330,9 @@ const QueueDashboard: React.FC = () => {
                                                         <FiPhoneIncoming className="text-purple-400 mr-2" size={30} />
                                                         <span className="text-gray-300 text-lg font-semibold">Calls in Queue:</span>
                                                     </div>
-                                                        <p className={`text-5xl font-bold mr-5 transition-all duration-200 ${false /* countData?.loading */ ? 'text-white/60' : 'text-white'}`}>
-                                                            {countValue} {/* ¡Usa countValue aquí! */}
-                                                        </p>
+                                                        <p className={`text-3xl font-bold transition-all duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
+                                                        {isLoading && countValue === 0 ? <FiLoader className="animate-spin text-purple-400" /> : countValue} {/* Modificado para countValue */}
+                                                    </p>
                                                 </div>
                                             </div>
 
@@ -273,18 +343,33 @@ const QueueDashboard: React.FC = () => {
                                                         <FiClock className="text-orange-400 mr-2" size={30} />
                                                         <span className="text-gray-300 text-lg font-semibold">Longest Wait:</span>
                                                     </div>
-                                                        <p className={`text-3xl font-bold transition-all duration-200 ${false /* lcWData?.loading */ ? 'text-white/60' : 'text-white'}`}>
-                                                            {lcwValue} {/* ¡Usa lcwValue aquí! */}
+                                                        <p className={`text-3xl font-bold transition-all duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
+                                                            {isLoading && lcwValue === '00:00:00' ? <FiLoader className="animate-spin text-purple-400" /> : lcwValue} {/* Modificado para lcwValue */}
                                                         </p>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="mt-4 h-1">
-                                            { countValue && <div className="w-full bg-purple-500 h-1 rounded-full animate-pulse"></div>}
-                                        </div>
                                     </div>
                                 );
                             })}
+                            {/* {agentLiveStatus.length > 0 && (
+                                <div className="mt-8">
+                                    <h2 className="text-xl font-semibold text-white mb-4">Agent Live Status</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {agentLiveStatus.map((agent, index) => (
+                                            <div key={index} className="bg-gray-800 p-4 rounded-lg shadow-md">
+                                                <p><span className="font-bold text-purple-400">Agent:</span> {agent.fullName}</p>
+                                                <p><span className="font-bold text-purple-400">Queue:</span> {agent.queueName}</p>
+                                                <p><span className="font-bold text-purple-400">Status:</span> {agent.status}</p>
+                                                <p><span className="font-bold text-purple-400">Duration:</span> {agent.statusDuration}</p>
+                                                {agent.interactionType && <p><span className="font-bold text-purple-400">Interaction:</span> {agent.interactionType}</p>}
+                                                {agent.callType && <p><span className="font-bold text-purple-400">Call Type:</span> {agent.callType}</p>}
+                                                {agent.pauseReason && <p><span className="font-bold text-purple-400">Pause Reason:</span> {agent.pauseReason}</p>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )} */}
                         </div>
                         {quote && (
                             <div className="animate-fade-in-down mt-12 text-center max-w-xl mx-auto px-4 py-6 bg-gray-800 rounded-lg shadow-md">
@@ -292,6 +377,7 @@ const QueueDashboard: React.FC = () => {
                                 <p className="mt-2 text-sm text-purple-400">— {author}</p>
                             </div>
                         )}
+                        <AgentTicker agents={agentLiveStatus} error={agentError} loading={agentLoading}/>
                     </main>
                 </div>
             </div>

@@ -26,6 +26,7 @@
     "react-router-dom": "^6.30.1",
     "reactflow": "^11.11.4",
     "sweetalert2": "^11.15.10",
+    "tailwind-scrollbar-hide": "^4.0.0",
     "ui": "github:shadcn/ui",
     "zustand": "^5.0.1"
   },

@@ -1,6 +1,10 @@
 //src/components/hooks/useCallWebSockets.ts
 import { useState, useEffect, useCallback, useRef } from 'react';
 
+interface ConnectionConfirmMessage {
+    message: 'WebSocket conectado';
+}
+type WebSocketMessage = CallsUpdateMessage | ConnectionConfirmMessage;
 // Define the structure of the WebSocket message payload
 
 /**
@@ -15,6 +19,7 @@ export const useCallsWebSocket = () => {
     // El estado 'calls' contendrá el array de llamadas extraído
     const [calls, setCalls] = useState<CallOnHold[]>([]);
     const [wsError, setWsError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true); // Nuevo estado para indicar carga inicial
     const ws = useRef<WebSocket | null>(null); // Usamos useRef para mantener la instancia del WebSocket
     const reconnectAttempts = useRef(0); // Contador de intentos de reconexión
     const MAX_RECONNECT_ATTEMPTS = 5; // Número máximo de intentos antes de rendirse
@@ -44,9 +49,11 @@ export const useCallsWebSocket = () => {
                 if (callsUpdateMsg.payload && Array.isArray(callsUpdateMsg.payload.getCallsOnHoldData)) {
                     setCalls(callsUpdateMsg.payload.getCallsOnHoldData);
                     setWsError(null); // Clear error on successful data update
+                    setIsLoading(false); // Data received, set loading to false
                 } else {
                     console.warn('⚠️ WebSocket "callsUpdate" message received, but payload is malformed:', callsUpdateMsg);
                     setWsError('Received malformed call data.');
+                    setIsLoading(false); // Data received, set loading to false
                 }
             } else if ('message' in message && message.message === 'WebSocket conectado') {
                 // This is the initial connection confirmation message from the backend.
@@ -61,6 +68,7 @@ export const useCallsWebSocket = () => {
         } catch (error) {
             console.error('❌ Error parsing WebSocket message or unexpected format:', error, event.data);
             setWsError('Error processing incoming data from server.');
+            setIsLoading(false); // Error occurred, stop loading indication
         }
     }, []); // `handleMessage` is stable as it has no dependencies
 
@@ -69,7 +77,8 @@ export const useCallsWebSocket = () => {
         if (ws.current && ws.current.readyState !== WebSocket.CLOSED) {
             ws.current.close();
         }
-
+        setIsLoading(true); // Set loading to true when trying to connect
+        setWsError(null); // Clear previous errors when attempting to reconnect
         const socket =  new WebSocket(getWebSocketUrl());
 
         socket.onopen = () => {
@@ -84,6 +93,7 @@ export const useCallsWebSocket = () => {
         socket.onerror = (event) => {
             console.error('WebSocket error:', event);
             setWsError('WebSocket connection error. Attempting to reconnect...');
+            setIsLoading(false); // Stop loading on error
             if (ws.current) {
                 ws.current.close(); // Asegurarse de que el socket se cierre para gatillar onclose
             }
@@ -99,6 +109,7 @@ export const useCallsWebSocket = () => {
             } else {
                 setWsError('WebSocket connection failed after multiple attempts. Please refresh the page.');
                 console.error('Max reconnect attempts reached. Giving up.');
+                setIsLoading(false); // Stop loading if max attempts reached
             }
         };
     }, [handleMessage]); // `handleMessage` es una dependencia estable gracias a `useCallback`
@@ -117,5 +128,5 @@ export const useCallsWebSocket = () => {
         };
     }, [connectWebSocket]); // `connectWebSocket` es una dependencia estable
 
-    return { calls, wsError };
+    return { calls: calls, isLoading: isLoading, wsError: wsError }; // Retorna isLoading
 };
