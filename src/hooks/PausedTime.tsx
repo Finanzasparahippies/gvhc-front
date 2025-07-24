@@ -1,35 +1,32 @@
 // src/components/hooks/PausedTime.tsx
 import React, { useState, useEffect } from 'react';
-import { FiClock } from 'react-icons/fi'; // Icono de reloj para la pausa
-import { formatTime, getElapsedSeconds } from '../utils/helpers'; // Asegúrate de que la ruta sea correcta
+import { FiClock } from 'react-icons/fi';
+// Asegúrate de que la ruta sea correcta (cambié '../utils/helpers' a '../../utils/helpers' si estaba mal en tu copia)
+import { formatTime, getElapsedSeconds } from '../utils/helpers'; 
 
 interface PausedTimeProps {
-    pauseStartTime: string; // La fecha/hora de inicio de la pausa
+    pauseStartTime: string;
 }
 
 const PausedTime: React.FC<PausedTimeProps> = ({ pauseStartTime }) => {
-    // Calcula el tiempo inicial transcurrido
-    const [elapsed, setElapsed] = useState(() => getElapsedSeconds(pauseStartTime));
-
+// Pasamos TRUE para isLocalTime para que lo interprete como hora local
+const [elapsed, setElapsed] = useState(() => getElapsedSeconds(pauseStartTime, true));
     useEffect(() => {
-        // Configura un intervalo para actualizar cada segundo
-        const intervalId = setInterval(() => {
-            setElapsed(getElapsedSeconds(pauseStartTime));
-        }, 1000);
-
-        // Limpia el intervalo cuando el componente se desmonta o pauseStartTime cambia
+            const intervalId = setInterval(() => {
+                // Pasamos TRUE para isLocalTime en cada actualización también
+                setElapsed(getElapsedSeconds(pauseStartTime, true));
+            }, 1000);
         return () => clearInterval(intervalId);
-    }, [pauseStartTime]); // Dependencia: re-ejecuta si pauseStartTime cambia
+        }, [pauseStartTime]);
 
     if (!pauseStartTime) {
-        return null; // No muestra nada si no hay un tiempo de pausa
-    }
-
-    return (
-        <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
-            <FiClock className="text-orange-300" /> Paused for: {formatTime(elapsed)}
-        </p>
-    );
+    return null;
+}
+return (
+    <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
+        <FiClock className="text-orange-300" /> Paused for: {formatTime(elapsed)}
+    </p>
+);
 };
 
 export default PausedTime;
