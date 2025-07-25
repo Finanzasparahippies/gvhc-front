@@ -13,6 +13,7 @@ import { TbFaceIdError } from "react-icons/tb";
 import { GiNestBirds } from "react-icons/gi";
 import { MdSupervisedUserCircle } from "react-icons/md";
 import { formatTime, getElapsedSeconds } from '../../../utils/helpers';
+import { HiUserGroup } from "react-icons/hi2";
 
 // Re-usa la interfaz LiveStatusAgent del dashboard principal
 interface LiveStatusAgent {
@@ -60,7 +61,7 @@ const statusStyles: { [key: string]: { color: string; bgColor: string; icon: JSX
     'on hold': { color: 'text-blue-400', bgColor: 'bg-blue-800/20', icon: <FiPhoneCall className="mr-1" /> }, // Added for 'on hold' status
     'training': { color: 'text-blue-400', bgColor: 'bg-blue-800/20', icon: <GiWeightLiftingUp className="mr-1" /> }, // Added for 'on hold' status
     'technical issue': { color: 'text-red-500', bgColor: 'bg-red-800/20', icon: <TbFaceIdError className="mr-1" /> }, // Added for 'on hold' status
-    'meeting': { color: 'text-yellow-400', bgColor: 'bg-yellow-800/20', icon: <TbFaceIdError className="mr-1" /> }, // Added for 'on hold' status
+    'meeting': { color: 'text-yellow-400', bgColor: 'bg-yellow-800/20', icon: <HiUserGroup className="mr-1" /> }, // Added for 'on hold' status
     'nesting': { color: 'text-yellow-400', bgColor: 'bg-yellow-800/20', icon: <GiNestBirds  className="mr-1" /> }, // Added for 'on hold' status
     'supervisor': { color: 'text-indigo-400', bgColor: 'bg-indigo-800/20', icon: <MdSupervisedUserCircle className="mr-1" /> }, // Added for 'on hold' status
     'auto pause: 1 missed call.': { color: 'text-pink-800', bgColor: 'bg-pink-800/20', icon: <MdSupervisedUserCircle className="mr-1" /> }, // Added for 'on hold' status
@@ -158,7 +159,7 @@ const formatAgentStatus = (agent: LiveStatusAgent): JSX.Element => {
     
     return (
         // Cambiamos a un div para permitir múltiples líneas y mejor estructura de tarjeta
-        <div className={`flex flex-col items-start p-3 rounded-lg shadow-md min-w-[250px] max-w-[350px] ${style.bgColor} border border-transparent`}>
+        <div className={`flex flex-col items-start p-3 rounded-lg shadow-md min-w-[250px] max-w-[400px] ${style.bgColor} border border-transparent`}>
             {/* Línea principal de estado */}
             <div className={`flex items-center text-lg font-medium ${style.color} mb-1`}>
                 {style.icon}
