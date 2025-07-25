@@ -31,9 +31,9 @@ export const useCallsWebSocket = () => {
             // Asegúrate de que tu backend Django Channels esté corriendo en localhost:8000
             return 'ws://localhost:8001/ws/calls/'; 
         } else {
-            return 'ws://localhost:8001/ws/calls/'; 
+            // return 'ws://localhost:8001/ws/calls/'; 
             // Para producción, usa la URL de tu backend en Render
-            // return 'wss://gvhc-backend.onrender.com/ws/calls/'; 
+            return 'wss://gvhc-backend.onrender.com/ws/calls/'; 
         }
     };
 
