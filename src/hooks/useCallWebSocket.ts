@@ -22,7 +22,7 @@ export const useCallsWebSocket = () => {
     const [isLoading, setIsLoading] = useState(true); // Nuevo estado para indicar carga inicial
     const ws = useRef<WebSocket | null>(null); // Usamos useRef para mantener la instancia del WebSocket
     const reconnectAttempts = useRef(0); // Contador de intentos de reconexión
-    const MAX_RECONNECT_ATTEMPTS = 5; // Número máximo de intentos antes de rendirse
+    const MAX_RECONNECT_ATTEMPTS = 10; // Número máximo de intentos antes de rendirse
     const RECONNECT_INTERVAL_MS = 3000; // Intervalo entre intentos de reconexión (3 segundos)
 
     const getWebSocketUrl = () => {
@@ -31,9 +31,9 @@ export const useCallsWebSocket = () => {
             // Asegúrate de que tu backend Django Channels esté corriendo en localhost:8000
             return 'ws://localhost:8001/ws/calls/'; 
         } else {
-            return 'ws://localhost:8001/ws/calls/'; 
+            // return 'ws://localhost:8001/ws/calls/'; 
             // Para producción, usa la URL de tu backend en Render
-            // return 'wss://gvhc-websocket.onrender.com/ws/calls/'; 
+            return 'wss://gvhc-websocket.onrender.com/ws/calls/'; 
         }
     };
 
