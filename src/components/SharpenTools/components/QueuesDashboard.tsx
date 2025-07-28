@@ -16,7 +16,7 @@ import AgentTicker from './AgentTicker'; // Creamos este archivo en el paso 2
 interface QueueConfig {
     id: string; // Un ID único para la tarjeta
     title: string; // Título de la tarjeta (ej: 'Appointment Line')
-    queueName: string; // Nombre de la cola real en la DB
+    queueName: string[]; // Nombre de la cola real en la DB
 }
 
 // Define cómo se almacenarán los datos de cada métrica (Count, Lcw)
@@ -46,19 +46,13 @@ interface LiveStatusAgent {
     fullName: string;
 }
 
-
-
 const dashboardQueues: QueueConfig[] = [
-    { id: 'appt_line', title: 'Appointment Line', queueName: 'Appointment Line RP1200' },
-    { id: 'es_appt_line', title: 'ES-Appointment Line', queueName: 'ES-Appointment Line RP1200' },
-    { id: 'medrec', title: 'Medical Records', queueName: 'Medical Records RP1260' },
-    { id: 'es_med_records', title: 'ES-Medical Records', queueName: 'ES-Medical Records RP1260' },
-    { id: 'provider', title: 'Provider Hotline', queueName: 'Provider Hotline RP1270' },
-    { id: 'es_provider', title: 'ES-Provider Hotline', queueName: 'ES-Provider Hotline RP1270' },
-    { id: 'transport', title: 'Transportation', queueName: 'Transportation' },
-    { id: 'dental', title: 'Dental', queueName: 'Dental' },
-    { id: 'referals', title: 'Referrals', queueName: 'Referals RP1250' },
-    { id: 'es_referals', title: 'ES-Referrals', queueName: 'ES-Referrals RP1250' },
+    { id: 'appt_line', title: 'Appointment Line', queueName: ['Appointment Line RP1200', 'ES-Appointment Line RP1200'] },
+    { id: 'medrec', title: 'Medical Records', queueName: ['Medical Records RP1260', 'ES-Medical Records RP1260'] },
+    { id: 'provider', title: 'Provider Hotline', queueName: ['Provider Hotline RP1270', 'ES-Provider Hotline RP1270'] },
+    { id: 'transport', title: 'Transportation', queueName: ['Transportation'] },
+    { id: 'dental', title: 'Dental', queueName: ['Dental'] },
+    { id: 'referals', title: 'Referrals', queueName: ['Referals RP1250', 'ES-Referrals RP1250'] },
 ];
 
 const buildQuery = (queueName: string, type: 'COUNT' | 'LCW'): string => {
@@ -144,26 +138,46 @@ const QueueDashboard: React.FC = () => {
     }, [defaultGetAgentsParams]); // Dependencia del efecto para que se ejecute si cambian los parámetros por defecto
 
 
-const { counts, lcw } = useMemo(() => {
-    const result: { counts: Record<string, number>, lcw: Record<string, number> } = { 
-        counts: {}, 
-        lcw: {} 
-    };
-        for (const call of callsOnHold) {
-            const queue = call.queueName;
-            const elapsed = getElapsedSeconds(call.startTime);
-            result.counts[queue] = (result.counts[queue] || 0) + 1;
-            result.lcw[queue] = Math.max(result.lcw[queue] || 0, elapsed);
+const queueIdMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const group of dashboardQueues) {
+        for (const sourceName of group.queueName) {
+            map[sourceName] = group.id;
         }
+    }
+    return map;
+}, []); // Se calcula una sola vez
+
+// Agregación de datos usando los IDs unificados
+const { counts, lcw } = useMemo(() => {
+    const result: { counts: Record<string, number>, lcw: Record<string, number> } = {
+        counts: {},
+        lcw: {}
+    };
+
+    for (const call of callsOnHold) {
+        // Encuentra el ID del grupo unificado al que pertenece la llamada
+        const unifiedId = queueIdMap[call.queueName];
+        
+        if (unifiedId) {
+            const elapsed = getElapsedSeconds(call.startTime);
+            // Agrega el conteo al grupo correcto
+            result.counts[unifiedId] = (result.counts[unifiedId] || 0) + 1;
+            // Actualiza el LCW para el grupo correcto
+            result.lcw[unifiedId] = Math.max(result.lcw[unifiedId] || 0, elapsed);
+        }
+    }
     return result;
-}, [callsOnHold]);
+}, [callsOnHold, queueIdMap]);
 
     const isUserMetric = (queueConfig: QueueConfig): boolean => {
-        return userQueueNames.some(queueName =>
-            queueConfig.queueName.toLowerCase().includes(queueName.toLowerCase())
+        // Revisa si alguna de las colas de origen del grupo coincide con las del usuario
+        return queueConfig.queueName.some(sourceQueue =>
+            userQueueNames.some(userQueueName =>
+                sourceQueue.toLowerCase().includes(userQueueName.toLowerCase())
+            )
         );
     };
-
 
     useEffect(() => {
         // Establecer la última actualización cuando callsOnHold cambie y no esté cargando
@@ -272,9 +286,9 @@ const { counts, lcw } = useMemo(() => {
                                             <p className="text-lg font-bold text-white flex items-center gap-2">
                                                 <MdSpatialAudioOff className='mr-2'/> {call.cidName || "Paciente desconocido"}
                                             </p>
-                                            <p className="text-sm text-gray-300 flex items-center gap-2">
+                                            {/* <p className="text-sm text-gray-300 flex items-center gap-2">
                                                 <SlCallIn className='mr-2'/> {call.callbackNumber}
-                                            </p>
+                                            </p> */}
                                             <p className="text-sm text-gray-300 flex items-center gap-2">
                                                 <FcDepartment className='mr-2' /> {call.queueName}
                                             </p>
@@ -289,17 +303,17 @@ const { counts, lcw } = useMemo(() => {
                     {/* <--- CAMBIO: Contenido principal que se expande ---> */}
                     <main className="flex-1">
                         {/* --- Grid de Métricas --- */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3">
-                            {dashboardQueues.map((metric) => {
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3 gap-3">
+                            {dashboardQueues.map((queue) => {
                                 // const data = metricsData[metric.id];
-                                const countValue = counts[metric.queueName] ?? 0;
-                                const lcwValue = formatTime(lcw[metric.queueName] ?? 0); // Si quieres formatear segundos a "HH:MM:SS"
-                                const isRelevant = isUserMetric(metric);
+                                const countValue = counts[queue.id] ?? 0;
+                                const lcwValue = formatTime(lcw[queue.id] ?? 0); // Si quieres formatear segundos a "HH:MM:SS"
+                                const isRelevant = isUserMetric(queue);
                                 const isActiveQueue = countValue > 0 || lcwValue !== '00:00:00';
 
-                                return (
+                            return (
                                     <div
-                                        key={metric.id}
+                                        key={queue.id} // Usa el ID del grupo como key
                                         className={`rounded-xl shadow-lg py-5 px-4 flex flex-col justify-between transform hover:-translate-y-1 transition-transform duration-200
                                             ${isRelevant ? 'border-2 border-purple-400' : ''}
                                             ${isActiveQueue ? 'bg-gradient-to-br from-purple-800 to-purple-600 border border-purple-400' : 'bg-gray-800'}
@@ -307,36 +321,36 @@ const { counts, lcw } = useMemo(() => {
                                     >
                                         <div>
                                             <div className="flex items-center justify-between mb-3">
-                                                <h2 className="text-gray-300 text-2xl font-semibold">{metric.title}</h2>
-                                                {/* Puedes decidir qué icono mostrar aquí, quizás uno para la cola en general */}
+                                                {/* Usa el título del grupo */}
+                                                <h2 className="text-gray-300 text-2xl font-semibold">{queue.title}</h2>
                                                 <FcDepartment className="text-blue-400" size={24} />
                                             </div>
 
-                                            {/* Sección para el COUNT */}
+                                            {/* Sección para el COUNT (esto no cambia, ya que usa countValue) */}
                                             <div className="mb-3">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center">
                                                         <FiPhoneIncoming className="text-purple-400 mr-2" size={30} />
                                                         <span className="text-gray-300 text-lg font-semibold">Calls in Queue:</span>
                                                     </div>
-                                                        <p className={`text-3xl font-bold transition-all duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
+                                                    <p className={`text-9xl font-bold transition-all duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
                                                         {isLoading && countValue === 0 ? <FiLoader className="animate-spin text-purple-400" /> : countValue}
-                                                        </p>
+                                                    </p>
                                                 </div>
                                             </div>
 
-                                            {/* Sección para el LCW */}
+                                            {/* Sección para el LCW (esto no cambia, ya que usa lcwValue) */}
                                             <div>
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center">
-                                                        <FiClock className="text-orange-400 mr-2" size={30} />
-                                                        <span className="text-gray-300 text-lg font-semibold">Longest Wait:</span>
-                                                    </div>
-                                                        <p className={`text-3xl font-bold transition-all duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
-                                                            {isLoading && lcwValue === '00:00:00' ? <FiLoader className="animate-spin text-purple-400" /> : lcwValue}                                                                   
-                                                        </p>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center">
+                                                    <FiClock className="text-orange-400 mr-2" size={30} />
+                                                    <span className="text-gray-300 text-lg font-semibold">Longest Wait:</span>
                                                 </div>
+                                                <p className={`text-6xl font-bold transition-all duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
+                                                    {isLoading && lcwValue === '00:00:00' ? <FiLoader className="animate-spin text-purple-400" /> : lcwValue}
+                                                </p>
                                             </div>
+                                        </div>
                                         </div>
                                     </div>
                                 );
