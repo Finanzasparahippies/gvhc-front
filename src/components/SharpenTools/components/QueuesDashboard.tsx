@@ -400,9 +400,9 @@ const { counts, lcw } = useMemo(() => {
                             })}
                         </div>
                         {quote && (
-                            <div className="animate-fade-in-down mt-12 text-center max-w-xl mx-auto px-4 py-6 bg-gray-800 rounded-lg shadow-md">
-                                <p className="text-xl italic text-white">"{quote}"</p>
-                                <p className="mt-2 text-sm text-purple-400">— {author}</p>
+                            <div className="animate-fade-in-down mt-12 text-center max-w-3xl mx-auto px-4 py-6 bg-gray-800 rounded-lg shadow-md">
+                                <p className="text-3xl italic text-white">"{quote}"</p>
+                                <p className="mt-2 text-lg text-purple-400">— {author}</p>
                             </div>
                         )}
                         <AgentTicker agents={agentLiveStatus} error={agentError} loading={agentLoading}/>
