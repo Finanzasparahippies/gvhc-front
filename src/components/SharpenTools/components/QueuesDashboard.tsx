@@ -1,6 +1,6 @@
 //src/components/SharpenTools/components/QueuesDashboard.tsx
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { FiRefreshCw, FiAlertCircle, FiClock, FiPhoneIncoming, FiSidebar, FiLoader } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { FiRefreshCw, FiAlertCircle, FiClock, FiPhoneIncoming, FiSidebar, FiLoader, FiMaximize, FiMinimize } from 'react-icons/fi';
 import API from '../../../utils/API';
 import { useAuth } from '../../../utils/AuthContext';
 import { MdSpatialAudioOff } from "react-icons/md";
@@ -77,6 +77,8 @@ const QueueDashboard: React.FC = () => {
     const [author, setAuthor] = useState<string | null>(null);
     const { user } = useAuth();  // Dentro de tu componente `QueueDashboard`
     const [isSidebarOpen, setIsSidebarOpen] = useState(true); // <--- CAMBIO: Estado para la barra lateral
+    const [isFullscreen, setIsFullscreen] = useState(false); // <--- AÑADE ESTE ESTADO
+    const dashboardRef = useRef<HTMLDivElement>(null); // <--- AÑADE ESTA REFERENCIA
     // const [sidebarError, setSidebarError] = useState<string | null>(null); // <--- AÑADE ESTO
     const { calls: callsOnHold, isLoading, wsError } = useCallsWebSocket(); 
     const userQueueNames = user?.queues.map(q => q.name) || [];
@@ -214,6 +216,32 @@ const { counts, lcw } = useMemo(() => {
             return () => clearInterval(intervalId); // Limpia el intervalo al desmontar
         }, []);
 
+        const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            // Si no estamos en pantalla completa, la solicitamos
+            dashboardRef.current?.requestFullscreen();
+        } else {
+            // Si ya estamos, salimos
+            document.exitFullscreen();
+        }
+    };
+
+    useEffect(() => {
+        // Esta función se encarga de actualizar nuestro estado si cambia el modo de pantalla completa
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+
+        // Escuchamos el evento 'fullscreenchange' del navegador
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+        // Es importante limpiar el listener cuando el componente se desmonte para evitar memory leaks
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        };
+    }, []); // El array vacío asegura que esto solo se ejecute al montar y desmontar
+
+
         const handleRefreshClick = useCallback(() => {
             // In a WebSocket-driven app, "refresh" often means re-establishing connection
             // or re-requesting initial data if the WebSocket provides it.
@@ -226,7 +254,10 @@ const { counts, lcw } = useMemo(() => {
         }, []);
 
     return (
-        <div className="bg-gray-900 min-h-screen p-4 sm:p-6 lg:py-6 font-sans text-white mt-[120px] animate-fade-in-down">
+        <div 
+            ref={dashboardRef} 
+            className="bg-gray-900 min-h-screen p-4 sm:p-6 lg:py-6 font-sans text-white mt-[120px] animate-fade-in-down"
+        >
             <div className="max-w-full mx-auto">
                 {/* --- Cabecera --- */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
@@ -245,6 +276,18 @@ const { counts, lcw } = useMemo(() => {
                         >
                             <FiSidebar className="mr-2" />
                             <span>On Hold ({callsOnHold.length})</span>
+                        </button>
+                        <button
+                            onClick={toggleFullscreen}
+                            className="flex items-center px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+                            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+                        >
+                            {isFullscreen ? (
+                                <FiMinimize className="mr-2" />
+                            ) : (
+                                <FiMaximize className="mr-2" />
+                            )}
+                            <span>{isFullscreen ? 'Exit' : 'Fullscreen'}</span>
                         </button>
                         {/* <button
                             onClick={handleRefreshClick} // Use the new handler
