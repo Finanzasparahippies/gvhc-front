@@ -4,7 +4,7 @@ import { TrainingComponent } from '../TrainingComponent';
 import { SupervisorComponent } from '../SupervisorComponent';
 import { useAuth } from '../../utils/AuthContext'; // 🟢 Importa useAuth
 import QueueDashboard from '../SharpenTools/components/QueuesDashboard';
-import { FoodStation } from '../foodStation/FoodStation';
+import  FoodStation  from '../foodStation/FoodStation';
 
 type TabType = 'reactflow' | 'training' | 'supervisors' | 'patientsQueues' | 'Food Station';
 
@@ -22,7 +22,7 @@ const TabsComponent = () => {
     // Función para cambiar las pestañas
     const handleTabChange = (tab: TabType) => {
         // Prevent changing tabs if user is 'egs' and tries to navigate away from 'Food Station'
-        if (user?.role === 'egs' && tab !== 'Food Station') {
+        if (user?.role === 'egs'  && tab !== 'Food Station') {
             console.warn("Acceso denegado: Los usuarios 'egs' solo pueden acceder a la estación de comida.");
             return;
         }
@@ -39,10 +39,9 @@ const TabsComponent = () => {
         if (isLoading) {
            return <p>Cargando información del usuario...</p>; // O un spinner de carga
         }
-        if (user?.role === 'egs') {
-            return <FoodStation />;
-        }
         switch (activeTab) {
+        case 'Food Station':
+            return <FoodStation />;
         case 'patientsQueues':
             return <QueueDashboard />;
         case 'reactflow':

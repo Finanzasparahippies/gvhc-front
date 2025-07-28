@@ -74,12 +74,13 @@ export const useCallsWebSocket = () => {
 
     const connectWebSocket = useCallback(() => {
         // Cierra cualquier conexión existente antes de intentar una nueva
-        if (ws.current && ws.current.readyState !== WebSocket.CLOSED) {
-            ws.current.close();
+        if (ws.current && (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING)) {
+            console.log('⚠️ Ya hay una conexión WebSocket activa o en progreso.');
+            return;
         }
-        setIsLoading(true); // Set loading to true when trying to connect
-        setWsError(null); // Clear previous errors when attempting to reconnect
+
         const socket =  new WebSocket(getWebSocketUrl());
+        setIsLoading(true); // Set loading to true when trying to connect
 
         socket.onopen = () => {
             console.log('🔗 WebSocket connected:', getWebSocketUrl());
@@ -105,28 +106,65 @@ export const useCallsWebSocket = () => {
             if (reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
                 reconnectAttempts.current++;
                 console.log(`Reconnecting attempt ${reconnectAttempts.current}/${MAX_RECONNECT_ATTEMPTS}...`);
-                setTimeout(connectWebSocket, RECONNECT_INTERVAL_MS);
+            setTimeout(() => {
+                    if (document.visibilityState === 'visible') {
+                        connectWebSocket();
+                    }
+                }, RECONNECT_INTERVAL_MS);
             } else {
-                setWsError('WebSocket connection failed after multiple attempts. Please refresh the page.');
+                setWsError('No se pudo reconectar al WebSocket');
                 console.error('Max reconnect attempts reached. Giving up.');
                 setIsLoading(false); // Stop loading if max attempts reached
             }
         };
-    }, [handleMessage]); // `handleMessage` es una dependencia estable gracias a `useCallback`
+    }, [handleMessage]); 
 
 
     // useEffect para gestionar la conexión del WebSocket
     useEffect(() => {
-        
-        connectWebSocket(); // Conectar al montar el componente
+        // 🔹 Carga inicial rápida con fetch
+        const fetchInitialData = async () => {
+            try {
+                const response = await fetch('/api/pacientes-en-espera/');
+                const data = await response.json();
+                const initialCalls = data?.getCallsOnHoldData ?? [];
+                setCalls(initialCalls);
+                setIsLoading(false);
+            } catch (error) {
+                console.error('Error en carga inicial:', error);
+                setWsError('Error al cargar los pacientes iniciales');
+                setIsLoading(false);
+            }
+        };
 
+        fetchInitialData(); // Carga inicial
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                console.log('🔁 Pestaña visible → conectar WebSocket');
+                connectWebSocket();
+            } else {
+                console.log('🛑 Pestaña oculta → cerrar WebSocket');
+                if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+                    ws.current.close();
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // Conectar solo si la pestaña está visible
+        if (document.visibilityState === 'visible') {
+            connectWebSocket();
+        }
 
         return () => {
-            if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            if (ws.current && (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING)) {
                 ws.current.close();
             }
         };
-    }, [connectWebSocket]); // `connectWebSocket` es una dependencia estable
+    }, [connectWebSocket]);
 
     return { calls: calls, isLoading: isLoading, wsError: wsError }; // Retorna isLoading
 };

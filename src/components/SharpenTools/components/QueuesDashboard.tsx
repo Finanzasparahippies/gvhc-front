@@ -144,28 +144,26 @@ const QueueDashboard: React.FC = () => {
     }, [defaultGetAgentsParams]); // Dependencia del efecto para que se ejecute si cambian los parámetros por defecto
 
 
-    const longestWaitTimesByQueue = useMemo(() => {
-        console.log('🔄 Recalculando LCW desde WebSocket...');
-        const lcw: { [queueName: string]: number } = {};
+const { counts, lcw } = useMemo(() => {
+    const result: { counts: Record<string, number>, lcw: Record<string, number> } = { 
+        counts: {}, 
+        lcw: {} 
+    };
         for (const call of callsOnHold) {
+            const queue = call.queueName;
             const elapsed = getElapsedSeconds(call.startTime);
-            if (elapsed > (lcw[call.queueName] || 0)) {
-                lcw[call.queueName] = elapsed;
-            }
+            result.counts[queue] = (result.counts[queue] || 0) + 1;
+            result.lcw[queue] = Math.max(result.lcw[queue] || 0, elapsed);
         }
-        // Convertir segundos a formato "HH:MM:SS" si es necesario para mostrar
-        const formattedLcw: { [queueName: string]: string } = {};
-        for (const queueName in lcw) {
-            formattedLcw[queueName] = formatTime(lcw[queueName]);
-        }
-        return formattedLcw;
-    }, [callsOnHold]); // Depende de callsOnHold
+    return result;
+}, [callsOnHold]);
 
     const isUserMetric = (queueConfig: QueueConfig): boolean => {
         return userQueueNames.some(queueName =>
             queueConfig.queueName.toLowerCase().includes(queueName.toLowerCase())
         );
     };
+
 
     useEffect(() => {
         // Establecer la última actualización cuando callsOnHold cambie y no esté cargando
@@ -175,14 +173,6 @@ const QueueDashboard: React.FC = () => {
         }
     }, [callsOnHold, isLoading]); // Añade isLoading como dependencia
 
-    const countsFromWebSocket = useMemo(() => {
-        console.log('🔄 Recalculando conteos desde WebSocket...');
-        const counts: { [queueName: string]: number } = {};
-        for (const call of callsOnHold) {
-            counts[call.queueName] = (counts[call.queueName] || 0) + 1;
-        }
-        return counts;
-    }, [callsOnHold]);
 
     useEffect(() => {
         const fetchQuote = async () => {
@@ -302,8 +292,8 @@ const QueueDashboard: React.FC = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3">
                             {dashboardQueues.map((metric) => {
                                 // const data = metricsData[metric.id];
-                                const countValue = countsFromWebSocket[metric.queueName] ?? 0;
-                                const lcwValue = longestWaitTimesByQueue[metric.queueName] ?? '00:00:00'; // Usa el LCW calculado del WebSocket
+                                const countValue = counts[metric.queueName] ?? 0;
+                                const lcwValue = formatTime(lcw[metric.queueName] ?? 0); // Si quieres formatear segundos a "HH:MM:SS"
                                 const isRelevant = isUserMetric(metric);
                                 const isActiveQueue = countValue > 0 || lcwValue !== '00:00:00';
 
