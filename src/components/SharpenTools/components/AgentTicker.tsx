@@ -159,20 +159,20 @@ const formatAgentStatus = (agent: LiveStatusAgent): JSX.Element => {
     
     return (
         // Cambiamos a un div para permitir múltiples líneas y mejor estructura de tarjeta
-        <div className={`flex flex-col items-start p-3 rounded-lg shadow-md min-w-[250px] max-w-[400px] min-h-[200px] max-h-[330px] ${style.bgColor} border border-transparent`}>
+        <div className={`flex flex-col items-start p-3 rounded-lg shadow-md min-w-[250px] max-w-[470px] min-h-[200px] max-h-[350px] ${style.bgColor} border border-transparent`}>
             {/* Línea principal de estado */}
-            <div className={`flex items-center text-lg font-medium ${style.color} mb-1`}>
+            <div className={`flex items-center text-xl font-medium ${style.color} mb-1`}>
                 {style.icon}
-                <span className="truncate font-semibold text-white">{agent.fullName}</span>: <span className="ml-1 font-semibold">{statusText}</span>
+                <span className="truncate font-semibold text-white text-2xl">{agent.fullName}:</span> <span className="ml-1 font-semibold text-2xl">{statusText}</span>
             </div>
             {isPaused && agent.pauseTime ? (
                     // Tiempo de pausa del agente (usa PausedTime, que interpreta como hora local)
-                    <div className="text-lg text-gray-400 ml-1">
+                    <div className="text-xl text-gray-400 ml-1">
                         <PausedTime pauseStartTime={agent.pauseTime} />
                     </div>
                 ) : showActiveCallTime  ? (
                     // Tiempo de llamada en hold (usa activeCall.lastActionTime)
-                    <span className="text-lg text-orange-300 ml-1 text-center">
+                    <span className="text-xl text-orange-300 ml-1 text-center">
                         <ElapsedStatusTime startTime={agent.activeCall!.lastActionTime!} /> 
                         On Hold
                     </span>
@@ -181,7 +181,7 @@ const formatAgentStatus = (agent: LiveStatusAgent): JSX.Element => {
                     <ElapsedStatusTime startTime={agent.lastStatusChange!} />
                 ) : (
                     // Fallback: Si no es ninguno de los casos anteriores, muestra el statusDuration de la API
-                    <span className="text-md text-gray-400 ml-1">{agent.statusDuration}</span>
+                    <span className="text-xl text-gray-400 ml-1">{agent.statusDuration}</span>
                 )}
             {/* Información de llamada activa */}
             {
@@ -203,10 +203,10 @@ const formatAgentStatus = (agent: LiveStatusAgent): JSX.Element => {
 
             {/* Colas loggeadas */}
             {agent.queues && agent.queues.length > 0 && (
-                <div className="text-xs font-semibold text-gray-400 pl-5"> {/* Indentado */}
+                <div className="text-md font-semibold text-gray-400 pl-5"> {/* Indentado */}
                     <div className="flex items-center mb-0.5">
                         <FiUsers className="mr-1 text-gray-400" size={15} />
-                        <span className='font-semibold text-sm '>Active Queues:</span>
+                        <span className='font-semibold text-lg'>Active Queues:</span>
                     </div>
                     <ul className="list-disc list-inside ml-2">
                         {agent.queues.map((queue) => (
@@ -356,9 +356,9 @@ const AgentTicker: React.FC<AgentTickerProps> = ({ agents, error, loading }) => 
     const animationDuration = Math.max(25, agents.length * 5); // Duración dinámica basada en el número de agentes
 
     return (
-        <div className="mt-8 mb-4 bg-gray-800 rounded-lg shadow-xl overflow-hidden animate-fade-in-up">
+        <div className="mt-2 mb-4 bg-gray-800 rounded-lg shadow-xl overflow-hidden animate-fade-in-up">
             <div className="p-4 border-b border-gray-700">
-                <h2 className="text-xl font-bold text-white text-center">Agent Dispositions</h2>
+                <h2 className="text-2xl font-bold text-white text-center">Agent Dispositions</h2>
             </div>
             <div 
                 ref={tickerRef} // <-- NUEVO: Asignamos la referencia

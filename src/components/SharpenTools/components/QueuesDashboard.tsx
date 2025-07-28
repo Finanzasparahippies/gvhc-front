@@ -6,7 +6,7 @@ import { useAuth } from '../../../utils/AuthContext';
 import { MdSpatialAudioOff } from "react-icons/md";
 import { SlCallIn } from "react-icons/sl";
 import { FcDepartment } from "react-icons/fc";
-import { useCallsWebSocket } from '../../../hooks/useCallWebSocket'; 
+import { useCallsWebSocket } from '../../../hooks/useCallWebSocket';
 import ElapsedTime from '../../../hooks/elapsedTime'; // 👈 Asegúrate de importar el nuevo componente
 import { formatTime, getElapsedSeconds } from '../../../utils/helpers'
 import { QUERY_TEMPLATES } from "./SharpenQuerys"; // o como lo importes
@@ -47,9 +47,9 @@ interface LiveStatusAgent {
 }
 
 const dashboardQueues: QueueConfig[] = [
-    { id: 'appt_line', title: 'Appointment Line', queueName: ['Appointment Line RP1200', 'ES-Appointment Line RP1200'] },
+    { id: 'appt_line', title: 'Appointments', queueName: ['Appointment Line RP1200', 'ES-Appointment Line RP1200'] },
     { id: 'medrec', title: 'Medical Records', queueName: ['Medical Records RP1260', 'ES-Medical Records RP1260'] },
-    { id: 'provider', title: 'Provider Hotline', queueName: ['Provider Hotline RP1270', 'ES-Provider Hotline RP1270'] },
+    { id: 'provider', title: 'Providers line', queueName: ['Provider Hotline RP1270', 'ES-Provider Hotline RP1270'] },
     { id: 'transport', title: 'Transportation', queueName: ['Transportation'] },
     { id: 'dental', title: 'Dental', queueName: ['Dental'] },
     { id: 'referals', title: 'Referrals', queueName: ['Referals RP1250', 'ES-Referrals RP1250'] },
@@ -80,7 +80,7 @@ const QueueDashboard: React.FC = () => {
     const [isFullscreen, setIsFullscreen] = useState(false); // <--- AÑADE ESTE ESTADO
     const dashboardRef = useRef<HTMLDivElement>(null); // <--- AÑADE ESTA REFERENCIA
     // const [sidebarError, setSidebarError] = useState<string | null>(null); // <--- AÑADE ESTO
-    const { calls: callsOnHold, isLoading, wsError } = useCallsWebSocket(); 
+    const { calls: callsOnHold, isLoading, wsError } = useCallsWebSocket();
     const userQueueNames = user?.queues.map(q => q.name) || [];
     const [agentLiveStatus, setAgentLiveStatus] = useState<LiveStatusAgent[]>([]);
     const [agentError, setAgentError] = useState<string | null>(null);
@@ -99,7 +99,7 @@ const QueueDashboard: React.FC = () => {
         setAgentLoading(true); // Start loading
         try {
             const { endpoint, payload } = QUERY_TEMPLATES.getAgents(defaultGetAgentsParams);
-            const response = await sharpenAPI.post<SharpenApiResponseData>('dashboards/proxy/generic/', { 
+            const response = await sharpenAPI.post<SharpenApiResponseData>('dashboards/proxy/generic/', {
                             endpoint: endpoint, // El endpoint real de Sharpen
                             payload: payload,   // El payload real para Sharpen
             });
@@ -160,7 +160,7 @@ const { counts, lcw } = useMemo(() => {
     for (const call of callsOnHold) {
         // Encuentra el ID del grupo unificado al que pertenece la llamada
         const unifiedId = queueIdMap[call.queueName];
-        
+
         if (unifiedId) {
             const elapsed = getElapsedSeconds(call.startTime);
             // Agrega el conteo al grupo correcto
@@ -254,15 +254,15 @@ const { counts, lcw } = useMemo(() => {
         }, []);
 
     return (
-        <div 
-            ref={dashboardRef} 
-            className="bg-gray-900 min-h-screen p-4 sm:p-6 lg:py-6 font-sans text-white mt-[120px] animate-fade-in-down"
+        <div
+            ref={dashboardRef}
+            className="bg-gray-900 min-h-screen px-4 sm:p-6 lg:py-2 font-sans text-white mt-[120px] animate-fade-in-down"
         >
             <div className="max-w-full mx-auto">
                 {/* --- Cabecera --- */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2">
                     <div>
-                        <h1 className='text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-t from-gray-500 to-purple-600 mb-4 pb-2'>GVHC Patient's on Queue</h1>
+                        {/* <h1 className='text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-t from-gray-500 to-purple-600 mb-4 pb-2'>GVHC Patient's on Queue</h1> */}
                         <p className="text-gray-400 mt-1">
                             Last update: {lastUpdated ? lastUpdated.toLocaleTimeString() : 'Cargando...'}
                         </p>
@@ -304,7 +304,7 @@ const { counts, lcw } = useMemo(() => {
                 <div className="flex flex-col lg:flex-row gap-8">
 
                     {/* <--- CAMBIO: Barra lateral ---> */}
-                    <aside className={`bg-gray-800 rounded-lg shadow-lg p-4 flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-full max-h-screen lg:w-80' : 'w-0 p-0 overflow-hidden'}`}>
+                    <aside className={`bg-gray-800 rounded-lg shadow-lg p-4 flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-full max-h-screen lg:w-[280px]' : 'w-0 p-0 overflow-hidden'}`}>
                         <h2 className={`text-2xl font-bold mb-4 border-b border-gray-700 pb-2 transition-opacity ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>Patients on Hold</h2>
                         <div className={`flex-grow overflow-y-auto transition-opacity ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
                             {
@@ -335,7 +335,7 @@ const { counts, lcw } = useMemo(() => {
                                             <p className="text-sm text-gray-300 flex items-center gap-2">
                                                 <FcDepartment className='mr-2' /> {call.queueName}
                                             </p>
-                                            <ElapsedTime startTime={call.startTime} /> 
+                                            <ElapsedTime startTime={call.startTime} />
                                         </div>
                                     );
                                 })
@@ -365,8 +365,8 @@ const { counts, lcw } = useMemo(() => {
                                         <div>
                                             <div className="flex items-center justify-between mb-3">
                                                 {/* Usa el título del grupo */}
-                                                <h2 className="text-gray-300 text-5xl font-semibold">{queue.title}</h2>
-                                                <FcDepartment className="text-blue-400" size={24} />
+                                                <h2 className="text-gray-300 text-6xl font-semibold">{queue.title}</h2>
+                                                <FcDepartment className="text-blue-400" size={70} />
                                             </div>
 
                                             {/* Sección para el COUNT (esto no cambia, ya que usa countValue) */}
@@ -389,7 +389,7 @@ const { counts, lcw } = useMemo(() => {
                                                     <FiClock className="text-orange-400 mr-2" size={30} />
                                                     <span className="text-gray-300 text-2xl font-semibold">Longest Wait:</span>
                                                 </div>
-                                                <p className={`text-6xl font-bold transition-all duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
+                                                <p className={`text-7xl font-bold transition-all duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
                                                     {isLoading && lcwValue === '00:00:00' ? <FiLoader className="animate-spin text-purple-400" /> : lcwValue}
                                                 </p>
                                             </div>
@@ -400,7 +400,7 @@ const { counts, lcw } = useMemo(() => {
                             })}
                         </div>
                         {quote && (
-                            <div className="animate-fade-in-down mt-12 text-center max-w-3xl mx-auto px-4 py-6 bg-gray-800 rounded-lg shadow-md">
+                            <div className="animate-fade-in-down mt-4 text-center max-w-3xl mx-auto px-4 py-4 bg-gray-800 rounded-lg shadow-md">
                                 <p className="text-3xl italic text-white">"{quote}"</p>
                                 <p className="mt-2 text-lg text-purple-400">— {author}</p>
                             </div>
