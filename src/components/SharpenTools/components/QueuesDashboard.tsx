@@ -365,7 +365,7 @@ const { counts, lcw } = useMemo(() => {
                                         <div>
                                             <div className="flex items-center justify-between mb-3">
                                                 {/* Usa el título del grupo */}
-                                                <h2 className="text-gray-300 text-2xl font-semibold">{queue.title}</h2>
+                                                <h2 className="text-gray-300 text-5xl font-semibold">{queue.title}</h2>
                                                 <FcDepartment className="text-blue-400" size={24} />
                                             </div>
 
@@ -374,7 +374,7 @@ const { counts, lcw } = useMemo(() => {
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center">
                                                         <FiPhoneIncoming className="text-purple-400 mr-2" size={30} />
-                                                        <span className="text-gray-300 text-lg font-semibold">Calls in Queue:</span>
+                                                        <span className="text-gray-300 text-2xl font-semibold">Calls in Queue:</span>
                                                     </div>
                                                     <p className={`text-9xl font-bold transition-all duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
                                                         {isLoading && countValue === 0 ? <FiLoader className="animate-spin text-purple-400" /> : countValue}
@@ -387,7 +387,7 @@ const { counts, lcw } = useMemo(() => {
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center">
                                                     <FiClock className="text-orange-400 mr-2" size={30} />
-                                                    <span className="text-gray-300 text-lg font-semibold">Longest Wait:</span>
+                                                    <span className="text-gray-300 text-2xl font-semibold">Longest Wait:</span>
                                                 </div>
                                                 <p className={`text-6xl font-bold transition-all duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
                                                     {isLoading && lcwValue === '00:00:00' ? <FiLoader className="animate-spin text-purple-400" /> : lcwValue}
