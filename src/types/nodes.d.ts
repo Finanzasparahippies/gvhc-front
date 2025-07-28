@@ -5,7 +5,8 @@ type FAQStep = {
     id: number | string;
     number: number;
     text: string;
-    image_url: string | undefined;
+    image_url?: string;
+    excel_content?: any; // Añadido para el paso 3, si tu 'excel_content' en los steps es una estructura compleja
     keywords?: string[];
 };
 
