@@ -8,7 +8,7 @@ const FoodStation = () => {
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
 
   useEffect(() => {
-    API.get<DishResponse>('/api/foodstation/dishes/')
+    API.get<DishResponse>('api/foodstation/dishes/')
       .then(res => {
         setDishes(res.data.results);
         console.log('✅ Platos obtenidos:', res.data.results);

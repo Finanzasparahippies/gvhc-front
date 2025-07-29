@@ -196,8 +196,6 @@ export const ReactFlowComponent: React.FC = () => {
                 faq.answers.forEach((answer, answerIndex) => {
                   const answerNodeId = `faq-${faq.id}-answer-${answer.id}`;
                   const nodeType = answer.node_type; // Default type
-                  console.log('nodetype:',nodeType)
-
                   const isAnswerNodePinned = pinnedNodesInfo.some((pn) => pn.id === answerNodeId);
                   const col = answerIndex % ANSWERS_PER_ROW;
                   const row = Math.floor(answerIndex / ANSWERS_PER_ROW);

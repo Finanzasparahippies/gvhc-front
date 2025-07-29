@@ -10,10 +10,6 @@ export const NotesNode: React.FC<NodeProps<Node<BasePayload>>> = ({ id, data }) 
     const [noteHistory, setNoteHistory] = useState<string[]>([]); 
     const nodeStyle = getCombinedNodeStyle(data.response_data, data.pinned);
 
-    console.log('pinned?', data.pinned);
-
-
-
     const handleMouseEnter = () => {
         setPanOnDrag?.(false);
     };
