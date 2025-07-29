@@ -1,11 +1,25 @@
 //src/components/hooks/useCallWebSockets.ts
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { LiveQueueStatusData, CallsUpdateMessage, LiveQueueStatusApiResponse } from '../types/nodes';
+import API from '../utils/API'; // <--- IMPORTA TU INSTANCIA DE AXIOS
+import { CallOnHold, CallsOnHoldApiResponse } from '../types/declarations';
 
 interface ConnectionConfirmMessage {
     message: 'WebSocket conectado';
 }
-type WebSocketMessage = CallsUpdateMessage | ConnectionConfirmMessage;
+
+interface LiveQueueStatusUpdateMessage {
+    type: 'liveQueueStatusUpdate'; // O el nombre del tipo que tu backend realmente envía
+    payload: {
+        getLiveQueueStatusData: LiveQueueStatusData[]; // Nombre que tu backend envía
+        // Puede que necesites ajustar esta propiedad dependiendo de cómo envías los datos
+    };
+}
+
+type WebSocketMessage = CallsUpdateMessage | ConnectionConfirmMessage | LiveQueueStatusUpdateMessage;
 // Define the structure of the WebSocket message payload
+
+
 
 /**
  * Custom React hook to manage real-time call data via WebSocket.
@@ -18,6 +32,7 @@ type WebSocketMessage = CallsUpdateMessage | ConnectionConfirmMessage;
 export const useCallsWebSocket = () => {
     // El estado 'calls' contendrá el array de llamadas extraído
     const [calls, setCalls] = useState<CallOnHold[]>([]);
+    const [liveQueueStatus, setLiveQueueStatus] = useState<LiveQueueStatusData[]>([]); // Nuevo estado
     const [wsError, setWsError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true); // Nuevo estado para indicar carga inicial
     const ws = useRef<WebSocket | null>(null); // Usamos useRef para mantener la instancia del WebSocket
@@ -39,38 +54,46 @@ export const useCallsWebSocket = () => {
 
     const handleMessage = useCallback((event: MessageEvent) => {
         try {
-            const message: CallsUpdateMessage = JSON.parse(event.data);
+            const message: WebSocketMessage = JSON.parse(event.data);
             console.log('✅ WebSocket message received:', message);
 
             // 1. Verificamos que el mensaje sea del tipo correcto y tenga datos
-            if (message.type === 'callsUpdate') {
-                const callsUpdateMsg = message as CallsUpdateMessage; 
+            if ('type' in message) { // Primero, verifica si tiene una propiedad 'type'
+                if (message.type === 'callsUpdate') {
+                    const callsUpdateMsg = message as CallsUpdateMessage; // Explicit cast
 
-                if (callsUpdateMsg.payload && Array.isArray(callsUpdateMsg.payload.getCallsOnHoldData)) {
-                    setCalls(callsUpdateMsg.payload.getCallsOnHoldData);
-                    setWsError(null); // Clear error on successful data update
-                    setIsLoading(false); // Data received, set loading to false
+                    if (callsUpdateMsg.payload && Array.isArray(callsUpdateMsg.payload.getCallsOnHoldData)) {
+                        setCalls(callsUpdateMsg.payload.getCallsOnHoldData);
+                        setWsError(null); 
                 } else {
                     console.warn('⚠️ WebSocket "callsUpdate" message received, but payload is malformed:', callsUpdateMsg);
                     setWsError('Received malformed call data.');
-                    setIsLoading(false); // Data received, set loading to false
                 }
-            } else if ('message' in message && message.message === 'WebSocket conectado') {
-                // This is the initial connection confirmation message from the backend.
-                // We just log it and don't update `calls` state.
-                console.log('Backend confirmed WebSocket connection.');
-                setWsError(null); // Clear any connection errors once confirmed
-            } else {
-                // For any other unexpected message types
-                console.warn('Ignoring unknown or non-callsUpdate WebSocket message type:', message);
-            }
-
-        } catch (error) {
-            console.error('❌ Error parsing WebSocket message or unexpected format:', error, event.data);
-            setWsError('Error processing incoming data from server.');
-            setIsLoading(false); // Error occurred, stop loading indication
-        }
-    }, []); // `handleMessage` is stable as it has no dependencies
+                } else if (message.type === 'liveQueueStatusUpdate') { // **NUEVO**: Maneja los mensajes de estado de cola en vivo
+                    const liveQueueStatusMsg = message as LiveQueueStatusUpdateMessage; // Casteo explícito
+                    if (liveQueueStatusMsg.payload && Array.isArray(liveQueueStatusMsg.payload.getLiveQueueStatusData)) {
+                            setLiveQueueStatus(liveQueueStatusMsg.payload.getLiveQueueStatusData);
+                            setWsError(null);
+                        } else {
+                            console.warn('⚠️ WebSocket "liveQueueStatusUpdate" message received, but payload is malformed:', liveQueueStatusMsg);
+                            setWsError('Received malformed live queue status data.');
+                        }
+                        } else {
+                    console.warn('Ignoring unknown WebSocket message type with "type" property:', message);
+                    }
+                    } else if ('message' in message && (message as ConnectionConfirmMessage).message === 'WebSocket conectado') {
+                        console.log('Backend confirmed WebSocket connection.');
+                        setWsError(null);
+                    } else {
+                        console.warn('Ignoring unknown or non-expected WebSocket message type:', message);
+                    }
+                    setIsLoading(false); // Data or confirmation received, set loading to false
+                } catch (error) {
+                    console.error('❌ Error parsing WebSocket message or unexpected format:', error, event.data);
+                    setWsError('Error processing incoming data from server.');
+                    setIsLoading(false);
+                }
+    }, []);
 
     const connectWebSocket = useCallback(() => {
         // Cierra cualquier conexión existente antes de intentar una nueva
@@ -125,10 +148,14 @@ export const useCallsWebSocket = () => {
         // 🔹 Carga inicial rápida con fetch
         const fetchInitialData = async () => {
             try {
-                const response = await fetch('/api/pacientes-en-espera/');
-                const data = await response.json();
-                const initialCalls = data?.getCallsOnHoldData ?? [];
+                const callsResponse = await API.get<CallsOnHoldApiResponse>('/api/websocket/pacientes-en-espera/');
+                const initialCalls = callsResponse.data?.getCallsOnHoldData ?? [];
                 setCalls(initialCalls);
+
+                const queueStatusResponse = await API.get<LiveQueueStatusApiResponse>('/api/websocket/live-queue-status/');
+                const initialLiveQueue = queueStatusResponse.data?.getLiveQueueStatusData ?? [];
+                setLiveQueueStatus(initialLiveQueue);
+
                 setIsLoading(false);
             } catch (error) {
                 console.error('Error en carga inicial:', error);
@@ -166,5 +193,5 @@ export const useCallsWebSocket = () => {
         };
     }, [connectWebSocket]);
 
-    return { calls: calls, isLoading: isLoading, wsError: wsError }; // Retorna isLoading
+    return { calls: calls, liveQueueStatus, isLoading: isLoading, wsError: wsError }; // Retorna isLoading
 };

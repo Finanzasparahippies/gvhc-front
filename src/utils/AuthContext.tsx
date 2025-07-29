@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { jwtDecode } from 'jwt-decode'; // Importa jwt-decode para decodificar el token de acceso
 import API from '../utils/API'; // Asegúrate de que esta ruta sea correcta para tu instancia de Axios
+import { AuthContextType, User, UserData } from '../types/declarations';
 
 
     const AuthContext = createContext<AuthContextType | undefined>(undefined);

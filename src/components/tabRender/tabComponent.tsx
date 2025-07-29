@@ -4,9 +4,10 @@ import { TrainingComponent } from '../TrainingComponent';
 import { SupervisorComponent } from '../SupervisorComponent';
 import { useAuth } from '../../utils/AuthContext'; // 🟢 Importa useAuth
 import QueueDashboard from '../SharpenTools/components/QueuesDashboard';
+import LiveQueueStatus from '../SharpenTools/components/LiveQueueStatus';
 import  FoodStation  from '../foodStation/FoodStation';
 
-type TabType = 'reactflow' | 'training' | 'supervisors' | 'patientsQueues' | 'Food Station';
+type TabType = 'reactflow' | 'training' | 'supervisors' | 'patientsQueues' | 'Food Station' | 'liveQueueStatus';
 
 
 const TabsComponent = () => {
@@ -48,13 +49,20 @@ const TabsComponent = () => {
             return <ReactFlowComponent />;
         case 'training':
             return <TrainingComponent />;
-            case 'supervisors':
+        case 'supervisors':
                 // 🟢 Solo renderiza SupervisorComponent si el rol es 'supervisor' o 'teamleader'
                 if (user?.role === 'supervisor' || user?.role === 'teamleader') {
                     return <SupervisorComponent />;
                 } else {
                     return <p className="text-red-500 mt-4 text-center">Acceso no autorizado a la sección de Supervisores.</p>;
                 }
+        case 'liveQueueStatus':
+                // Opcional: Puedes añadir una comprobación de rol aquí también si la pestaña no es visible para todos
+                // if (user?.role === 'supervisor' || user?.role === 'admin') {
+                return <LiveQueueStatus />;
+                // } else {
+                //     return <p className="text-red-500 mt-4 text-center">Acceso no autorizado al estado de cola en vivo.</p>;
+                // }
         default:
             return null;
         }
@@ -96,6 +104,12 @@ const TabsComponent = () => {
                                     className={activeTab === 'supervisors' ? 'active px-2 bg-slate-200 border border-gray-400 cursor-pointer rounded-md' : ' text-white px-2'}
                                 >
                                     Supervisors
+                                </button>
+                                <button
+                                    onClick={() => handleTabChange('liveQueueStatus')}
+                                    className={activeTab === 'liveQueueStatus' ? 'active px-2 bg-slate-200 border border-gray-400 cursor-pointer rounded-md' : ' text-white px-2'}
+                                >
+                                    Live Queue Status
                                 </button>
                             </>
                         )}
