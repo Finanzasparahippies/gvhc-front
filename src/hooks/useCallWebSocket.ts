@@ -7,8 +7,6 @@ import { CallOnHold, CallsOnHoldApiResponse } from '../types/declarations';
 interface ConnectionConfirmMessage {
     message: 'WebSocket conectado';
 }
-type WebSocketMessage = CallsUpdateMessage | ConnectionConfirmMessage | LiveQueueStatusUpdateMessage;
-// Define the structure of the WebSocket message payload
 
 interface LiveQueueStatusUpdateMessage {
     type: 'liveQueueStatusUpdate'; // O el nombre del tipo que tu backend realmente envía
@@ -17,6 +15,10 @@ interface LiveQueueStatusUpdateMessage {
         // Puede que necesites ajustar esta propiedad dependiendo de cómo envías los datos
     };
 }
+
+type WebSocketMessage = CallsUpdateMessage | ConnectionConfirmMessage | LiveQueueStatusUpdateMessage;
+// Define the structure of the WebSocket message payload
+
 
 
 /**
@@ -58,27 +60,23 @@ export const useCallsWebSocket = () => {
             // 1. Verificamos que el mensaje sea del tipo correcto y tenga datos
             if ('type' in message) { // Primero, verifica si tiene una propiedad 'type'
                 if (message.type === 'callsUpdate') {
-                    const callsUpdateMsg = message;
+                    const callsUpdateMsg = message as CallsUpdateMessage; // Explicit cast
 
-                if (callsUpdateMsg.payload && Array.isArray(callsUpdateMsg.payload.getCallsOnHoldData)) {
-                    setCalls(callsUpdateMsg.payload.getCallsOnHoldData);
-                    setWsError(null); // Clear error on successful data update
-                    setIsLoading(false); // Data received, set loading to false
+                    if (callsUpdateMsg.payload && Array.isArray(callsUpdateMsg.payload.getCallsOnHoldData)) {
+                        setCalls(callsUpdateMsg.payload.getCallsOnHoldData);
+                        setWsError(null); 
                 } else {
                     console.warn('⚠️ WebSocket "callsUpdate" message received, but payload is malformed:', callsUpdateMsg);
                     setWsError('Received malformed call data.');
-                    setIsLoading(false); // Data received, set loading to false
                 }
                 } else if (message.type === 'liveQueueStatusUpdate') { // **NUEVO**: Maneja los mensajes de estado de cola en vivo
                     const liveQueueStatusMsg = message as LiveQueueStatusUpdateMessage; // Casteo explícito
                     if (liveQueueStatusMsg.payload && Array.isArray(liveQueueStatusMsg.payload.getLiveQueueStatusData)) {
                             setLiveQueueStatus(liveQueueStatusMsg.payload.getLiveQueueStatusData);
                             setWsError(null);
-                            setIsLoading(false);
                         } else {
                             console.warn('⚠️ WebSocket "liveQueueStatusUpdate" message received, but payload is malformed:', liveQueueStatusMsg);
                             setWsError('Received malformed live queue status data.');
-                            setIsLoading(false);
                         }
                         } else {
                     console.warn('Ignoring unknown WebSocket message type with "type" property:', message);
@@ -89,7 +87,7 @@ export const useCallsWebSocket = () => {
                     } else {
                         console.warn('Ignoring unknown or non-expected WebSocket message type:', message);
                     }
-
+                    setIsLoading(false); // Data or confirmation received, set loading to false
                 } catch (error) {
                     console.error('❌ Error parsing WebSocket message or unexpected format:', error, event.data);
                     setWsError('Error processing incoming data from server.');
