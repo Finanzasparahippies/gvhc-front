@@ -14,6 +14,11 @@ interface LoginResponse {
     user: User;
     }
 
+interface UserQueue {
+    id: string;
+    name: string;
+    // ...
+}
 
 interface AuthContextType {
     user: UserData | null;
@@ -29,7 +34,7 @@ interface User {
     email: string;
     first_name: string;
     last_name: string;
-    queues: string[];
+    queues: UserQueue[]; // Asegúrate de que sea UserQueue[]
 }
 
 interface UserData {
@@ -110,6 +115,19 @@ interface CallOnHold {
     // Agrega más propiedades si las hay
 }
 
+export interface CallsOnHoldApiResponse {
+    getCallsOnHoldData: CallOnHold[];
+}
+
+export interface CallsUpdateMessage {
+    type: 'callsUpdate';
+    payload: {
+        getCallsOnHoldData: CallOnHold[]; // Para tus llamadas en espera existentes
+        // liveQueueStatus?: LiveQueueStatusData[]; // Esto era para el websocket si también enviaba esto,
+                                                    // pero no para la carga inicial REST.
+    };
+}
+
 interface CallsWebSocketData {
     calls: CallOnHold[];
     leavingCalls: string[];
@@ -144,4 +162,38 @@ interface AllMetricsState {
         count: MetricData;
         lcw: MetricData;
     };
+}
+
+
+interface QueueConfig {
+    id: string; // Un ID único para la tarjeta
+    title: string; // Título de la tarjeta (ej: 'Appointment Line')
+    queueName: string[]; // Nombre de la cola real en la DB
+}
+
+// Define cómo se almacenarán los datos de cada métrica (Count, Lcw)
+interface MetricData {
+    value: string | number | null;
+    loading: boolean;
+    error: string | null;
+}
+
+// Define el estado completo de todas las métricas, ahora agrupadas por cola
+interface AllMetricsState {
+    [queueId: string]: {
+        count: MetricData;
+        lcw: MetricData;
+    };
+}
+
+interface LiveStatusAgent {
+    username: string;
+    queueName: string;
+    statusDuration: string;
+    status: string;
+    interactionType: string;
+    callType: string;
+    pauseReason: string;
+    paused: string;
+    fullName: string;
 }

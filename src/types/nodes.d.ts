@@ -115,3 +115,22 @@ export type NodeDimensions = {
     width: number;
     height: number;
 };
+
+export interface LiveQueueStatusData {
+    QueueName: string;
+    commType: string;
+    intervals: string; // La marca de tiempo formateada
+    // Si tienes otras columnas en tu SELECT, agrégalas aquí
+}
+
+export interface LiveQueueStatusApiResponse {
+    getLiveQueueStatusData: LiveQueueStatusData[];
+}
+
+export interface CallsUpdateMessage {
+    type: 'callsUpdate';
+    payload: {
+        getCallsOnHoldData?: CallOnHold[]; // Para tus llamadas en espera existentes
+        liveQueueStatus?: LiveQueueStatusData[]; // Para la nueva consulta de Live Queue Status
+    };
+}

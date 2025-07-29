@@ -12,6 +12,7 @@ import { formatTime, getElapsedSeconds } from '../../../utils/helpers'
 import { QUERY_TEMPLATES } from "./SharpenQuerys"; // o como lo importes
 import sharpenAPI from '../../../utils/APISharpen';
 import AgentTicker from './AgentTicker'; // Creamos este archivo en el paso 2
+import { QuoteResponse } from '../../../types/declarations';
 
 interface QueueConfig {
     id: string; // Un ID único para la tarjeta
@@ -81,7 +82,7 @@ const QueueDashboard: React.FC = () => {
     const dashboardRef = useRef<HTMLDivElement>(null); // <--- AÑADE ESTA REFERENCIA
     // const [sidebarError, setSidebarError] = useState<string | null>(null); // <--- AÑADE ESTO
     const { calls: callsOnHold, isLoading, wsError } = useCallsWebSocket();
-    const userQueueNames = user?.queues.map(q => q.name) || [];
+    const userQueueNames = user?.queues.map((q) => q.name) || [];
     const [agentLiveStatus, setAgentLiveStatus] = useState<LiveStatusAgent[]>([]);
     const [agentError, setAgentError] = useState<string | null>(null);
     const [agentLoading, setAgentLoading] = useState<boolean>(true); // New loading state for agents
@@ -175,7 +176,7 @@ const { counts, lcw } = useMemo(() => {
     const isUserMetric = (queueConfig: QueueConfig): boolean => {
         // Revisa si alguna de las colas de origen del grupo coincide con las del usuario
         return queueConfig.queueName.some(sourceQueue =>
-            userQueueNames.some(userQueueName =>
+            userQueueNames.some((userQueueName: string) =>
                 sourceQueue.toLowerCase().includes(userQueueName.toLowerCase())
             )
         );
