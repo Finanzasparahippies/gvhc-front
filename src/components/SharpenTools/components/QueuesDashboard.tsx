@@ -142,17 +142,20 @@ const QueueDashboard: React.FC = () => {
 
 
 const queueIdMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const group of dashboardQueues) {
-        for (const sourceName of group.queueName) {
-            map[sourceName] = group.id;
+        const map: Record<string, string> = {};
+        for (const group of dashboardQueues) {
+            for (const sourceName of group.queueName) {
+                // NORMALIZA LAS CLAVES: a minúsculas y elimina espacios extras.
+                map[sourceName.trim().toLowerCase()] = group.id;
+            }
         }
-    }
-    return map;
-}, []); // Se calcula una sola vez
+        console.log("Queue ID Map (Normalized):", map); // Agrega este log para ver el mapa final
+        return map;
+    }, []);
 
 // Agregación de datos usando los IDs unificados
 const { counts, lcw } = useMemo(() => {
+
     const result: { counts: Record<string, number>, lcw: Record<string, number> } = {
         counts: {},
         lcw: {}
@@ -160,7 +163,8 @@ const { counts, lcw } = useMemo(() => {
 
     for (const call of callsOnHold) {
         // Encuentra el ID del grupo unificado al que pertenece la llamada
-        const unifiedId = queueIdMap[call.queueName];
+        const normalizedCallQueueName = call.queueName.trim().toLowerCase();
+        const unifiedId = queueIdMap[normalizedCallQueueName];
 
         if (unifiedId) {
             const elapsed = getElapsedSeconds(call.startTime);
@@ -168,7 +172,10 @@ const { counts, lcw } = useMemo(() => {
             result.counts[unifiedId] = (result.counts[unifiedId] || 0) + 1;
             // Actualiza el LCW para el grupo correcto
             result.lcw[unifiedId] = Math.max(result.lcw[unifiedId] || 0, elapsed);
-        }
+        } else {
+                // 🚨 ESTE CONSOLE.WARN ES CRUCIAL PARA LA DEPURACIÓN EN PRODUCCIÓN 🚨
+                console.warn(`⚠️ Nombre de cola no mapeado desde WebSocket: "${call.queueName}" (normalizado: "${normalizedCallQueueName}")`);
+            }
     }
     return result;
 }, [callsOnHold, queueIdMap]);
@@ -253,6 +260,9 @@ const { counts, lcw } = useMemo(() => {
             // For example: fetchOtherDataViaAPI();
             console.log("Refresh button clicked. Displaying latest WebSocket data.");
         }, []);
+    console.log("Dashboard Queues:", dashboardQueues);
+    console.log("Calls On Hold (Raw):", callsOnHold); // Mantener este para ver los datos crudos
+    console.log("Calculated Counts (Final):", counts); // Mantener este para ver los conteos finales
 
     return (
         <div

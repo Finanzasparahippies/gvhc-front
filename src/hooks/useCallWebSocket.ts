@@ -16,7 +16,15 @@ interface LiveQueueStatusUpdateMessage {
     };
 }
 
-type WebSocketMessage = CallsUpdateMessage | ConnectionConfirmMessage | LiveQueueStatusUpdateMessage;
+interface CombinedDataUpdateMessage {
+    type: 'dataUpdate'; // Coincide con el nuevo tipo enviado desde el backend
+    payload: {
+        getCallsOnHoldData: CallOnHold[];
+        getLiveQueueStatusData: LiveQueueStatusData[];
+    };
+}
+
+type WebSocketMessage = CallsUpdateMessage | ConnectionConfirmMessage | LiveQueueStatusUpdateMessage | CombinedDataUpdateMessage;
 // Define the structure of the WebSocket message payload
 
 
@@ -53,47 +61,55 @@ export const useCallsWebSocket = () => {
     };
 
     const handleMessage = useCallback((event: MessageEvent) => {
-        try {
-            const message: WebSocketMessage = JSON.parse(event.data);
-            console.log('✅ WebSocket message received:', message);
+    try {
+        const message: WebSocketMessage = JSON.parse(event.data);
+        console.log('✅ WebSocket message received:', message);
 
-            // 1. Verificamos que el mensaje sea del tipo correcto y tenga datos
-            if ('type' in message) { // Primero, verifica si tiene una propiedad 'type'
-                if (message.type === 'callsUpdate') {
-                    const callsUpdateMsg = message as CallsUpdateMessage; // Explicit cast
+        if ('type' in message) {
+            if (message.type === 'dataUpdate') { // <--- CAMBIO IMPORTANTE: Maneja el nuevo tipo
+                const combinedDataMsg = message as CombinedDataUpdateMessage;
 
-                    if (callsUpdateMsg.payload && Array.isArray(callsUpdateMsg.payload.getCallsOnHoldData)) {
-                        setCalls(callsUpdateMsg.payload.getCallsOnHoldData);
-                        setWsError(null); 
-                } else {
-                    console.warn('⚠️ WebSocket "callsUpdate" message received, but payload is malformed:', callsUpdateMsg);
-                    setWsError('Received malformed call data.');
-                }
-                } else if (message.type === 'liveQueueStatusUpdate') { // **NUEVO**: Maneja los mensajes de estado de cola en vivo
-                    const liveQueueStatusMsg = message as LiveQueueStatusUpdateMessage; // Casteo explícito
-                    if (liveQueueStatusMsg.payload && Array.isArray(liveQueueStatusMsg.payload.getLiveQueueStatusData)) {
-                            setLiveQueueStatus(liveQueueStatusMsg.payload.getLiveQueueStatusData);
-                            setWsError(null);
-                        } else {
-                            console.warn('⚠️ WebSocket "liveQueueStatusUpdate" message received, but payload is malformed:', liveQueueStatusMsg);
-                            setWsError('Received malformed live queue status data.');
-                        }
-                        } else {
-                    console.warn('Ignoring unknown WebSocket message type with "type" property:', message);
-                    }
-                    } else if ('message' in message && (message as ConnectionConfirmMessage).message === 'WebSocket conectado') {
-                        console.log('Backend confirmed WebSocket connection.');
-                        setWsError(null);
+                if (combinedDataMsg.payload) {
+                    // Actualiza ambos estados con los datos combinados
+                    if (Array.isArray(combinedDataMsg.payload.getCallsOnHoldData)) {
+                        setCalls(combinedDataMsg.payload.getCallsOnHoldData);
                     } else {
-                        console.warn('Ignoring unknown or non-expected WebSocket message type:', message);
+                        console.warn('⚠️ Payload for getCallsOnHoldData is malformed in dataUpdate message.');
                     }
-                    setIsLoading(false); // Data or confirmation received, set loading to false
-                } catch (error) {
-                    console.error('❌ Error parsing WebSocket message or unexpected format:', error, event.data);
-                    setWsError('Error processing incoming data from server.');
+                    
+                    if (Array.isArray(combinedDataMsg.payload.getLiveQueueStatusData)) {
+                        setLiveQueueStatus(combinedDataMsg.payload.getLiveQueueStatusData);
+                    } else {
+                        console.warn('⚠️ Payload for getLiveQueueStatusData is malformed in dataUpdate message.');
+                    }
+                    
+                    setWsError(null);
+                    setIsLoading(false);
+                } else {
+                    console.warn('⚠️ WebSocket "dataUpdate" message received, but payload is missing or malformed:', combinedDataMsg);
+                    setWsError('Received malformed combined data.');
                     setIsLoading(false);
                 }
-    }, []);
+            } else if (message.type === 'callsUpdate' || message.type === 'liveQueueStatusUpdate') {
+                // Puedes mantener esto por compatibilidad o eliminar si ya no se envían individualmente
+                console.warn('⚠️ Received deprecated individual update type:', message.type);
+                // Si quieres procesarlos individualmente por si acaso, mantén la lógica original aquí
+            } else {
+                console.warn('Ignoring unknown WebSocket message type with "type" property:', message);
+            }
+        } else if ('message' in message && (message as ConnectionConfirmMessage).message === 'WebSocket conectado') {
+            console.log('Backend confirmed WebSocket connection.');
+            setWsError(null);
+        } else {
+            console.warn('Ignoring unknown or non-expected WebSocket message type:', message);
+        }
+        setIsLoading(false); // Data or confirmation received, set loading to false
+    } catch (error) {
+        console.error('❌ Error parsing WebSocket message or unexpected format:', error, event.data);
+        setWsError('Error processing incoming data from server.');
+        setIsLoading(false);
+    }
+}, []);
 
     const connectWebSocket = useCallback(() => {
         // Cierra cualquier conexión existente antes de intentar una nueva
