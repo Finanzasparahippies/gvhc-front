@@ -64,7 +64,7 @@ export const useCallsWebSocket = () => {
     const handleMessage = useCallback((event: MessageEvent) => {
     try {
         const message: WebSocketMessage = JSON.parse(event.data);
-        console.log('✅ WebSocket message received:', message);
+        // console.log('✅ WebSocket message received:', message);
 
         if ('type' in message) {
             if (message.type === 'dataUpdate') { // <--- CAMBIO IMPORTANTE: Maneja el nuevo tipo
@@ -74,8 +74,8 @@ export const useCallsWebSocket = () => {
                     const newCalls = combinedDataMsg.payload.getCallsOnHoldData || [];
                     const newLiveQueueStatus = combinedDataMsg.payload.getLiveQueueStatusData || [];
 
-                    console.log('Received newCalls payload:', newCalls);
-                    console.log('Current calls state BEFORE update:', calls); // 'calls' here is the state from the closure
+                    // console.log('Received newCalls payload:', newCalls);
+                    // console.log('Current calls state BEFORE update:', calls); // 
 
                     const areCallsTheSame = isEqual(newCalls, calls); // Requires lodash.isEqual or similar
                     console.log(`Are calls data arrays deeply equal? ${areCallsTheSame}`);
@@ -84,19 +84,19 @@ export const useCallsWebSocket = () => {
                         if (Array.isArray(newCalls)) {
                             setCalls(newCalls); // This will cause a re-render if the array reference is new
                         } else {
-                            console.warn('⚠️ Payload for getCallsOnHoldData is malformed in dataUpdate message.');
+                            // console.warn('⚠️ Payload for getCallsOnHoldData is malformed in dataUpdate message.');
                         }
 
                         if (Array.isArray(newLiveQueueStatus)) {
                             setLiveQueueStatus(newLiveQueueStatus);
                         } else {
-                            console.warn('⚠️ Payload for getLiveQueueStatusData is malformed in dataUpdate message.');
+                            // console.warn('⚠️ Payload for getLiveQueueStatusData is malformed in dataUpdate message.');
                         }
 
                         setWsError(null);
                         setIsLoading(false);
                     } else {
-                    console.warn('⚠️ WebSocket "dataUpdate" message received, but payload is missing or malformed:', combinedDataMsg);
+                    // console.warn('⚠️ WebSocket "dataUpdate" message received, but payload is missing or malformed:', combinedDataMsg);
                     setWsError('Received malformed combined data.');
                     setIsLoading(false);
                 }
@@ -108,14 +108,14 @@ export const useCallsWebSocket = () => {
                 console.warn('Ignoring unknown WebSocket message type with "type" property:', message);
             }
         } else if ('message' in message && (message as ConnectionConfirmMessage).message === 'WebSocket conectado') {
-            console.log('Backend confirmed WebSocket connection.');
+            // console.log('Backend confirmed WebSocket connection.');
             setWsError(null);
         } else {
-            console.warn('Ignoring unknown or non-expected WebSocket message type:', message);
+            // console.warn('Ignoring unknown or non-expected WebSocket message type:', message);
         }
         setIsLoading(false); // Data or confirmation received, set loading to false
     } catch (error) {
-        console.error('❌ Error parsing WebSocket message or unexpected format:', error, event.data);
+        // console.error('❌ Error parsing WebSocket message or unexpected format:', error, event.data);
         setWsError('Error processing incoming data from server.');
         setIsLoading(false);
     }
@@ -132,7 +132,7 @@ export const useCallsWebSocket = () => {
         setIsLoading(true); // Set loading to true when trying to connect
 
         socket.onopen = () => {
-            console.log('🔗 WebSocket connected:', getWebSocketUrl());
+            // console.log('🔗 WebSocket connected:', getWebSocketUrl());
             setWsError(null);
             reconnectAttempts.current = 0; // Resetear intentos al conectar con éxito
             ws.current = socket; // Guarda la instancia del socket
@@ -154,7 +154,7 @@ export const useCallsWebSocket = () => {
             setWsError('WebSocket disconnected. Attempting to reconnect...');
             if (reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
                 reconnectAttempts.current++;
-                console.log(`Reconnecting attempt ${reconnectAttempts.current}/${MAX_RECONNECT_ATTEMPTS}...`);
+                // console.log(`Reconnecting attempt ${reconnectAttempts.current}/${MAX_RECONNECT_ATTEMPTS}...`);
             setTimeout(() => {
                     if (document.visibilityState === 'visible') {
                         connectWebSocket();
@@ -184,7 +184,7 @@ export const useCallsWebSocket = () => {
 
                 setIsLoading(false);
             } catch (error) {
-                console.error('Error en carga inicial:', error);
+                // console.error('Error en carga inicial:', error);
                 setWsError('Error al cargar los pacientes iniciales');
                 setIsLoading(false);
             }

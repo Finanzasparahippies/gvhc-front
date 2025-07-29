@@ -119,13 +119,13 @@ const QueueDashboard: React.FC = () => {
 
                 setAgentLiveStatus(filteredData);
             } else {
-                console.warn("Unexpected response format in getAgents (fetchLiveStatus):", response.data);
+                // console.warn("Unexpected response format in getAgents (fetchLiveStatus):", response.data);
                 setAgentLiveStatus([]);
                 setAgentError("Failed to fetch agent live status. Unexpected data format.");
             }
             setAgentError(null);
         } catch (error) {
-            console.error("Error fetching liveStatus (getAgents):", error);
+            // console.error("Error fetching liveStatus (getAgents):", error);
             setAgentError("Failed to fetch agent live status. Check console for details.");
             setAgentLiveStatus([]); // Clear agents on error
         } finally {
@@ -149,7 +149,7 @@ const queueIdMap = useMemo(() => {
                 map[sourceName.trim().toLowerCase()] = group.id;
             }
         }
-        console.log("Queue ID Map (Normalized):", map); // Agrega este log para ver el mapa final
+        // console.log("Queue ID Map (Normalized):", map); // Agrega este log para ver el mapa final
         return map;
     }, []);
 
@@ -191,7 +191,7 @@ const { counts, lcw } = useMemo(() => {
 
     useEffect(() => {
         // Establecer la última actualización cuando callsOnHold cambie y no esté cargando
-        console.log('🔄️ Component re-rendered with new calls:', callsOnHold);
+        // console.log('🔄️ Component re-rendered with new calls:', callsOnHold);
         if (!isLoading) {
             setLastUpdated(new Date());
         }
@@ -203,7 +203,7 @@ const { counts, lcw } = useMemo(() => {
                 try {
                     const response = await API.get<QuoteResponse | QuoteResponse[]>('api/dashboards/quote/');
                     const data = response.data;
-                    console.log('quote:', data)
+                    // console.log('quote:', data)
                     if (Array.isArray(data)) {
                             if (data.length > 0) {
                                 setQuote(data[0].q);
@@ -214,7 +214,7 @@ const { counts, lcw } = useMemo(() => {
                             setAuthor(data.a);
                         }
                     } catch (error) {
-                        console.error('Error fetching quote:', error);
+                        // console.error('Error fetching quote:', error);
                     }
                 };
 
@@ -260,9 +260,6 @@ const { counts, lcw } = useMemo(() => {
             // For example: fetchOtherDataViaAPI();
             console.log("Refresh button clicked. Displaying latest WebSocket data.");
         }, []);
-    console.log("Dashboard Queues:", dashboardQueues);
-    console.log("Calls On Hold (Raw):", callsOnHold); // Mantener este para ver los datos crudos
-    console.log("Calculated Counts (Final):", counts); // Mantener este para ver los conteos finales
 
     return (
         <div
