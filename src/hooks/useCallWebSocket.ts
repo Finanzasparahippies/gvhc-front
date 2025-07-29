@@ -4,6 +4,7 @@ import { LiveQueueStatusData, CallsUpdateMessage, LiveQueueStatusApiResponse } f
 import API from '../utils/API'; // <--- IMPORTA TU INSTANCIA DE AXIOS
 import { CallOnHold, CallsOnHoldApiResponse } from '../types/declarations';
 
+
 interface ConnectionConfirmMessage {
     message: 'WebSocket conectado';
 }
@@ -70,22 +71,31 @@ export const useCallsWebSocket = () => {
                 const combinedDataMsg = message as CombinedDataUpdateMessage;
 
                 if (combinedDataMsg.payload) {
+                    const newCalls = combinedDataMsg.payload.getCallsOnHoldData || [];
+                    const newLiveQueueStatus = combinedDataMsg.payload.getLiveQueueStatusData || [];
+
+                    console.log('Received newCalls payload:', newCalls);
+                    console.log('Current calls state BEFORE update:', calls); // 'calls' here is the state from the closure
+
+                    const areCallsTheSame = isEqual(newCalls, calls); // Requires lodash.isEqual or similar
+                    console.log(`Are calls data arrays deeply equal? ${areCallsTheSame}`);
+            
                     // Actualiza ambos estados con los datos combinados
-                    if (Array.isArray(combinedDataMsg.payload.getCallsOnHoldData)) {
-                        setCalls(combinedDataMsg.payload.getCallsOnHoldData);
+                        if (Array.isArray(newCalls)) {
+                            setCalls(newCalls); // This will cause a re-render if the array reference is new
+                        } else {
+                            console.warn('⚠️ Payload for getCallsOnHoldData is malformed in dataUpdate message.');
+                        }
+
+                        if (Array.isArray(newLiveQueueStatus)) {
+                            setLiveQueueStatus(newLiveQueueStatus);
+                        } else {
+                            console.warn('⚠️ Payload for getLiveQueueStatusData is malformed in dataUpdate message.');
+                        }
+
+                        setWsError(null);
+                        setIsLoading(false);
                     } else {
-                        console.warn('⚠️ Payload for getCallsOnHoldData is malformed in dataUpdate message.');
-                    }
-                    
-                    if (Array.isArray(combinedDataMsg.payload.getLiveQueueStatusData)) {
-                        setLiveQueueStatus(combinedDataMsg.payload.getLiveQueueStatusData);
-                    } else {
-                        console.warn('⚠️ Payload for getLiveQueueStatusData is malformed in dataUpdate message.');
-                    }
-                    
-                    setWsError(null);
-                    setIsLoading(false);
-                } else {
                     console.warn('⚠️ WebSocket "dataUpdate" message received, but payload is missing or malformed:', combinedDataMsg);
                     setWsError('Received malformed combined data.');
                     setIsLoading(false);
@@ -109,7 +119,7 @@ export const useCallsWebSocket = () => {
         setWsError('Error processing incoming data from server.');
         setIsLoading(false);
     }
-}, []);
+}, [calls]);
 
     const connectWebSocket = useCallback(() => {
         // Cierra cualquier conexión existente antes de intentar una nueva
@@ -211,3 +221,7 @@ export const useCallsWebSocket = () => {
 
     return { calls: calls, liveQueueStatus, isLoading: isLoading, wsError: wsError }; // Retorna isLoading
 };
+
+function isEqual(newCalls: CallOnHold[], calls: CallOnHold[]) {
+    throw new Error('Function not implemented.');
+}
