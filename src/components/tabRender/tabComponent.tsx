@@ -6,8 +6,9 @@ import { useAuth } from '../../utils/AuthContext'; // 🟢 Importa useAuth
 import QueueDashboard from '../SharpenTools/components/QueuesDashboard';
 import LiveQueueStatus from '../SharpenTools/components/LiveQueueStatus';
 import  FoodStation  from '../foodStation/FoodStation';
+import GamificationDisplay from '../SharpenTools/components/Gamification';
 
-type TabType = 'reactflow' | 'training' | 'supervisors' | 'patientsQueues' | 'Food Station' | 'liveQueueStatus';
+type TabType = 'reactflow' | 'training' | 'supervisors' | 'patientsQueues' | 'Food Station' | 'liveQueueStatus' | 'GVHC points';
 
 
 const TabsComponent = () => {
@@ -45,6 +46,8 @@ const TabsComponent = () => {
             return <FoodStation />;
         case 'patientsQueues':
             return <QueueDashboard />;
+        case 'GVHC points':
+            return <GamificationDisplay />;
         case 'reactflow':
             return <ReactFlowComponent />;
         case 'training':
@@ -90,6 +93,12 @@ const TabsComponent = () => {
                             className={activeTab === 'reactflow' ? 'active px-2 bg-slate-200 border border-gray-400 cursor-pointer mr-5 rounded-md' : 'mr-5 text-white px-2'}
                         >
                             Protocols
+                        </button>
+                        <button
+                            onClick={() => handleTabChange('GVHC points')}
+                            className={activeTab === 'GVHC points' ? 'active px-2 bg-slate-200 border border-gray-400 cursor-pointer mr-5 rounded-md' : 'mr-5 text-white px-2'}
+                        >
+                            GVHC points
                         </button>
                         <button
                             onClick={() => handleTabChange('training')}
