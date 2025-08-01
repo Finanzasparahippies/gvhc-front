@@ -15,6 +15,15 @@ const TabsComponent = () => {
   const [activeTab, setActiveTab] = useState<TabType>('reactflow'); // Estado para controlar la pestaña activa
   const { user, isLoading } = useAuth(); // 🟢 Obtén el objeto user y el estado de carga del contexto
 
+    console.log('TabsComponent RENDER - isLoading:', isLoading, 'user:', user?.username);
+
+    useEffect(() => {
+        console.log('TabsComponent: MOUNTED');
+        return () => {
+        console.log('TabsComponent: UNMOUNTED');
+        };
+    }, []); // Empty dependency array means this runs once on mount/unmount
+
     useEffect(() => {
         if (!isLoading && user?.role === 'egs') {
             setActiveTab('Food Station');

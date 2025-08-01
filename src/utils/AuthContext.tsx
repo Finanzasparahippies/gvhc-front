@@ -1,5 +1,5 @@
 // src/contexts/AuthContext.tsx
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { jwtDecode } from 'jwt-decode'; // Importa jwt-decode para decodificar el token de acceso
 import API from '../utils/API'; // Asegúrate de que esta ruta sea correcta para tu instancia de Axios
 import { AuthContextType, User, UserData } from '../types/declarations';
@@ -54,7 +54,8 @@ import { AuthContextType, User, UserData } from '../types/declarations';
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user');
         setUser(null);
-        window.location.pathname = '/login'
+        console.log("Would redirect to login here");
+        // window.location.pathname = '/login'
     },[]);
     
     useEffect(() => {
@@ -68,10 +69,10 @@ import { AuthContextType, User, UserData } from '../types/declarations';
 
             try {
                 // Primero, intenta validar el token de acceso actual con el backend.
-                // Esto es más seguro que solo decodificarlo.
+                console.log("Auth: Attempting to validate access token with /api/protected/...");
                 const response = await API.get<UserData>('api/protected/'); // O tu endpoint de perfil
                 const userData = response.data;
-                console.log('respuesta api protected',response.data)
+                console.log('Auth: /api/protected/ successful. User:', userData.username);
                 // Si la validación es exitosa, establece el usuario y termina la carga.
                 setUser(userData);
                 localStorage.setItem('user', JSON.stringify(userData)); // Asegura que el user en local storage esté fresco
@@ -85,12 +86,14 @@ import { AuthContextType, User, UserData } from '../types/declarations';
                         const refreshResponse = await API.post<{ access: string }>('/api/token/refresh/', { refresh: refreshToken });
                         const newAccessToken = refreshResponse.data.access;
                         localStorage.setItem('access_token', newAccessToken);
+                        console.log("Auth: Token refreshed successfully. Fetching user profile with new token...");
 
                         // ✨ Después de refrescar, vuelve a pedir los datos del usuario con el nuevo token.
                         const profileResponse = await API.get<UserData>('api/protected/');
                         const newUserData = profileResponse.data;
                         setUser(newUserData);
                         localStorage.setItem('user', JSON.stringify(newUserData));
+                        console.log('Auth: User profile fetched after refresh. User:', newUserData.username);
 
                     } catch (refreshError) {
                         console.error("No se pudo refrescar el token. Cerrando sesión.", refreshError);
@@ -108,9 +111,16 @@ import { AuthContextType, User, UserData } from '../types/declarations';
         initializeAuth();
     }, [logout]); // Solo depende de `logout` (que está cacheado con useCallback)
 
+    const contextValue = useMemo(() => ({
+        user,
+        isAuthenticated,
+        login,
+        logout,
+        isLoading,
+    }), [user, isAuthenticated, login, logout, isLoading]);
 
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated, login, logout, isLoading }}>
+        <AuthContext.Provider value={contextValue}>
         {children}
         </AuthContext.Provider>
     );

@@ -127,6 +127,8 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
     }),
 }
 
+const DOWNLOAD_BATCH_SIZE = 10000; 
+
 
     const SharpenQueryReport: React.FC = () => {
         //estados para seleccionar datos
@@ -144,8 +146,6 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
         const [error, setError] = useState<string | null>(null);
         const [response, setResponse] = useState<responseData | null>(null);
         const [fetchedCount, setFetchedCount] = useState(0);
-        const [currentPage, setCurrentPage] = useState(1);
-        const itemsPerPage = 100;
         const [monitoringStatus, setMonitoringStatus] = useState<{message: string, type: 'info' | 'error' | 'success' | ''} | null>(null);
         const [agentUsername, setAgentUsername] = useState<string>(''); // Add this line
         const [getAgentsParams, setGetAgentsParams] = useState({
@@ -159,18 +159,15 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
         const [agentStatusData, setAgentStatusData] = useState<RowData | null>(null);
         const [isModalOpen, setIsModalOpen] = useState(false);
         const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
-        // const indexOfLastItem = currentPage * itemsPerPage;
-        // const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-        // const currentItems = useMemo(() => data.slice(indexOfFirstItem, indexOfLastItem), [data, indexOfFirstItem, indexOfLastItem]);
-        // const totalPages = useMemo(() => Math.ceil(data.length / itemsPerPage), [data.length, itemsPerPage]);
         const [usernameFilter, setUsernameFilter] = useState<string>('');
+        const [totalResults, setTotalResults] = useState(0); // Total results available on Sharpen API
+        const [currentPage, setCurrentPage] = useState(1);
+        const itemsPerPage = 100;
+        const [selectedLanguage, setSelectedLanguage] = useState<'es' | 'en'>('es'); // New state for language selection
 
-        const API_BATCH_SIZE = 20000; // Cuántos resultados pedir por cada llamada a la API (ajusta si es necesario)
-        const MAX_API_RESULTS_TO_FETCH = 150000; // Límite total de resultados que quieres obtener del backend
+        const totalPages = useMemo(() => Math.ceil(totalResults / itemsPerPage), [totalResults, itemsPerPage]);
         const MESSAGE_DISPLAY_TIME = 5000; // 5 segundos
-        const totalResultsAvailable = React.useRef<number | null>(null);
-        const currentApiOffset = React.useRef<number>(0);
-        const isFetchingAllResults = React.useRef<boolean>(false);
+
 
 
         const getLocalDatetimeString = (date: Date): string => {
@@ -210,6 +207,12 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
             }
         });
     };
+
+    useEffect(() => {
+        if (currentPage > 0) {
+            fetchData();
+        }
+    }, [currentPage]);
 
     useEffect(() => {
         let timer: ReturnType<typeof setTimeout> | undefined;
@@ -253,29 +256,29 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
         setCurrentAudioUrl(null); // Limpia la URL cuando se cierra
         };
 
-        const fetchData = useCallback(async (offset: number = 0) => {
+        const fetchData = useCallback(async () => {
             setLoading(true);
             setError(null);
             setMonitoringStatus(null); 
-    
+            setData([]); // Clear data when starting a new fetch
+            
+            const currentOffset = (currentPage - 1) * itemsPerPage; // Calculate offset based on current page
+
             let apiEndpoint: string;
             let apiPayload: { [key: string]: any; }; // Definimos el tipo del payload
 
         if (selectedQueryTemplate === 'liveStatus') { // Creamos una nueva plantilla para la consulta directa
-                    const { endpoint, payload } = QUERY_TEMPLATES.liveStatus();
+            const { endpoint, payload } = QUERY_TEMPLATES.liveStatus();
             apiEndpoint = endpoint;
             apiPayload = payload;
-        } 
-
-        else if (selectedQueryTemplate === 'cdrReport') {
+        } else if (selectedQueryTemplate === 'cdrReport') {
             if (!isValidRange()) {
-                alert('Para el reporte CDR, selecciona un rango de fechas válido.');
                 setLoading(false);
                 return;
             }
-            const { endpoint, payload } = QUERY_TEMPLATES.cdrReport(server, database, table, startDate, endDate, API_BATCH_SIZE, offset);
-            apiEndpoint = endpoint;
-            apiPayload = payload;
+            const { endpoint, payload } = QUERY_TEMPLATES.cdrReport(server, database, table, startDate, endDate, itemsPerPage, currentOffset);
+                apiEndpoint = endpoint;
+                apiPayload = payload;
         }
 
         else if (selectedQueryTemplate === 'agentStatus') {
@@ -304,13 +307,11 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
 
         const resp = apiResponse.data;
         let extractedData: RowData[] = [];
-        let currentBatchCount = 0; 
         let totalCountFromApi = 0
 
         if (selectedQueryTemplate === 'getAgents') {
             if (resp && resp.getAgentsStatus === "Complete" && resp.getAgentsData) {
                     extractedData = Array.isArray(resp.getAgentsData) ? resp.getAgentsData : [resp.getAgentsData];
-                    currentBatchCount = extractedData.length;
                     totalCountFromApi = resp.total_result_count || extractedData.length;
                 } else {
             setError("No se pudieron obtener los datos de los agentes.");
@@ -318,7 +319,6 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
         }else if (selectedQueryTemplate === 'agentStatus') {
                 if (resp && resp.getAgentStatusStatus  === "Complete" && resp.getAgentStatusData) {
                     extractedData = [resp.getAgentStatusData]; // Siempre se espera un único objeto, lo envolvemos en un array
-                    currentBatchCount = extractedData.length;
                     totalCountFromApi = resp.total_result_count || extractedData.length;
                 } else {
                     setError("No se pudieron obtener los datos del agente (agentStatus).");
@@ -327,14 +327,12 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
         else if (selectedQueryTemplate === "liveStatus" || selectedQueryTemplate === "cdrReport") {
             if (resp?.data && Array.isArray(resp.data)) {
                 extractedData = resp.data;
-                currentBatchCount = extractedData.length;
                 totalCountFromApi = resp.total_result_count || extractedData.length; // Captura total_result_count
             } else if (resp?.table && typeof resp.table === 'string') {
                 try {
                 const tableData = JSON.parse(resp.table);
                 if (Array.isArray(tableData)) {
                     extractedData = tableData;
-                    currentBatchCount = extractedData.length;
                     totalCountFromApi = resp.total_result_count || extractedData.length;
                 }
             } catch (e) {
@@ -351,88 +349,34 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
             throw new Error('Formato de respuesta no reconocido o plantilla no manejada.');
         }
 
-            let filteredData = extractedData; // Por defecto, usamos todos los datos extraídos.
+            let finalDataForDisplay = extractedData;
 
             if (selectedQueryTemplate === 'liveStatus') {
-                filteredData = extractedData.filter(row =>
+                finalDataForDisplay  = extractedData.filter(row =>
                     row.queueCallManagerID !== null && row.queueCallManagerID !== undefined
                 );
             }
-            console.log("Datos recibidos en este lote:", filteredData.length);
+            console.log("Datos recibidos en este lote:", finalDataForDisplay.length);
             console.log("Datos totales disponibles en la API (según 'total_result_count'):", totalCountFromApi);
 
         startTransition(() => {
                 // If this is the *first* batch of a multi-fetch, clear existing data
                 // Otherwise, append to existing data
-                setData(prevData => [...prevData, ...filteredData]);
-
-                setFetchedCount(prev => prev + filteredData.length); // Update total fetched count
-
-                // Store total_result_count from the first API response if we are fetching all results
-                if (isFetchingAllResults.current && totalResultsAvailable.current === null) {
-                    totalResultsAvailable.current = totalCountFromApi;
-                }
-
-                if (offset === 0 && filteredData.length === 0 && totalCountFromApi === 0) {
-                    setMonitoringStatus({ message: 'No results provided.', type: 'error' });
-                    isFetchingAllResults.current = false;
-                    setLoading(false);
-                    totalResultsAvailable.current = null;
-                    currentApiOffset.current = 0;
-                    return; // Detiene la ejecución aquí
-                }
-
-                // Check if more data needs to be fetched
-                const totalFetchedSoFar = offset + filteredData.length;
-                const totalExpected = Math.min(totalResultsAvailable.current || Infinity, MAX_API_RESULTS_TO_FETCH);
-
-                if (isFetchingAllResults.current && currentBatchCount === API_BATCH_SIZE && totalFetchedSoFar < totalExpected) {
-                    // Update offset for the next call in the ref
-                    currentApiOffset.current = totalFetchedSoFar;
-                    setMonitoringStatus({ message: `Cargando... ${totalFetchedSoFar} de aproximadamente ${totalExpected} resultados.`, type: 'info' });
-                    // Recursively call fetchData for the next batch
-                    setTimeout(() => {
-                        fetchData(currentApiOffset.current);
-                    }, 200); // Small pause to prevent overwhelming the server
-                } else {
-                    // All data fetched or limit reached
-                    isFetchingAllResults.current = false; // Turn off the flag
-                    setLoading(false);
-                    if (totalFetchedSoFar >= totalExpected && totalResultsAvailable.current !== null && totalResultsAvailable.current > MAX_API_RESULTS_TO_FETCH) {
-                        setMonitoringStatus({ message: `Fetch complete. Loaded ${totalFetchedSoFar} results (límit of ${MAX_API_RESULTS_TO_FETCH} reached).`, type: 'success' });
-                    } else {
-                        setMonitoringStatus({ message: `Fetch of ${totalFetchedSoFar} results complete.`, type: 'success' });
-                    }
-                    totalResultsAvailable.current = null; // Reset for next fetch
-                    currentApiOffset.current = 0; // Reset offset for next fetch
-                }
+                setData(finalDataForDisplay); // Establece solo los datos de la página actual
+                setTotalResults(totalCountFromApi); // Update the total results
+                setLoading(false);
+                setMonitoringStatus({ message: `Carga completa. ${finalDataForDisplay.length} resultados en la página ${currentPage}. Total: ${totalCountFromApi}.`, type: 'success' });
             });
-
         } catch (err: any) {
-            console.error(err);
-            setError(`Error al consultar la API: ${err.message || 'Revisa la consola para más detalles.'}`);
-            if (err.response && err.response.data) {
-                const apiError = err.response.data.error || 'Error desconocido';
-                const details = err.response.data.data?.details || '';
-                setError(`Error de la API: ${apiError} - ${details}`);
+                // ... (error handling)
+                setLoading(false);
+                setMonitoringStatus({ message: 'Error during data loading.', type: 'error' });
             }
-            isFetchingAllResults.current = false; // Stop the fetching loop on error
-            setLoading(false);
-            setMonitoringStatus({ message: 'Error durante la carga de datos.', type: 'error' });
-            totalResultsAvailable.current = null; // Reset for next fetch
-            currentApiOffset.current = 0; // Reset offset for next fetch
-        }
-    }, [selectedQueryTemplate, isValidRange, startDate, endDate, server, database, table, agentUsername, API_BATCH_SIZE, MAX_API_RESULTS_TO_FETCH, getAgentsParams]);
+        }, [selectedQueryTemplate, isValidRange, startDate, endDate, server, database, table, agentUsername, itemsPerPage, currentPage, getAgentsParams]); // Add currentPage to dependencies
 
-
-    const startFetchingAllResults = () => {
-        setData([]); // Limpia datos anteriores al iniciar una nueva carga total
-        setFetchedCount(0);
-        currentApiOffset.current = 0; // Reset offset in the ref
-        setError(null);
-        setLoading(true);
-        isFetchingAllResults.current = true; // Activate the flag in the ref
-        fetchData(0); // Inicia la primera llamada
+    const startFetchingReport = () => { // Rename for clarity
+        setCurrentPage(1); // Always start from the first page
+        fetchData(); // Call fetchData, it will use currentPage = 1 and offset = 0
     };
 
     const startMonitoringCall = async (queueCallManagerID: string, extension: string) => {
@@ -475,35 +419,33 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
             }
         };
 
-    const downloadCSV = () => {
-        // 1. No hacer nada si no hay datos
-        if (!data.length) {
-            alert("No hay datos para descargar.");
-            return;
-        }
-
-    /**
+            /**
      * Función auxiliar para formatear de forma segura cada celda del CSV.
      * @param value - El valor de la celda, puede ser de cualquier tipo.
      * @returns Un string formateado y seguro para CSV.
      */
     const formatCsvCell = (value: any): string => {
-    if (value === null || value === undefined) return '';
-    if (typeof value === 'string') return value;
-    return value.toString();
-    };
-
-
-    /**
-     * @param value - El valor de la celda ya convertido a string.
-     * @returns El valor final listo para ser insertado en el CSV.
-     */
+        if (value === null || value === undefined) return '';
+            if (typeof value === 'string') return value;
+                return value.toString();
+            };
+        /**
+         * @param value - El valor de la celda ya convertido a string.
+         * @returns El valor final listo para ser insertado en el CSV.
+         */
     const escapeCsvCell = (value: string): string => {
         // Reemplaza cualquier comilla doble interna con dos comillas dobles.
         const escapedValue = value.replace(/"/g, '""');
         // Envuelve todo el valor en comillas dobles.
         return `"${escapedValue}"`;
     };
+
+    const downloadCSV = () => {
+        // 1. No hacer nada si no hay datos
+        if (!data.length) {
+            alert("No hay datos para descargar.");
+            return;
+        }
 
     try {
         // 2. Obtener las cabeceras de la primera fila de datos.
@@ -537,6 +479,120 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
     }
 };
 
+const downloadFullCSV = async () => {
+        if (!isValidRange()) {
+            alert("Selecciona un rango válido de fechas.");
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            let allData: RowData[] = [];
+            const total = totalResults;
+            if (total === 0) {
+                alert("No hay datos disponibles para la descarga completa. Por favor, realiza una consulta primero.");
+                return;
+            }
+            const totalPagesToFetch = Math.ceil(total / DOWNLOAD_BATCH_SIZE); // Use the new batch size
+
+            for (let page = 0; page < totalPagesToFetch; page++) {
+                const offset = page * DOWNLOAD_BATCH_SIZE; // Calculate offset using the new batch size
+                setMonitoringStatus({ message: `Descargando lote ${page + 1} de ${totalPagesToFetch}...`, type: 'info' });
+
+                const { endpoint, payload } = QUERY_TEMPLATES.cdrReport(
+                    server, database, table, startDate, endDate, DOWNLOAD_BATCH_SIZE, offset 
+                );
+
+                const response = await sharpenAPI.post<responseData>('dashboards/proxy/generic/', {
+                    endpoint,
+                    payload
+                });
+
+                const batch = response.data?.data || [];
+
+                allData = allData.concat(batch);
+                console.log(`downloadFullCSV: Lote ${page + 1} descargado. Total acumulado: ${allData.length}`);
+            }
+
+            if (allData.length === 0) {
+                alert("No se encontraron datos para exportar.");
+                return;
+            }
+
+            // Aquí puedes reusar la lógica de `downloadCSV` para crear el archivo:
+            const headers = Object.keys(allData[0]);
+            const headerRow = headers.map(escapeCsvCell).join(',');
+            const dataRows = allData.map((row) =>
+                headers.map((h) => escapeCsvCell(formatCsvCell(row[h]))).join(',')
+            );
+
+            const csvContent = [headerRow, ...dataRows].join('\n');
+            const fileName = (startDate && endDate)
+                ? `reporte_completo_${startDate.split('T')[0]}_a_${endDate.split('T')[0]}.csv`
+                : `reporte_completo_${new Date().toISOString().split('T')[0]}.csv`;
+
+            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+            const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+
+            saveAs(blob, fileName);
+            setMonitoringStatus({ message: 'Descarga completa de todos los datos.', type: 'success' });
+        } catch (error) {
+            console.error("Error al descargar todos los datos:", error);
+            alert("Ocurrió un error al descargar los datos completos.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    /**
+     * Envía la URL de audio a tu backend para análisis.
+     * @param uniqueID El ID único de la llamada.
+     * @param audioUrl La URL directa del archivo de audio.
+     * @param lang El idioma del audio ('es' o 'en').
+
+     */
+    const sendAudioForAnalysisToBackend = async (uniqueID: string, audioUrl: string, lang: 'es' | 'en') => {
+        if (!uniqueID || !audioUrl) {
+            alert("Faltan el ID de la llamada o la URL del audio para el análisis.");
+            return;
+        }
+
+        setMonitoringStatus({ message: 'Enviando audio para análisis...', type: 'info' });
+        setLoading(true); // Opcional: mostrar un spinner global
+
+        try {
+            // Llama a tu endpoint de Django directamente
+            const backendResponse = await sharpenAPI.post<any>('/monitoring/analyze_remote_audio/', { // Ajusta la URL si es diferente
+                uniqueID: uniqueID,
+                mixmonFileName: audioUrl,
+                lang: lang, // --- NEW: Pass the selected language ---
+            });
+
+            if (backendResponse.data?.message) {
+                setMonitoringStatus({ message: backendResponse.data.message, type: 'success' });
+                console.log("Análisis de audio exitoso:", backendResponse.data);
+                // Aquí podrías actualizar la UI con los resultados del análisis si los devuelves
+            } else if (backendResponse.data?.error) {
+                setMonitoringStatus({ message: `Error en el análisis: ${backendResponse.data.error}`, type: 'error' });
+                console.error("Error en el análisis de audio:", backendResponse.data.error);
+            } else {
+                setMonitoringStatus({ message: 'Respuesta inesperada del backend para el análisis.', type: 'error' });
+                console.error("Respuesta inesperada del backend:", backendResponse.data);
+            }
+        } catch (err: any) {
+            console.error("Error al enviar audio para análisis al backend:", err);
+            let errorMessage = "Ocurrió un error al conectar con el servidor de análisis.";
+            if (err.response?.data?.error) {
+                errorMessage = `Error del servidor de análisis: ${err.response.data.error}`;
+            }
+            setMonitoringStatus({ message: errorMessage, type: 'error' });
+        } finally {
+            setLoading(false); // Desactiva el spinner
+        }
+    };
+
+    
 const fetchCallAudio = async (row: RowData, rowIndex: number) => {
 
     const callId = row.queueCallManagerID;
@@ -625,13 +681,6 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
 
     const filteredData = useMemo(() => {
         let currentFilteredData = data;
-
-        if (selectedQueryTemplate === 'cdrReport' || selectedQueryTemplate === 'liveStatus') {
-            currentFilteredData = currentFilteredData.filter(row =>
-                row.queueCallManagerID !== null && row.queueCallManagerID !== undefined
-            );
-        }
-
         // Apply the general usernameFilter to agentName or queueName
         if (usernameFilter) {
             const lowerCaseFilter = usernameFilter.toLowerCase();
@@ -642,13 +691,9 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
             );
         }
         return currentFilteredData;
-    }, [data, selectedQueryTemplate, usernameFilter]);
+    }, [data, usernameFilter]); 
 
-    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+    const currentItems = filteredData;
 
     // --- You might also want to reset currentPage when usernameFilter changes ---
     useEffect(() => {
@@ -781,6 +826,27 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                         <ChevronDownIcon />
                     </div>
                 </div>
+                    <div className="flex flex-col">
+                        <label htmlFor="language-select" className="text-gray-300 text-sm font-medium mb-1">Idioma de Análisis:</label>
+                        <Listbox value={selectedLanguage} onChange={setSelectedLanguage}>
+                            <div className="relative mt-1">
+                                <ListboxButton className="relative w-full cursor-default rounded-md bg-gray-700 py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm text-gray-300">
+                                    <span className="block truncate">{selectedLanguage === 'es' ? 'Español' : 'English'}</span>
+                                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                                        <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M10 3a.75.75 0 01.55.25l3.5 3.5a.75.75 0 01-1.06 1.06L10 4.81 7.01 7.82a.75.75 0 01-1.06-1.06l3.5-3.5A.75.75 0 0110 3zm-3.5 9a.75.75 0 011.06 1.06L10 15.19l2.99-3.01a.75.75 0 111.06 1.06l-3.5 3.5a.75.75 0 01-1.06 0l-3.5-3.5A.75.75 0 016.5 12z" clipRule="evenodd" /></svg>
+                                    </span>
+                                </ListboxButton>
+                                <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-gray-700 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                                    <ListboxOption className="relative cursor-default select-none py-2 pl-3 pr-9 text-gray-300 hover:bg-indigo-600" value="es">
+                                        Español
+                                    </ListboxOption>
+                                    <ListboxOption className="relative cursor-default select-none py-2 pl-3 pr-9 text-gray-300 hover:bg-indigo-600" value="en">
+                                        English
+                                    </ListboxOption>
+                                </ListboxOptions>
+                            </div>
+                        </Listbox>
+                    </div>
             </div>
 
             {/* --- Campo Base de Datos --- */}
@@ -888,7 +954,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
             {/* --- BOTONES DE ACCIÓN --- */}
             <div className='animate-fade-in-down flex flex-wrap items-center gap-4 mb-6 p-4 bg-gray-800 rounded-lg shadow-md'>
                 <button
-                    onClick={startFetchingAllResults}                    
+                    onClick={startFetchingReport}                    
                     disabled={loading || (selectedQueryTemplate === 'cdrReport' && !customQuery && !isValidRange())} // Disable if CDR and dates are invalid
                     className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-5 py-2 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[150px]"
                 >
@@ -904,7 +970,15 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                     disabled={data.length === 0 || loading}
                     className="bg-green-600 hover:bg-green-700 text-white font-bold px-5 py-2 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-w-[150px]"
                 >
-                    Download CSV ({data.length.toLocaleString()} registers)
+                    Download Actual Page ({data.length.toLocaleString()} registers)
+                </button>
+                <button 
+                    onClick={downloadFullCSV}
+                    disabled={data.length === 0 || loading}
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold px-5 py-2 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-w-[150px]"
+
+                >
+                        Descargar todos los datos
                 </button>
             </div>
 
@@ -1001,8 +1075,10 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                                                     >
                                                         Get Record
                                                     </button>
+                                                
                                                 )}
                                                 {row.recordingUrl && (
+                                                    <>
                                                     <a
                                                         href={String(row.recordingUrl)}
                                                         target="_blank"
@@ -1012,6 +1088,14 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                                                     >
                                                     🎧 Play Audio
                                                     </a>
+                                                    <button
+                                                        onClick={() => sendAudioForAnalysisToBackend(row.queueCallManagerID as string, row.recordingUrl as string, selectedLanguage)} 
+                                                        disabled={loading} // Deshabilita mientras se carga algo
+                                                        className="text-yellow-400 hover:text-yellow-600 ml-2"
+                                                        >
+                                                        Analizar
+                                                    </button>
+                                                    </>
                                                 )}
                                             </div>
                                         )}
