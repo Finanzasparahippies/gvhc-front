@@ -13,7 +13,7 @@ const App = (): JSX.Element => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      fetch('https://gvhc-backend.onrender.com')
+      fetch('https://gvhc-backend-fsqa.onrender.com')
           .then(response => console.log('Manteniendo activo:', response))
           .catch(error => console.error('Error manteniendo activo:', error));
     }, 600_000); // 10 minutos
