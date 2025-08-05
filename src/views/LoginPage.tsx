@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import API from '../utils/API';
-import logo from '../assets/img/logo.png'
+import logo from '../../src/assets/img/logo.png'
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext'; // 🟢 Importa useAuth
+import { LoginResponse } from '../types/declarations';
 
 
 const LoginPage = () => {

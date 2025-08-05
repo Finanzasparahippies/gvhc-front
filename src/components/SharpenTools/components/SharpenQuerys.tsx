@@ -356,8 +356,8 @@ const DOWNLOAD_BATCH_SIZE = 10000;
                     row.queueCallManagerID !== null && row.queueCallManagerID !== undefined
                 );
             }
-            console.log("Datos recibidos en este lote:", finalDataForDisplay.length);
-            console.log("Datos totales disponibles en la API (según 'total_result_count'):", totalCountFromApi);
+            // console.log("Datos recibidos en este lote:", finalDataForDisplay.length);
+            // console.log("Datos totales disponibles en la API (según 'total_result_count'):", totalCountFromApi);
 
         startTransition(() => {
                 // If this is the *first* batch of a multi-fetch, clear existing data
@@ -381,9 +381,9 @@ const DOWNLOAD_BATCH_SIZE = 10000;
 
     const startMonitoringCall = async (queueCallManagerID: string, extension: string) => {
 
-        console.log('QueueID:', queueCallManagerID)
+        // console.log('QueueID:', queueCallManagerID)
         const soloExtension = extension.substring(0, 3);
-        console.log('extension:', soloExtension)
+        // console.log('extension:', soloExtension)
             if (!queueCallManagerID || !extension) {
                 alert("Falta el ID de la llamada o la extensión del agente para poder monitorear.");
                 return;
@@ -512,7 +512,7 @@ const downloadFullCSV = async () => {
                 const batch = response.data?.data || [];
 
                 allData = allData.concat(batch);
-                console.log(`downloadFullCSV: Lote ${page + 1} descargado. Total acumulado: ${allData.length}`);
+                // console.log(`downloadFullCSV: Lote ${page + 1} descargado. Total acumulado: ${allData.length}`);
             }
 
             if (allData.length === 0) {
@@ -571,7 +571,7 @@ const downloadFullCSV = async () => {
 
             if (backendResponse.data?.message) {
                 setMonitoringStatus({ message: backendResponse.data.message, type: 'success' });
-                console.log("Análisis de audio exitoso:", backendResponse.data);
+                // console.log("Análisis de audio exitoso:", backendResponse.data);
                 // Aquí podrías actualizar la UI con los resultados del análisis si los devuelves
             } else if (backendResponse.data?.error) {
                 setMonitoringStatus({ message: `Error en el análisis: ${backendResponse.data.error}`, type: 'error' });
@@ -627,8 +627,8 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
             const mixmonFileName = interactionResponse.data?.data?.cdr?.mixmonFileName;
             const extension = interactionResponse.data?.data?.cdr?.context;
 
-            console.log("DEBUG: mixmonFileName obtenido:", mixmonFileName); // <-- AGREGAR ESTO
-            console.log("DEBUG: callId usado:", callId); // <-- Y ESTO
+            // console.log("DEBUG: mixmonFileName obtenido:", mixmonFileName); // <-- AGREGAR ESTO
+            // console.log("DEBUG: callId usado:", callId); // <-- Y ESTO
 
             if (!mixmonFileName && !extension) {
                     alert(`No se pudo obtener el 'mixmonFileName' de la API 'getInteraction' para la llamada con ID: ${callId}.`);
@@ -647,7 +647,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                 }
             );
 
-            console.log("awsResponse.data =", awsResponse.data);
+            // console.log("awsResponse.data =", awsResponse.data);
 
 
             if (awsResponse.data?.status === 'successful' && awsResponse.data.url) {

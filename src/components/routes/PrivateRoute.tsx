@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../utils/AuthContext'; // Ajusta la ruta si es necesario
+import { PrivateRouteProps } from '../../types/declarations';
 
 
 const loadingMessages = [

@@ -15,7 +15,7 @@ const TabsComponent = () => {
   const [activeTab, setActiveTab] = useState<TabType>('reactflow'); // Estado para controlar la pestaña activa
   const { user, isLoading } = useAuth(); // 🟢 Obtén el objeto user y el estado de carga del contexto
 
-    console.log('TabsComponent RENDER - isLoading:', isLoading, 'user:', user?.username);
+    // console.log('TabsComponent RENDER - isLoading:', isLoading, 'user:', user?.username);
 
     useEffect(() => {
         console.log('TabsComponent: MOUNTED');

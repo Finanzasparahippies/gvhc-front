@@ -96,7 +96,7 @@ export const ReactFlowComponent: React.FC = () => {
       const updatedNodes = currentNodes.map((node) => {
         if (node.id === nodeId) { // Identifica el nodo directamente por su ID
           newPinnedState = !node.data.pinned; // Obtiene el nuevo estado de pineado
-          console.log(`Toggling node ${nodeId} to pinned: ${newPinnedState}`);
+          // console.log(`Toggling node ${nodeId} to pinned: ${newPinnedState}`);
           return {
             ...node,
             data: { ...node.data, pinned: newPinnedState }, // Actualiza la data
@@ -134,7 +134,7 @@ export const ReactFlowComponent: React.FC = () => {
       const response = await API.get<{results: FAQ[]}>(url);
       // console.log('Response:', response);
       const data: FAQ[] = response.data.results || [];
-      console.log('ResponseData:', data);
+      // console.log('ResponseData:', data);
       const apiNodes: Node<BasePayload>[] = [];
       const apiEdges: Edge[] = [];
 

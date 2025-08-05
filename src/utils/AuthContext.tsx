@@ -70,9 +70,9 @@ import { AuthContextType, User, UserData } from '../types/declarations';
             try {
                 // Primero, intenta validar el token de acceso actual con el backend.
                 console.log("Auth: Attempting to validate access token with /api/protected/...");
-                const response = await API.get<UserData>('api/protected/'); // O tu endpoint de perfil
+                const response = await API.get<UserData>('api/users/protected/'); // O tu endpoint de perfil
                 const userData = response.data;
-                console.log('Auth: /api/protected/ successful. User:', userData.username);
+                console.log('Auth: /api/users/protected/ successful. User:', userData.username);
                 // Si la validación es exitosa, establece el usuario y termina la carga.
                 setUser(userData);
                 localStorage.setItem('user', JSON.stringify(userData)); // Asegura que el user en local storage esté fresco

@@ -51,8 +51,12 @@ export const useCallsWebSocket = () => {
     const ws = useRef<WebSocket | null>(null); // Usamos useRef para mantener la instancia del WebSocket
     const reconnectAttempts = useRef(0); // Contador de intentos de reconexión
     const MAX_RECONNECT_ATTEMPTS = 10; // Número máximo de intentos antes de rendirse
-
     const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    const callsRef = useRef<CallOnHold[]>([]);
+    useEffect(() => {
+        callsRef.current = calls;
+    }, [calls]);
 
     const getWebSocketUrl = () => {
     // Para desarrollo, podrías usar localhost o una URL de desarrollo específica
@@ -78,7 +82,7 @@ export const useCallsWebSocket = () => {
         if (!pingIntervalRef.current && ws.current && ws.current.readyState === WebSocket.OPEN) {
             pingIntervalRef.current = setInterval(() => {
                 if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-                    console.log('Sending WebSocket ping...');
+                    // console.log('Sending WebSocket ping...');
                     ws.current.send(JSON.stringify({ type: 'ping' }));
                 } else {
                     // If state changes unexpectedly, stop pinging
@@ -96,19 +100,20 @@ export const useCallsWebSocket = () => {
         if ('type' in message) {
             if (message.type === 'dataUpdate') { // <--- CAMBIO IMPORTANTE: Maneja el nuevo tipo
                 const combinedDataMsg = message as CombinedDataUpdateMessage;
+                const { getCallsOnHoldData, getLiveQueueStatusData } = combinedDataMsg.payload;
 
                 if (combinedDataMsg.payload) {
-                    const newCalls = combinedDataMsg.payload.getCallsOnHoldData || [];
-                    const newLiveQueueStatus = combinedDataMsg.payload.getLiveQueueStatusData || [];
+                    const newCalls = getCallsOnHoldData || [];
+                    const newLiveQueueStatus = getLiveQueueStatusData || [];
 
                     // console.log('Received newCalls payload:', newCalls);
                     // console.log('Current calls state BEFORE update:', calls); // 
 
-                    const areCallsTheSame = isEqual(newCalls, calls); 
-                    console.log(`Are calls data arrays deeply equal? ${areCallsTheSame}`);
+                    const areCallsTheSame = isEqual(newCalls, callsRef.current);
+                    // console.log(`Are calls data arrays deeply equal? ${areCallsTheSame}`);
             
                     // Actualiza ambos estados con los datos combinados
-                        if (Array.isArray(newCalls)) {
+                        if (Array.isArray(newCalls) && !isEqual(newCalls, callsRef.current)) {
                             setCalls(newCalls); // This will cause a re-render if the array reference is new
                         } else {
                             // console.warn('⚠️ Payload for getCallsOnHoldData is malformed in dataUpdate message.');
