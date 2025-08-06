@@ -96,7 +96,7 @@ const QueueDashboard: React.FC = () => {
         orderByCol: 'activeCall',
     }), []);
 
-    const fetchLiveStatus = async () => {
+    const fetchLiveStatus = useCallback(async () => {
         setAgentLoading(true); // Start loading
         try {
             const { endpoint, payload } = QUERY_TEMPLATES.getAgents(defaultGetAgentsParams);
@@ -131,14 +131,14 @@ const QueueDashboard: React.FC = () => {
         } finally {
             setAgentLoading(false); // End loading
         }
-    };
+    }, [defaultGetAgentsParams]);
 
     useEffect(() => {
         fetchLiveStatus();
         // Agrega un intervalo para refrescar el estado de los agentes periódicamente si es un dashboard "Live"
         const intervalId = setInterval(fetchLiveStatus, 15000); // Refresca cada 15 segundos
         return () => clearInterval(intervalId); // Limpia el intervalo al desmontar el componente
-    }, [defaultGetAgentsParams]); // Dependencia del efecto para que se ejecute si cambian los parámetros por defecto
+    }, [fetchLiveStatus]); // Dependencia del efecto para que se ejecute si cambian los parámetros por defecto
 
 
 const queueIdMap = useMemo(() => {

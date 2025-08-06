@@ -13,7 +13,6 @@ import { AuthContextType, User, UserData } from '../types/declarations';
 
     export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<AuthContextType['user'] | null>(null);
-    const isAuthenticated = !!user; 
     const [isLoading, setIsLoading] = useState<boolean>(true); // Nuevo estado de carga
 
     const decodeAccessToken = useCallback((token: string): { user: User, exp: number } | null => {
@@ -63,19 +62,19 @@ import { AuthContextType, User, UserData } from '../types/declarations';
             const accessToken = localStorage.getItem('access_token');
             const refreshToken = localStorage.getItem('refresh_token');
             if (!accessToken) {
-                            setIsLoading(false);
-                            return;
-                        }
+                setUser(null);
+                setIsLoading(false);
+                return;
+            }
 
             try {
                 // Primero, intenta validar el token de acceso actual con el backend.
                 console.log("Auth: Attempting to validate access token with /api/protected/...");
                 const response = await API.get<UserData>('api/users/protected/'); // O tu endpoint de perfil
-                const userData = response.data;
-                console.log('Auth: /api/users/protected/ successful. User:', userData.username);
+                setUser(response.data);
                 // Si la validación es exitosa, establece el usuario y termina la carga.
-                setUser(userData);
-                localStorage.setItem('user', JSON.stringify(userData)); // Asegura que el user en local storage esté fresco
+                localStorage.setItem('user', JSON.stringify(response.data));
+                console.log('Auth: Validated user from access token.');
 
             } catch (error: any) {
                 // Si la validación falla (ej. token expirado), intenta refrescarlo.
@@ -89,35 +88,41 @@ import { AuthContextType, User, UserData } from '../types/declarations';
                         console.log("Auth: Token refreshed successfully. Fetching user profile with new token...");
 
                         // ✨ Después de refrescar, vuelve a pedir los datos del usuario con el nuevo token.
-                        const profileResponse = await API.get<UserData>('api/protected/');
-                        const newUserData = profileResponse.data;
-                        setUser(newUserData);
-                        localStorage.setItem('user', JSON.stringify(newUserData));
-                        console.log('Auth: User profile fetched after refresh. User:', newUserData.username);
-
+                        const profileResponse = await API.get<UserData>('api/user/protected/');
+                        setUser(profileResponse.data);
+                        localStorage.setItem('user', JSON.stringify(profileResponse.data));
+                        console.log('Auth: Token refreshed successfully and user profile fetched.');
                     } catch (refreshError) {
-                        console.error("No se pudo refrescar el token. Cerrando sesión.", refreshError);
-                        logout(); // Si el refresh token también falla, es un logout definitivo.
+                        console.error("Auth: Failed to refresh token. Logging out.", refreshError);
+                        setUser(null);
+                        localStorage.removeItem('access_token');
+                        localStorage.removeItem('refresh_token');
+                        localStorage.removeItem('user');
                     }
                 } else {
-                    console.log("No hay token de refresco. Cerrando sesión.");
-                    logout(); // No hay token de acceso válido ni de refresco.
+                     // 5. No hay refresh token, cierro sesión
+                    console.log("Auth: No refresh token available. Logging out.");
+                    setUser(null);
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token');
+                    localStorage.removeItem('user');
                 }
             } finally {
                 setIsLoading(false);
+                console.log('Auth: Initialization complete.');
             }
         };
 
         initializeAuth();
-    }, [logout]); // Solo depende de `logout` (que está cacheado con useCallback)
+    }, []); // Solo depende de `logout` (que está cacheado con useCallback)
 
     const contextValue = useMemo(() => ({
         user,
-        isAuthenticated,
+        isAuthenticated: !!user,
         login,
         logout,
         isLoading,
-    }), [user, isAuthenticated, login, logout, isLoading]);
+    }), [user, login, logout, isLoading]);
 
     return (
         <AuthContext.Provider value={contextValue}>

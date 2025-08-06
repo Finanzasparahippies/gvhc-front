@@ -25,10 +25,10 @@ const TabsComponent = () => {
     }, []); // Empty dependency array means this runs once on mount/unmount
 
     useEffect(() => {
-        if (!isLoading && user?.role === 'egs') {
+        if (user?.role === 'egs') {
             setActiveTab('Food Station');
         }
-    }, [user, isLoading]); // Re-run when user or isLoading changes
+    }, [user]); // Re-run when user or isLoading changes
 
     // Función para cambiar las pestañas
     const handleTabChange = (tab: TabType) => {
