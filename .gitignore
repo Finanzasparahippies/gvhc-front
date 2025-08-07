@@ -7,7 +7,14 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-*.env
+# Virtual environment directories
+/env/
+/venv/
+
+# Environment configuration files (critical!)
+.env
+.env.production
+.env.development
 
 node_modules/
 dist

@@ -224,6 +224,13 @@ const { counts, lcw } = useMemo(() => {
             return () => clearInterval(intervalId); // Limpia el intervalo al desmontar
         }, []);
 
+        useEffect(() => {
+  console.log('TabsComponent: MOUNTED');
+  return () => {
+    console.log('TabsComponent: UNMOUNTED');
+  };
+}, []);
+
         const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
             // Si no estamos en pantalla completa, la solicitamos

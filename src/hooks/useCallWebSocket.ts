@@ -62,11 +62,11 @@ export const useCallsWebSocket = () => {
     // Para desarrollo, podrías usar localhost o una URL de desarrollo específica
         if (process.env.NODE_ENV === 'development') {
             // Asegúrate de que tu backend Django Channels esté corriendo en localhost:8000
-            return 'ws://localhost:8001/ws/calls/'; 
+            return 'ws://localhost:8001/ws/calls/';
         } else {
-            // return 'ws://localhost:8001/ws/calls/'; 
+            // return 'ws://localhost:8001/ws/calls/';
             // Para producción, usa la URL de tu backend en Render
-            return 'wss://gvhc-websocket-mawh.onrender.com/ws/calls/'; 
+            return 'wss://gvhc-websocket-mawh.onrender.com/ws/calls/';
         }
     };
 
@@ -107,11 +107,10 @@ export const useCallsWebSocket = () => {
                     const newLiveQueueStatus = getLiveQueueStatusData || [];
 
                     // console.log('Received newCalls payload:', newCalls);
-                    // console.log('Current calls state BEFORE update:', calls); // 
+                    // console.log('Current calls state BEFORE update:', calls); //
 
-                    const areCallsTheSame = isEqual(newCalls, callsRef.current);
                     // console.log(`Are calls data arrays deeply equal? ${areCallsTheSame}`);
-            
+
                     // Actualiza ambos estados con los datos combinados
                         if (Array.isArray(newCalls) && !isEqual(newCalls, callsRef.current)) {
                             setCalls(newCalls); // This will cause a re-render if the array reference is new
@@ -151,7 +150,7 @@ export const useCallsWebSocket = () => {
         setWsError('Error processing incoming data from server.');
         setIsLoading(false);
     }
-}, [calls, startPinging]);
+}, [startPinging]);
 
     const connectWebSocket = useCallback(() => {
         // Cierra cualquier conexión existente antes de intentar una nueva
@@ -159,6 +158,14 @@ export const useCallsWebSocket = () => {
             console.log('⚠️ Ya hay una conexión WebSocket activa o en progreso.');
             return;
         }
+
+        if (ws.current && ws.current.readyState === WebSocket.CLOSING) {
+        // Opcional: podrías agregar un setTimeout aquí para esperar a que se cierre por completo.
+        // Pero el `return` es suficiente para evitar un loop inmediato.
+        console.log('⚠️ Conexión anterior se está cerrando. Esperando...');
+        return;
+        }
+
         console.log('🔗 Intentando conectar WebSocket a:', getWebSocketUrl());
         setIsLoading(true); // Set loading to true when trying to connect
 
@@ -182,7 +189,7 @@ export const useCallsWebSocket = () => {
 
         socket.onclose = () => {
             console.log('WebSocket disconnected. Attempting to reconnect...');
-            setWsError('WebSocket disconnected. Attempting to reconnect...');
+            // setWsError('WebSocket disconnected. Attempting to reconnect...');
             setIsLoading(false); // Stop loading if max attempts reached
             stopPinging(); // Stop pinging on close
 
@@ -190,7 +197,7 @@ export const useCallsWebSocket = () => {
                 reconnectAttempts.current++;
                 const delay = Math.min(3000 * Math.pow(2, reconnectAttempts.current - 1), 30000); // Exponential backoff
                 console.log(`Reconectando en ${delay / 1000} segundos... Intento ${reconnectAttempts.current}/${MAX_RECONNECT_ATTEMPTS}.`);
-                
+
                 setTimeout(() => {
                     connectWebSocket(); // Call the connect function again
                 }, delay);
@@ -205,9 +212,47 @@ export const useCallsWebSocket = () => {
 
 
 
-    // useEffect para gestionar la conexión del WebSocket
+ useEffect(() => {
+    // 1. Conecta el WebSocket SÓLO si la pestaña está visible al inicio
+    if (document.visibilityState === 'visible') {
+        connectWebSocket();
+    }
+
+    // 2. Maneja los cambios de visibilidad de la pestaña.
+    const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+            console.log('🔁 Pestaña visible → verificar/conectar WebSocket');
+            // Llama a connectWebSocket solo si no hay una conexión activa.
+            if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
+                connectWebSocket();
+            }
+        } else {
+            console.log('🛑 Pestaña oculta → cerrar WebSocket');
+            if (ws.current) {
+                ws.current.close(1000, 'Tab hidden');
+                ws.current = null;
+            }
+            stopPinging();
+        }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 3. La función de limpieza para cerrar la conexión.
+    return () => {
+        console.log('🧹 Limpiando: Cerrando WebSocket al desmontar el componente.');
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        if (ws.current) {
+            ws.current.close(1000, 'Component unmounted');
+            ws.current = null;
+        }
+        stopPinging();
+    };
+
+}, [connectWebSocket, stopPinging]); // Las dependencias son correctas.
+
     useEffect(() => {
-        // 🔹 Carga inicial rápida con fetch
+            // 🔹 Carga inicial rápida con fetch
         const fetchInitialData = async () => {
             try {
                 const callsResponse = await API.get<CallsOnHoldApiResponse>('/api/websocket/pacientes-en-espera/');
@@ -227,41 +272,7 @@ export const useCallsWebSocket = () => {
         };
 
         fetchInitialData(); // Carga inicial
-
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
-                console.log('🔁 Pestaña visible → verificar/conectar WebSocket');
-                if (!ws.current || (ws.current.readyState !== WebSocket.OPEN && ws.current.readyState !== WebSocket.CONNECTING)) {
-                    connectWebSocket();
-                }
-                // Pinging will be handled by the 'WebSocket conectado' message or when data arrives
-            } else {
-                console.log('🛑 Pestaña oculta → cerrar WebSocket');
-                if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-                    ws.current.close(1000, 'Tab hidden');
-                    ws.current = null;
-                }
-                stopPinging(); // Ensure pinging stops when tab is hidden
-            }
-        };
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        // Initial connection when component mounts if tab is visible
-        if (document.visibilityState === 'visible') {
-            connectWebSocket();
-        }
-
-        return () => {
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-            if (ws.current && (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING)) {
-                console.log('🧹 Limpiando: Cerrando WebSocket al desmontar el componente.');
-                ws.current.close(1000, 'Component unmounted');
-                ws.current = null;
-            }
-            stopPinging(); // Ensure pinging stops on unmount
-        };
-    }, [connectWebSocket, stopPinging]); // Include stopPinging in dependencies
+    }, []); // La dependencia es un array vacío, se ejecuta solo una vez.
 
 
     return { calls: calls, liveQueueStatus, isLoading: isLoading, wsError: wsError }; // Retorna isLoading
