@@ -1,5 +1,6 @@
 // src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode'; // Importa jwt-decode para decodificar el token de acceso
 import API from '../utils/API'; // Asegúrate de que esta ruta sea correcta para tu instancia de Axios
 import { AuthContextType, User, UserData } from '../types/declarations';
@@ -15,38 +16,22 @@ import { AuthContextType, User, UserData } from '../types/declarations';
     const [user, setUser] = useState<AuthContextType['user'] | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true); // Nuevo estado de carga
 
-    const decodeAccessToken = useCallback((token: string): { user: User, exp: number } | null => {
-        try {
-        const decoded: any = jwtDecode(token);
-        // Asegúrate de que las propiedades del token coincidan con tu interfaz User
-        const userData: User = {
-            id: decoded.user_id || decoded.id, // Puede ser user_id o id dependiendo de tu JWT
-            username: decoded.username || decoded.name, // Ajusta según tu token
-            first_name: decoded.first_name,
-            last_name: decoded.last_name,
-            email: decoded.email,
-            role: decoded.role, // ¡CRÍTICO! Asegúrate de que el rol esté en el token
-            queues: decoded.queues
-            // Agrega otras propiedades del usuario si están en el token
-        };
-        return { user: userData, exp: decoded.exp };
-        } catch (error) {
-        console.error("Error decoding access token:", error);
-        return null;
-        }
-    }, []);    
+    const login = useCallback(
+        async (accessToken: string, refreshToken: string) => {
+            localStorage.setItem('access_token', accessToken);
+            localStorage.setItem('refresh_token', refreshToken);
+            try {
+                const response = await API.get<UserData>('api/users/protected/');
+                setUser(response.data);
+                localStorage.setItem('user', JSON.stringify(response.data));
+            } catch (error) {
+                console.error('Error fetching user data after login:', error);
+                logout(); // Cerrar sesión si no se pueden obtener los datos
+            }
+            },
+        [] 
+    );
 
-
-    const login = useCallback((accessToken: string, refreshToken: string, userData: AuthContextType['user']) => {
-        if (!userData) {
-            console.error("❌ login(): userData está vacío o no definido");
-            return;
-        }
-        localStorage.setItem('access_token', accessToken);
-        localStorage.setItem('refresh_token', refreshToken);
-        localStorage.setItem('user', JSON.stringify(userData)); // Guarda el objeto de usuario completo
-        setUser(userData);
-    },[]);
 
     const logout = useCallback(() => {
         localStorage.removeItem('access_token');
@@ -54,7 +39,8 @@ import { AuthContextType, User, UserData } from '../types/declarations';
         localStorage.removeItem('user');
         setUser(null);
         console.log("Would redirect to login here");
-        // window.location.pathname = '/login'
+        window.location.pathname = '/login'
+        // navigate('/login')
     },[]);
     
     useEffect(() => {
@@ -64,6 +50,7 @@ import { AuthContextType, User, UserData } from '../types/declarations';
             if (!accessToken) {
                 setUser(null);
                 setIsLoading(false);
+                console.log('Auth: No access token found. Not authenticated.');
                 return;
             }
 
@@ -114,7 +101,7 @@ import { AuthContextType, User, UserData } from '../types/declarations';
         };
 
         initializeAuth();
-    }, []); // Solo depende de `logout` (que está cacheado con useCallback)
+    }, [logout]); // Solo depende de `logout` (que está cacheado con useCallback)
 
     const contextValue = useMemo(() => ({
         user,

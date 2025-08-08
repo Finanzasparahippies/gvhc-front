@@ -102,51 +102,37 @@ export const useCallsWebSocket = () => {
                 const combinedDataMsg = message as CombinedDataUpdateMessage;
                 const { getCallsOnHoldData, getLiveQueueStatusData } = combinedDataMsg.payload;
 
-                if (combinedDataMsg.payload) {
-                    const newCalls = getCallsOnHoldData || [];
-                    const newLiveQueueStatus = getLiveQueueStatusData || [];
-
                     // console.log('Received newCalls payload:', newCalls);
                     // console.log('Current calls state BEFORE update:', calls); //
 
                     // console.log(`Are calls data arrays deeply equal? ${areCallsTheSame}`);
 
                     // Actualiza ambos estados con los datos combinados
-                        if (Array.isArray(newCalls) && !isEqual(newCalls, callsRef.current)) {
-                            setCalls(newCalls); // This will cause a re-render if the array reference is new
-                        } else {
-                            // console.warn('⚠️ Payload for getCallsOnHoldData is malformed in dataUpdate message.');
-                        }
-
-                        if (Array.isArray(newLiveQueueStatus)) {
-                            setLiveQueueStatus(newLiveQueueStatus);
-                        } else {
-                            // console.warn('⚠️ Payload for getLiveQueueStatusData is malformed in dataUpdate message.');
-                        }
-
-                        setWsError(null);
-                    } else {
-                    // console.warn('⚠️ WebSocket "dataUpdate" message received, but payload is missing or malformed:', combinedDataMsg);
-                    setWsError('Received malformed combined data.');
-                    setIsLoading(false);
+                if (Array.isArray(getCallsOnHoldData)) {
+                    setCalls(getCallsOnHoldData);
+                } else {
+                    console.warn('⚠️ Payload for getCallsOnHoldData is malformed in dataUpdate message.');
                 }
-            } else if (message.type === 'callsUpdate' || message.type === 'liveQueueStatusUpdate') {
-                // Puedes mantener esto por compatibilidad o eliminar si ya no se envían individualmente
-                console.warn('⚠️ Received deprecated individual update type:', message.type);
-                // Si quieres procesarlos individualmente por si acaso, mantén la lógica original aquí
+
+                if (Array.isArray(getLiveQueueStatusData)) {
+                    setLiveQueueStatus(getLiveQueueStatusData);
+                } else {
+                    console.warn('⚠️ Payload for getLiveQueueStatusData is malformed in dataUpdate message.');
+                }
+                
+            // Mueve esta línea aquí para que se ejecute después del if
+            // y no dentro de él.
+            } else if ('message' in message && (message as ConnectionConfirmMessage).message === 'WebSocket conectado') {
+                setWsError(null);
+                startPinging();
             } else {
-                console.warn('Ignoring unknown WebSocket message type with "type" property:', message);
+                console.warn('Ignoring unknown or non-expected WebSocket message type:', message);
             }
-        } else if ('message' in message && (message as ConnectionConfirmMessage).message === 'WebSocket conectado') {
-            // console.log('Backend confirmed WebSocket connection.');
-            setWsError(null);
-            startPinging(); // <--- Start pinging ONLY when backend confirms connection
-        } else {
-            console.warn('Ignoring unknown or non-expected WebSocket message type:', message);
         }
-        setIsLoading(false); // Data or confirmation received, set loading to false
-    } catch (error) {
-        // console.error('❌ Error parsing WebSocket message or unexpected format:', error, event.data);
+        setIsLoading(false); // <-- Esta línea va aquí, dentro del `try` y fuera de los `if/else`.
+
+    } catch (error) { // <-- Aquí está el `catch` correctamente asociado al `try`.
+        console.error('❌ Error parsing WebSocket message:', error);
         setWsError('Error processing incoming data from server.');
         setIsLoading(false);
     }
@@ -155,25 +141,25 @@ export const useCallsWebSocket = () => {
     const connectWebSocket = useCallback(() => {
         // Cierra cualquier conexión existente antes de intentar una nueva
         if (ws.current && (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING)) {
-            console.log('⚠️ Ya hay una conexión WebSocket activa o en progreso.');
+            // console.log('⚠️ Ya hay una conexión WebSocket activa o en progreso.');
             return;
         }
 
         if (ws.current && ws.current.readyState === WebSocket.CLOSING) {
         // Opcional: podrías agregar un setTimeout aquí para esperar a que se cierre por completo.
         // Pero el `return` es suficiente para evitar un loop inmediato.
-        console.log('⚠️ Conexión anterior se está cerrando. Esperando...');
+        // console.log('⚠️ Conexión anterior se está cerrando. Esperando...');
         return;
         }
 
-        console.log('🔗 Intentando conectar WebSocket a:', getWebSocketUrl());
+        // console.log('🔗 Intentando conectar WebSocket a:', getWebSocketUrl());
         setIsLoading(true); // Set loading to true when trying to connect
 
         const socket =  new WebSocket(getWebSocketUrl());
         ws.current = socket; // Immediately assign to ref to manage it
 
         socket.onopen = () => {
-            console.log('🔗 WebSocket connected:', getWebSocketUrl());
+            // console.log('🔗 WebSocket connected:', getWebSocketUrl());
             setWsError(null);
             reconnectAttempts.current = 0; // Resetear intentos al conectar con éxito
         };
@@ -181,14 +167,14 @@ export const useCallsWebSocket = () => {
         socket.onmessage = handleMessage;
 
         socket.onerror = (event) => {
-            console.error('WebSocket error:', event);
+            // console.error('WebSocket error:', event);
             setWsError('WebSocket connection error. Attempting to reconnect...');
             setIsLoading(false); // Stop loading on error
             stopPinging(); // Stop pinging on error
         };
 
         socket.onclose = () => {
-            console.log('WebSocket disconnected. Attempting to reconnect...');
+            // console.log('WebSocket disconnected. Attempting to reconnect...');
             // setWsError('WebSocket disconnected. Attempting to reconnect...');
             setIsLoading(false); // Stop loading if max attempts reached
             stopPinging(); // Stop pinging on close
@@ -196,14 +182,14 @@ export const useCallsWebSocket = () => {
             if (reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS && document.visibilityState === 'visible') {
                 reconnectAttempts.current++;
                 const delay = Math.min(3000 * Math.pow(2, reconnectAttempts.current - 1), 30000); // Exponential backoff
-                console.log(`Reconectando en ${delay / 1000} segundos... Intento ${reconnectAttempts.current}/${MAX_RECONNECT_ATTEMPTS}.`);
+                // console.log(`Reconectando en ${delay / 1000} segundos... Intento ${reconnectAttempts.current}/${MAX_RECONNECT_ATTEMPTS}.`);
 
                 setTimeout(() => {
                     connectWebSocket(); // Call the connect function again
                 }, delay);
             } else if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
                 setWsError('No se pudo reconectar al WebSocket después de varios intentos.');
-                console.error('🚨 Máximos intentos de reconexión alcanzados. Rindiéndome.');
+                // console.error('🚨 Máximos intentos de reconexión alcanzados. Rindiéndome.');
             }
             // If visibilityState is hidden, onclose will log, but won't re-trigger connectWebSocket
             // until visibilityState becomes 'visible' again, handled by the event listener.
@@ -240,7 +226,7 @@ export const useCallsWebSocket = () => {
 
     // 3. La función de limpieza para cerrar la conexión.
     return () => {
-        console.log('🧹 Limpiando: Cerrando WebSocket al desmontar el componente.');
+        // console.log('🧹 Limpiando: Cerrando WebSocket al desmontar el componente.');
         document.removeEventListener('visibilitychange', handleVisibilityChange);
         if (ws.current) {
             ws.current.close(1000, 'Component unmounted');

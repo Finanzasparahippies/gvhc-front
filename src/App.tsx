@@ -7,6 +7,7 @@ import PrivateRoute from './components/routes/PrivateRoute';
 import { SupervisorComponent } from './components/SupervisorComponent';
 import TabsComponent from './components/tabRender/tabComponent';  
 import { AuthProvider, useAuth } from './utils/AuthContext'; // 🟢 Importa AuthProvider
+import AuthContent from './AuthContext'; 
 
 
 const App = (): JSX.Element => {
@@ -52,6 +53,7 @@ const App = (): JSX.Element => {
                     }
                 />
             </Routes>
+            {/* <AuthContent />  */}
           </Router>
           </AuthProvider>
         </ReactFlowProvider>

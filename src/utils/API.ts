@@ -1,9 +1,12 @@
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_REACT_APP_BACKEND_URL;
+const baseURL = import.meta.env.DEV
+  ? 'http://localhost:8000/' // URL de tu backend en desarrollo (Django local)
+  : 'https://gvhc-backend-fsqa.onrender.com/'; // URL de tu backend en producción (Render)
+
 
 const API = axios.create({
-    baseURL: BASE_URL,
+    baseURL: baseURL,
     headers: {
         'Content-Type': 'application/json',
     }
@@ -32,7 +35,7 @@ API.interceptors.response.use(
 
                 if (refresh) {
                     try {
-                        const response = await axios.post<RefreshTokenResponse>(BASE_URL, { refresh });
+                        const response = await axios.post<RefreshTokenResponse>(baseURL, { refresh });
                         localStorage.setItem('access_token', response.data.access);
                         originalRequest.headers.Authorization = `Bearer ${response.data.access}`;
                         return axios(originalRequest);

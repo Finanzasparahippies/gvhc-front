@@ -256,6 +256,9 @@ const { counts, lcw } = useMemo(() => {
         };
     }, []); // El array vacío asegura que esto solo se ejecute al montar y desmontar
 
+useEffect(() => {
+    console.log("callsOnHold updated from WebSocket:", callsOnHold);
+}, [callsOnHold]);
 
         const handleRefreshClick = useCallback(() => {
             // In a WebSocket-driven app, "refresh" often means re-establishing connection
