@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { LiveQueueStatusData, CallsUpdateMessage, LiveQueueStatusApiResponse } from '../types/nodes';
 import API from '../utils/API'; // <--- IMPORTA TU INSTANCIA DE AXIOS
 import { CallOnHold, CallsOnHoldApiResponse } from '../types/declarations';
-import isEqual from 'lodash/isEqual';
 
 
 interface ConnectionConfirmMessage {
@@ -237,28 +236,28 @@ export const useCallsWebSocket = () => {
 
 }, [connectWebSocket, stopPinging]); // Las dependencias son correctas.
 
-    useEffect(() => {
-            // 🔹 Carga inicial rápida con fetch
-        const fetchInitialData = async () => {
-            try {
-                const callsResponse = await API.get<CallsOnHoldApiResponse>('/api/websocket/pacientes-en-espera/');
-                const initialCalls = callsResponse.data?.getCallsOnHoldData ?? [];
-                setCalls(initialCalls);
+    // useEffect(() => {
+    //         // 🔹 Carga inicial rápida con fetch
+    //     const fetchInitialData = async () => {
+    //         try {
+    //             const callsResponse = await API.get<CallsOnHoldApiResponse>('/api/websocket/pacientes-en-espera/');
+    //             const initialCalls = callsResponse.data?.getCallsOnHoldData ?? [];
+    //             setCalls(initialCalls);
 
-                const queueStatusResponse = await API.get<LiveQueueStatusApiResponse>('/api/websocket/live-queue-status/');
-                const initialLiveQueue = queueStatusResponse.data?.getLiveQueueStatusData ?? [];
-                setLiveQueueStatus(initialLiveQueue);
+    //             const queueStatusResponse = await API.get<LiveQueueStatusApiResponse>('/api/websocket/live-queue-status/');
+    //             const initialLiveQueue = queueStatusResponse.data?.getLiveQueueStatusData ?? [];
+    //             setLiveQueueStatus(initialLiveQueue);
 
-                setIsLoading(false);
-            } catch (error) {
-                // console.error('Error en carga inicial:', error);
-                setWsError('Error al cargar los pacientes iniciales');
-                setIsLoading(false);
-            }
-        };
+    //             setIsLoading(false);
+    //         } catch (error) {
+    //             // console.error('Error en carga inicial:', error);
+    //             setWsError('Error al cargar los pacientes iniciales');
+    //             setIsLoading(false);
+    //         }
+    //     };
 
-        fetchInitialData(); // Carga inicial
-    }, []); // La dependencia es un array vacío, se ejecuta solo una vez.
+    //     fetchInitialData(); // Carga inicial
+    // }, []); // La dependencia es un array vacío, se ejecuta solo una vez.
 
 
     return { calls: calls, liveQueueStatus, isLoading: isLoading, wsError: wsError }; // Retorna isLoading

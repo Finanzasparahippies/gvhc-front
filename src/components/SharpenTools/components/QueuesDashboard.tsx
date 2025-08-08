@@ -59,13 +59,14 @@ const dashboardQueues: QueueConfig[] = [
 const buildQuery = (queueName: string, type: 'COUNT' | 'LCW'): string => {
     const dbTable = "`fathomvoice`.`fathomQueues`.`queueCallManager`";
     const whereClause = `(\`queue\`.\`queueName\` = "${queueName}") AND (\`currentLocation\` LIKE "%PL%" OR \`currentLocation\` LIKE "%CB%")`;
-    const intervals = `FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(NOW())/(5))*(5)) AS "intervals"`;
 
     if (type === 'COUNT') {
-        return `SELECT COUNT(\`queueCallManagerID\`), \`queue\`.\`queueName\` AS "Queue Name", \`currentLocation\`, ${intervals} FROM ${dbTable} WHERE ${whereClause} UNION (SELECT null, null, null, ${intervals}) LIMIT 1`;
+        // Consulta COUNT simplificada
+        return `SELECT COUNT(\`queueCallManagerID\`) AS "count" FROM ${dbTable} WHERE ${whereClause}`;
     }
     if (type === 'LCW') {
-        return `SELECT SEC_TO_TIME((UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(MIN(queueEnterTime)))) AS "LCW", ${intervals} FROM ${dbTable} WHERE ${whereClause} UNION (SELECT null, ${intervals}) LIMIT 1`;
+        // Consulta LCW simplificada
+        return `SELECT SEC_TO_TIME((UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(MIN(queueEnterTime)))) AS "LCW" FROM ${dbTable} WHERE ${whereClause}`;
     }
     return '';
 };
