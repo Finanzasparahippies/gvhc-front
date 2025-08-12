@@ -51,7 +51,6 @@ export const useCallsWebSocket = () => {
     const reconnectAttempts = useRef(0); // Contador de intentos de reconexión
     const MAX_RECONNECT_ATTEMPTS = 10; // Número máximo de intentos antes de rendirse
     const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
     const callsRef = useRef<CallOnHold[]>([]);
     useEffect(() => {
         callsRef.current = calls;
@@ -101,19 +100,26 @@ export const useCallsWebSocket = () => {
                 const combinedDataMsg = message as CombinedDataUpdateMessage;
                 const { getCallsOnHoldData, getLiveQueueStatusData } = combinedDataMsg.payload;
 
-                    // console.log('Received newCalls payload:', newCalls);
-                    // console.log('Current calls state BEFORE update:', calls); //
+            if (Array.isArray(getCallsOnHoldData)) {
+                const prevCalls = callsRef.current;
+                const hasChanges =
+                    getCallsOnHoldData.length !== prevCalls.length ||
+                    JSON.stringify(getCallsOnHoldData) !== JSON.stringify(prevCalls);
 
-                    // console.log(`Are calls data arrays deeply equal? ${areCallsTheSame}`);
-
-                    // Actualiza ambos estados con los datos combinados
-                if (Array.isArray(getCallsOnHoldData)) {
-                    setCalls(getCallsOnHoldData);
+               if (getCallsOnHoldData.length === 0 && prevCalls.length > 0) {
+                    console.warn("⚠️ Ignorando update vacío de getCallsOnHoldData");
+                } else if (hasChanges) {
+                    console.log("🔁 Actualizando llamadas en espera:", getCallsOnHoldData);
+                    setCalls([...getCallsOnHoldData]);
                 } else {
-                    console.warn('⚠️ Payload for getCallsOnHoldData is malformed in dataUpdate message.');
+                    console.log("🟰 No hay cambios en getCallsOnHoldData. Se mantiene el estado actual.");
                 }
+            } else {
+                console.warn('⚠️ Payload for getCallsOnHoldData is malformed.');
+            }
 
                 if (Array.isArray(getLiveQueueStatusData)) {
+                    console.log('calls on hold:', getLiveQueueStatusData)
                     setLiveQueueStatus(getLiveQueueStatusData);
                 } else {
                     console.warn('⚠️ Payload for getLiveQueueStatusData is malformed in dataUpdate message.');
@@ -144,11 +150,9 @@ export const useCallsWebSocket = () => {
             return;
         }
 
-        if (ws.current && ws.current.readyState === WebSocket.CLOSING) {
-        // Opcional: podrías agregar un setTimeout aquí para esperar a que se cierre por completo.
-        // Pero el `return` es suficiente para evitar un loop inmediato.
-        // console.log('⚠️ Conexión anterior se está cerrando. Esperando...');
-        return;
+        if (ws.current && ws.current.readyState !== WebSocket.CLOSED) {
+            ws.current.close(1000, 'Closing before reconnect');
+            ws.current = null;
         }
 
         // console.log('🔗 Intentando conectar WebSocket a:', getWebSocketUrl());

@@ -141,6 +141,7 @@ const QueueDashboard: React.FC = () => {
         return () => clearInterval(intervalId); // Limpia el intervalo al desmontar el componente
     }, [fetchLiveStatus]); // Dependencia del efecto para que se ejecute si cambian los parámetros por defecto
 
+    
 
 const queueIdMap = useMemo(() => {
         const map: Record<string, string> = {};
@@ -155,28 +156,36 @@ const queueIdMap = useMemo(() => {
     }, []);
 
 // Agregación de datos usando los IDs unificados
-const { counts, lcw } = useMemo(() => {
+const { counts, lcw_en, lcw_es } = useMemo(() => {
 
-    const result: { counts: Record<string, number>, lcw: Record<string, number> } = {
+    const result: { counts: Record<string, number>, 
+                    lcw_en: Record<string, number>,
+                    lcw_es: Record<string, number>
+                } = {
         counts: {},
-        lcw: {}
-    };
+        lcw_en: {},
+        lcw_es: {}
+        };
 
     for (const call of callsOnHold) {
         // Encuentra el ID del grupo unificado al que pertenece la llamada
         const normalizedCallQueueName = call.queueName.trim().toLowerCase();
         const unifiedId = queueIdMap[normalizedCallQueueName];
+        const isSpanish = call.queueName.trim().toLowerCase().startsWith('es-');
 
         if (unifiedId) {
             const elapsed = getElapsedSeconds(call.startTime);
             // Agrega el conteo al grupo correcto
             result.counts[unifiedId] = (result.counts[unifiedId] || 0) + 1;
             // Actualiza el LCW para el grupo correcto
-            result.lcw[unifiedId] = Math.max(result.lcw[unifiedId] || 0, elapsed);
-        } else {
-                // 🚨 ESTE CONSOLE.WARN ES CRUCIAL PARA LA DEPURACIÓN EN PRODUCCIÓN 🚨
-                console.warn(`⚠️ Nombre de cola no mapeado desde WebSocket: "${call.queueName}" (normalizado: "${normalizedCallQueueName}")`);
+            if (isSpanish) {
+                result.lcw_es[unifiedId] = Math.max(result.lcw_es[unifiedId] || 0, elapsed);
+            } else {
+                result.lcw_en[unifiedId] = Math.max(result.lcw_en[unifiedId] || 0, elapsed);
             }
+        } else {
+            console.warn(`⚠️ Nombre de cola no mapeado desde WebSocket: "${call.queueName}"`);
+        }
     }
     return result;
 }, [callsOnHold, queueIdMap]);
@@ -224,13 +233,6 @@ const { counts, lcw } = useMemo(() => {
             const intervalId = setInterval(fetchQuote, 300000); // Llama cada 5 min
             return () => clearInterval(intervalId); // Limpia el intervalo al desmontar
         }, []);
-
-        useEffect(() => {
-  console.log('TabsComponent: MOUNTED');
-  return () => {
-    console.log('TabsComponent: UNMOUNTED');
-  };
-}, []);
 
         const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
@@ -345,9 +347,9 @@ useEffect(() => {
                                             key={call.queueCallManagerID}
                                             className={`mb-4 p-4 bg-gradient-to-br from-gray-800 to-gray-700 rounded-lg shadow-md border-l-4 border-purple-500 transition-all duration-300 ease-in-out animate-fade-in-down`}
                                             >
-                                            <p className="text-lg font-bold text-white flex items-center gap-2">
+                                            {/* <p className="text-lg font-bold text-white flex items-center gap-2">
                                                 <MdSpatialAudioOff className='mr-2'/> {call.cidName || "Paciente desconocido"}
-                                            </p>
+                                            </p> */}
                                             {/* <p className="text-sm text-gray-300 flex items-center gap-2">
                                                 <SlCallIn className='mr-2'/> {call.callbackNumber}
                                             </p> */}
@@ -369,14 +371,15 @@ useEffect(() => {
                             {dashboardQueues.map((queue) => {
                                 // const data = metricsData[metric.id];
                                 const countValue = counts[queue.id] ?? 0;
-                                const lcwValue = formatTime(lcw[queue.id] ?? 0); // Si quieres formatear segundos a "HH:MM:SS"
+                                const lcwEnValue = formatTime(lcw_en[queue.id] ?? 0);
+                                const lcwEsValue = formatTime(lcw_es[queue.id] ?? 0);
                                 const isRelevant = isUserMetric(queue);
-                                const isActiveQueue = countValue > 0 || lcwValue !== '00:00:00';
+                                const isActiveQueue = countValue > 0 || lcwEnValue || lcwEsValue !== '00:00:00';
 
                             return (
                                     <div
                                         key={queue.id} // Usa el ID del grupo como key
-                                        className={`rounded-xl shadow-lg py-5 px-4 flex flex-col justify-between transform hover:-translate-y-1 transition-transform duration-200
+                                          className={`rounded-xl shadow-lg py-5 px-6 flex flex-col justify-between transform hover:-translate-y-1 transition-transform duration-200
                                             ${isRelevant ? 'border-2 border-purple-400' : ''}
                                             ${isActiveQueue ? 'bg-gradient-to-br from-purple-800 to-purple-600 border border-purple-400' : 'bg-gray-800'}
                                         `}
@@ -384,43 +387,58 @@ useEffect(() => {
                                         <div>
                                             <div className="flex items-center justify-between mb-3">
                                                 {/* Usa el título del grupo */}
-                                                <h2 className="text-gray-300 text-6xl font-semibold">{queue.title}</h2>
-                                                <FcDepartment className="text-blue-400" size={70} />
+                                                <h2 className="text-gray-300 text-5xl font-semibold">{queue.title}</h2>
+                                                <FcDepartment className="text-blue-400" size={60} />
                                             </div>
 
                                             {/* Sección para el COUNT (esto no cambia, ya que usa countValue) */}
-                                            <div className="mb-3">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center">
+                                            <div className="flex flex-col items-center justify-center mb-6">
+                                                <div className="flex items-center space-x-3 mb-1">
                                                         <FiPhoneIncoming className="text-purple-400 mr-2" size={30} />
                                                         <span className="text-gray-300 text-2xl font-semibold">Calls in Queue:</span>
-                                                    </div>
-                                                    <p className={`text-9xl font-bold transition-all duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
+                                                </div>
+                                                    <p className={`text-[8rem] font-extrabold leading-none transition-colors duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
                                                         {isLoading && countValue === 0 ? <FiLoader className="animate-spin text-purple-400" /> : countValue}
                                                     </p>
-                                                </div>
                                             </div>
 
                                             {/* Sección para el LCW (esto no cambia, ya que usa lcwValue) */}
-                                            <div>
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center">
-                                                    <FiClock className="text-orange-400 mr-2" size={30} />
-                                                    <span className="text-gray-300 text-2xl font-semibold">Longest Wait:</span>
-                                                </div>
-                                                <p className={`text-7xl font-bold transition-all duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
-                                                    {isLoading && lcwValue === '00:00:00' ? <FiLoader className="animate-spin text-purple-400" /> : lcwValue}
-                                                </p>
+                                            <div className="mt-4">
+                                            <div className="flex items-center mb-2">
+                                                <FiClock className="text-orange-400 mr-2" size={26} />
+                                                <span className="text-gray-300 text-xl font-semibold select-none">Longest Wait:</span>
                                             </div>
-                                        </div>
+                                            <div className="grid grid-cols-2 gap-4 items-center justify-items-center">
+                                                <div className="flex items-center gap-2">
+                                                <span className="text-2xl select-none" role="img" aria-label="US Flag">🇺🇸</span>
+                                                <span className={`text-4xl font-bold ${isLoading ? 'text-white/60' : 'text-white'}`}>
+                                                    {isLoading && lcwEnValue === '00:00:00' ? (
+                                                    <FiLoader className="animate-spin text-purple-400" />
+                                                    ) : (
+                                                    lcwEnValue
+                                                    )}
+                                                </span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                <span className="text-2xl select-none" role="img" aria-label="Mexico Flag">🇲🇽</span>
+                                                <span className={`text-4xl font-bold ${isLoading ? 'text-white/60' : 'text-white'}`}>
+                                                    {isLoading && lcwEsValue === '00:00:00' ? (
+                                                    <FiLoader className="animate-spin text-purple-400" />
+                                                    ) : (
+                                                    lcwEsValue
+                                                    )}
+                                                </span>
+                                                </div>
+                                            </div>
+                                            </div>
                                         </div>
                                     </div>
                                 );
                             })}
                         </div>
                         {quote && (
-                            <div className="animate-fade-in-down mt-4 text-center max-w-3xl mx-auto px-4 py-4 bg-gray-800 rounded-lg shadow-md">
-                                <p className="text-3xl italic text-white">"{quote}"</p>
+                            <div className="animate-fade-in-down mt-4 text-center max-w-3xl mx-auto px-4 py-4 bg-gray-800 rounded-lg shadow-md min-h-[150px] max-h-full">
+                                <p className="text-5xl italic text-white">"{quote}"</p>
                                 <p className="mt-2 text-lg text-purple-400">— {author}</p>
                             </div>
                         )}

@@ -159,7 +159,7 @@ const formatAgentStatus = (agent: LiveStatusAgent): JSX.Element => {
     
     return (
         // Cambiamos a un div para permitir múltiples líneas y mejor estructura de tarjeta
-        <div className={`flex flex-col items-start p-3 rounded-lg shadow-md min-w-[250px] max-w-[470px] min-h-[200px] max-h-[350px] ${style.bgColor} border border-transparent`}>
+        <div className={`flex flex-col items-start p-3 rounded-lg shadow-md min-w-[250px] max-w-[550px] min-h-[200px] max-h-[550px] ${style.bgColor} border border-transparent`}>
             {/* Línea principal de estado */}
             <div className={`flex items-center text-xl font-medium ${style.color} mb-1`}>
                 {style.icon}
@@ -362,7 +362,7 @@ const AgentTicker: React.FC<AgentTickerProps> = ({ agents, error, loading }) => 
             </div>
             <div 
                 ref={tickerRef} // <-- NUEVO: Asignamos la referencia
-                className="relative w-full min-h-[290px] max-h-[330px] flex items-center overflow-hidden overflow-x-auto scrollbar-hide cursor-grab"
+                className="relative w-full min-h-[350px] max-h-[550px] flex items-center overflow-hidden overflow-x-auto scrollbar-hide cursor-grab"
                 onMouseDown={handleMouseDown}
                 onMouseLeave={handleMouseUpOrLeave}
                 onMouseUp={handleMouseUpOrLeave}
@@ -370,7 +370,7 @@ const AgentTicker: React.FC<AgentTickerProps> = ({ agents, error, loading }) => 
                 >
                 {/* Contenedor que permite el desplazamiento infinito */}
                 <div
-                    className="whitespace-nowrap absolute will-change-transform flex items-center" // Añade flex y items-center
+                    className="whitespace-nowrap absolute will-change-transform flex items" // Añade flex y items-center
                     style={{ animation: `ticker ${animationDuration}s linear infinite` }}
                 >
                     {tickerContentElements}
