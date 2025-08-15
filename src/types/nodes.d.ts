@@ -134,3 +134,8 @@ export interface CallsUpdateMessage {
         liveQueueStatus?: LiveQueueStatusData[]; // Para la nueva consulta de Live Queue Status
     };
 }
+
+interface HeartbeatMessage {
+  type: 'heartbeat';
+  // puedes añadir payload si quieres
+}

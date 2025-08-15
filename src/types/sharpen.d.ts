@@ -98,3 +98,4 @@ interface UseSharpenAudioPlaybackResult {
     closeAudioModal: () => void;
     startMonitoringCall: (queueCallManagerID: string, extension: string) => Promise<void>;
 }
+

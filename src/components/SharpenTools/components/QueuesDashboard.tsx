@@ -157,6 +157,14 @@ const queueIdMap = useMemo(() => {
 
 // Agregación de datos usando los IDs unificados
 const { counts, lcw_en, lcw_es } = useMemo(() => {
+  console.log('🔁 Recalculando counts y LCW desde callsOnHold:', callsOnHold);
+    if (callsOnHold.length === 0) {
+        return {
+            counts: {},
+            lcw_en: {},
+            lcw_es: {},
+        };
+    }
 
     const result: { counts: Record<string, number>, 
                     lcw_en: Record<string, number>,
@@ -174,7 +182,9 @@ const { counts, lcw_en, lcw_es } = useMemo(() => {
         const isSpanish = call.queueName.trim().toLowerCase().startsWith('es-');
 
         if (unifiedId) {
-            const elapsed = getElapsedSeconds(call.startTime);
+            const elapsed = Number.isFinite(getElapsedSeconds(call.startTime))
+            ? getElapsedSeconds(call.startTime)
+            : 0;
             // Agrega el conteo al grupo correcto
             result.counts[unifiedId] = (result.counts[unifiedId] || 0) + 1;
             // Actualiza el LCW para el grupo correcto

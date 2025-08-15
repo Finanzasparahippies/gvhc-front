@@ -2,15 +2,11 @@ import { Handle, Position, NodeProps, Node, NodeResizeControl } from '@xyflow/re
 import React, { memo } from 'react';
 import { CgArrowsExpandLeft } from "react-icons/cg";
 import { BasePayload } from '../../types/nodes';
-import  {getCombinedNodeStyle}  from '../../utils/nodeStyles'; // Asegúrate de la ruta correcta
+import  {getCombinedNodeStyle, nodeStyles}  from '../../utils/nodeStyles'; // Asegúrate de la ruta correcta
 import StepsRenderer from './StepRender';
 
-const controlStyle = {
-  background: 'transparent',
-  border: 'none',
-};
 
-export const CustomResizableNode: React.FC<NodeProps<Node<BasePayload>>> =  ({ data, id, isConnectable }) => {
+export const CustomResizableNode: React.FC<NodeProps<Node<BasePayload>>> =  ({ data, id, isConnectable, type }) => {
   // Asegúrate de que `data` y `data.steps` existen antes de intentar acceder a ellos
   const { 
       title, 
@@ -24,12 +20,15 @@ export const CustomResizableNode: React.FC<NodeProps<Node<BasePayload>>> =  ({ d
       onPinToggle, 
       pinned, 
       borderColor,
-      steps 
+      steps,
     } = data;
     const nodeStyle = getCombinedNodeStyle(data.response_data, pinned);
     const handleFocus = () => setPanOnDrag && setPanOnDrag(false);
     const handleBlur = () => setPanOnDrag && setPanOnDrag(true);
-
+    const controlStyle = {
+        background: 'transparent',
+        border: 'none',
+    };
     const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       if (onChange) {
         onChange(id, e.target.value);
@@ -50,14 +49,13 @@ export const CustomResizableNode: React.FC<NodeProps<Node<BasePayload>>> =  ({ d
 
   return (
     <div 
-      className={`relative rounded-lg shadow-md flex flex-col overflow-hidden border-2 ${nodeStyle}`}
+      style={nodeStyle}
+      className={`relative rounded-lg shadow-md flex flex-col overflow-hidden border-2`}
     >
       <NodeResizeControl
             style={ controlStyle }
             minHeight={ 350 }
             minWidth={ 300 }
-            // maxHeight={200}
-            // maxWidth={200}
             >
         {/* <BsTextareaResize/> */}
         <ResizeIcon/>
@@ -123,9 +121,9 @@ export const CustomResizableNode: React.FC<NodeProps<Node<BasePayload>>> =  ({ d
           </div>
         )}
 
-        {steps && steps.length > 0 && <StepsRenderer steps={steps} />}
+        {/* {steps && steps.length > 0 && <StepsRenderer steps={steps} />} */}
 
-        <div className="mt-4 pt-4 border-t border-gray-200">
+        {/* <div className="mt-4 pt-4 border-t border-gray-200">
           <h5 className="font-semibold text-md mb-2 text-gray-700">Notas del Agente:</h5>
           <textarea
             className="w-full min-h-[80px] p-3 border border-gray-300 rounded-md text-sm resize-y bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-400"
@@ -135,7 +133,7 @@ export const CustomResizableNode: React.FC<NodeProps<Node<BasePayload>>> =  ({ d
             onFocus={handleFocus}
             onBlur={handleBlur}
           />
-        </div>
+        </div> */}
       </div>
     </div >
   );

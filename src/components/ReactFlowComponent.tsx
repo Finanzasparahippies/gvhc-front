@@ -55,7 +55,7 @@ const node_Types: NodeTypes  = {
   Slide: Slide,
   TooltipNode: TooltipNode,
   QuestionNode: QuestionNode,
-  TemplateNode: TemplateNode
+  TemplateNode: TemplateNode,
 };
 
 const edgeTypes = {
