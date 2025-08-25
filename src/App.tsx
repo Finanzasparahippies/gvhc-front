@@ -14,7 +14,7 @@ const App = (): JSX.Element => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      fetch('https://5.78.159.214:8000')
+      fetch('https://gvhc-backend.top/')
           .then(response => console.log('Manteniendo activo:', response))
           .catch(error => console.error('Error manteniendo activo:', error));
     }, 600_000); // 10 minutos

@@ -64,7 +64,7 @@ export const useCallsWebSocket = () => {
         } else {
             // return 'ws://localhost:8001/ws/calls/';
             // Para producción, usa la URL de tu backend en Render
-            return 'ws://5.78.159.214:8000/ws/calls/';
+            return 'ws://gvhc-backend.top/ws/calls/';
         }
     };
 
