@@ -1,58 +1,55 @@
 import { memo, useEffect, useState } from 'react';
-import { Handle, Position, NodeProps, Node } from '@xyflow/react';
+import { Handle, Position, NodeProps, Node, useUpdateNodeInternals  } from '@xyflow/react';
 import { BasePayload } from '../../types/nodes';
-import { getCombinedNodeStyle } from '../../utils/nodeStyles';
+import { getCombinedNodeStyle, getGroupDimensionsByType } from '../../utils/nodeStyles';
 
 
 
-export const NonResizableNode: React.FC<NodeProps<Node<BasePayload>>> = ({ id, data }) => {
+export const NonResizableNode: React.FC<NodeProps<Node<BasePayload>>> = ({ id, data, isConnectable }) => {
 
     const { imageUrl, excel_file, borderColor, keywords, response_type, questionText, answerText, title, template, NodeType, steps, onTemplateChange, onChange} = data
     const nodeStyle = getCombinedNodeStyle(data.response_data, data.pinned);
-    const [imageSize, setImageSize] = useState<{ width: number | string; height: number | string}>({ width: 'auto', height: 'auto' });
+    // const [imageSize, setImageSize] = useState<{ width: number | string; height: number | string}>({ width: 'auto', height: 'auto' });
+    const updateNodeInternals = useUpdateNodeInternals();
+    const [imageSize, setImageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
 
     useEffect(() => {
         if (imageUrl) {
             const img = new Image();
             img.onload = () => {
                 const aspectRatio = img.width / img.height;
-                const maxDimension = 750; // Tamaño máximo del nodo
-                const width = aspectRatio >= 1 ? maxDimension : maxDimension * aspectRatio;
-                const height = aspectRatio >= 1 ? maxDimension / aspectRatio : maxDimension;
-                setImageSize({ width, height });
+                const maxDimension = 850; // Tamaño máximo del nodo
+                let calculatedWidth = 0;
+                let calculatedHeight = 0;
+                if (aspectRatio >= 1) { // Imagen ancha
+                    calculatedWidth = maxDimension;
+                    calculatedHeight = maxDimension / aspectRatio;
+                } else { // Imagen alta
+                    calculatedWidth = maxDimension * aspectRatio;
+                    calculatedHeight = maxDimension;
+                }
+                
+                // Si la imagen es más pequeña que el tamaño del nodo por defecto, usa su tamaño real
+                const defaultDimensions = getGroupDimensionsByType('NonResizableNode');
+                const finalWidth = Math.min(calculatedWidth, img.width, defaultDimensions.width);
+                const finalHeight = Math.min(calculatedHeight, img.height, defaultDimensions.height);
+
+                setImageSize({ width: finalWidth, height: finalHeight });
+                updateNodeInternals(id);
             };
             img.src = imageUrl;
         }
-    }, [data.imageUrl]);
+    }, [imageUrl, id, updateNodeInternals]);
 
-    return (
-        <div
-            style={{ 
-                width: imageSize.width, 
-                height: imageSize.height,
-                minWidth: '250px',
-                minHeight: '100px',
-            }}
-        >
-            <Handle type="source" position={Position.Bottom} id={'question'}/>
-            
-            <Handle 
-                type="target" 
-                position={Position.Top}
-                id={'answerNodeId'}
-                />
-            <div
-                className='text-center w-full h-full overflow-hidden'
-                style={nodeStyle}
-            >
-                <strong 
-                    className={`absolute top-0 left-0 w-full h-8 flex items-center justify-center`}
-                    style={{ backgroundColor:'#eefb9a'}}
-                >
-                    {title}
-                </strong>
-                {response_type === 'Process' && imageUrl ? (
-                    <div className="relative">
+    const nodeDimensionsStyle = imageSize.width > 0 && imageSize.height > 0
+        ? { width: imageSize.width, height: imageSize.height }
+        : {};
+
+    const renderContent = () => {
+    switch (data.response_type) {
+        case 'Process':
+            return (
+                <div className="relative">
                         <p className="absolute top-2 left-0 w-full bg-black bg-opacity-60 text-white italic text-center rounded-t-lg">
                             {data.answerText?.split('\n').map((line: string, index: number) => (
                                 <span key={index} className="block">{line}<br /></span>
@@ -65,25 +62,20 @@ export const NonResizableNode: React.FC<NodeProps<Node<BasePayload>>> = ({ id, d
                             alt="Process"
                             className="rounded-lg w-full h-full object-cover mt-5"
                         />
-                    </div>
-                ) :
-                response_type === 'Url' && imageUrl ? (
-                    <img
-                        src={imageUrl}
-                        alt="Node related"
-                        className='w-full h-full object-cover mx-auto my-auto'
-                    />
-                ) : response_type === 'Image' && excel_file ? (
-                    <img
-                        src={imageUrl}
-                        alt="Node related"
-                        style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover', // Asegura que la imagen ocupe el nodo completo
-                        }}
-                    />
-                ) : response_type === 'Text' && imageUrl ? (
+                </div>
+            );
+        case 'Url':
+            return (
+                <img
+                    src={imageUrl}
+                    alt="Node related"
+                    className='w-full h-full object-cover mx-auto my-auto'
+                />
+            );
+        // ... otros casos
+        case 'Text':
+            if (imageUrl) {
+                return (
                     <>
                         <p className="italic mt-6 max-w-[200px] flex text-center text-gray-700 mb-5">
                             {answerText}
@@ -94,36 +86,98 @@ export const NonResizableNode: React.FC<NodeProps<Node<BasePayload>>> = ({ id, d
                         className='w-full h-full object-cover mx-auto my-auto'
                         />
                     </>
-                ) : (
-                    <div
-                        className="
-                            whitespace-pre-wrap 
-                            nowheel 
-                            scrollbar-thin 
-                            scrollbar-thumb-gray-400 
-                            scrollbar-track-gray-100 
-                            overflow-y-auto 
-                            text-left 
-                            max-w-lg 
-                            max-h-[450px] 
-                            mt-3 
-                            text-sm 
-                            leading-relaxed 
-                            font-sans 
-                            text-gray-800 
-                            border 
-                            border-gray-300 
-                            p-4 
-                            rounded-lg 
-                            bg-gray-50 
-                            shadow-md
-                        "
-                    >
+                );
+            }
+            // Si 'Text' no tiene imagen
+            return (
+                <div
+                    className="
+                        whitespace-pre-wrap 
+                        nowheel 
+                        scrollbar-thin 
+                        scrollbar-thumb-gray-400 
+                        scrollbar-track-gray-100 
+                        overflow-y-auto 
+                        text-left 
+                        max-w-[calc(100%-1rem)]
+                        max-h-[450px] 
+                        mt-3 
+                        text-sm 
+                        leading-relaxed 
+                        font-sans 
+                        text-gray-800 
+                        border 
+                        border-gray-300 
+                        p-4 
+                        rounded-lg 
+                        bg-gray-50 
+                        shadow-md
+                    "
+                >
+                    {answerText}
+                </div>
+            );
+        default:
+            return (
+                <div
+                    className="
+                        whitespace-pre-wrap 
+                        nowheel 
+                        scrollbar-thin 
+                        scrollbar-thumb-gray-400 
+                        scrollbar-track-gray-100 
+                        overflow-y-auto 
+                        text-left 
+                        max-w-[calc(100%-1rem)]
+                        max-h-[450px] 
+                        mt-3 
+                        text-sm 
+                        leading-relaxed 
+                        font-sans 
+                        text-gray-800 
+                        border 
+                        border-gray-300 
+                        p-4 
+                        rounded-lg 
+                        bg-gray-50 
+                        shadow-md
+                    "
+                >
                         {answerText}
-                    </div>
-                )}
+                </div>  
+            );
+    }
+};
+
+    return (
+        <div style={{...nodeDimensionsStyle, position: 'relative' }}>
+            <Handle 
+                type="source"
+                position={Position.Bottom}
+                id="output-handle"
+                isConnectable={isConnectable}
+                className="!bg-green-500 !w-3 !h-3" // Estilos Tailwind para el handle
+            />
+            
+            <Handle 
+                type="target"
+                position={Position.Top}
+                id="input-handle"
+                isConnectable={isConnectable}
+                className="!bg-blue-500 !w-3 !h-3" // Estilos Tailwind para el handle
+                />
+            <div
+                className='text-center w-full h-full overflow-hidden'
+                style={nodeStyle}
+            >
+                <strong 
+                    className={`absolute top-0 left-0 w-full h-8 flex items-center justify-center`}
+                    style={{ backgroundColor:'#eefb9a'}}
+                >
+                    {title}
+                </strong>
+                {renderContent()}
             </div>
-            <Handle type="source" position={Position.Right} />
         </div>
     );
 };

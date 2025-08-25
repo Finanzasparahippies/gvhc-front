@@ -121,9 +121,9 @@ export const CustomResizableNode: React.FC<NodeProps<Node<BasePayload>>> =  ({ d
           </div>
         )}
 
-        {/* {steps && steps.length > 0 && <StepsRenderer steps={steps} />} */}
+        {steps && steps.length > 0 && <StepsRenderer steps={steps} />}
 
-        {/* <div className="mt-4 pt-4 border-t border-gray-200">
+        <div className="mt-4 pt-4 border-t border-gray-200">
           <h5 className="font-semibold text-md mb-2 text-gray-700">Notas del Agente:</h5>
           <textarea
             className="w-full min-h-[80px] p-3 border border-gray-300 rounded-md text-sm resize-y bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-400"
@@ -133,7 +133,7 @@ export const CustomResizableNode: React.FC<NodeProps<Node<BasePayload>>> =  ({ d
             onFocus={handleFocus}
             onBlur={handleBlur}
           />
-        </div> */}
+        </div> 
       </div>
     </div >
   );

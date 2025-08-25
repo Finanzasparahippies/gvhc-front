@@ -40,6 +40,15 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
             { id: 'liveStatus', name: 'Live Queue' },
             { id: 'getAgents', name: 'Real Time Agents Disposition' },
             ];
+
+        export const TIME_COLUMN_MAP: { [key: string]: string } = {
+            'queueCDR': 'answerTime',
+            'queueCDRLegs': 'startTime',
+            'sipLatency': 'endTime', // Según tu ejemplo original
+            'sipLatencyTotals': 'startTime',
+            'queueADR': 'startTime',
+            'userGroups': 'null', // O el campo que use para un reporte basado en el tiempo
+        };
         
         export const QUERY_TEMPLATES = {
             agentStatus: (username?: string) => ({
@@ -81,13 +90,13 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
 
             }
         }),
-            cdrReport: (server: string, database: string, table: string, startDate: string, endDate: string, limit: number, offset:number) => ({
+            cdrReport: (server: string, database: string, table: string, timeColumn: string, startDate: string, endDate: string, limit: number, offset:number) => ({
                 endpoint: "V2/query/", // Sigue usando el endpoint genérico para consultas SQL
                 payload: {
                     method: "query", // Asegúrate de que el método sea 'query' para las consultas SQL
                     q: `
                         SELECT
-                        queueCallManagerID, answerTime, endTime, agentName, waitTime, agentTalkTime, agentHoldTime, wrapup, segmentNumber, queueName, username, transferToData, commType
+                        queueCallManagerID, ${timeColumn}, endTime, agentName, waitTime, agentTalkTime, agentHoldTime, wrapup, segmentNumber, queueName, username, transferToData, commType
                         FROM ${server}.${database}.${table}
                         WHERE endTime BETWEEN '${startDate}' AND '${endDate}'
                         LIMIT ${limit} OFFSET ${offset}
@@ -276,7 +285,13 @@ const DOWNLOAD_BATCH_SIZE = 10000;
                 setLoading(false);
                 return;
             }
-            const { endpoint, payload } = QUERY_TEMPLATES.cdrReport(server, database, table, startDate, endDate, itemsPerPage, currentOffset);
+             const timeColumn = TIME_COLUMN_MAP[table];
+        if (!timeColumn) {
+            setError(`No se encontró una columna de tiempo para la tabla: ${table}`);
+            setLoading(false);
+            return;
+        }
+            const { endpoint, payload } = QUERY_TEMPLATES.cdrReport(server, database, table, timeColumn, startDate, endDate, itemsPerPage, currentOffset);
                 apiEndpoint = endpoint;
                 apiPayload = payload;
         }
@@ -500,8 +515,14 @@ const downloadFullCSV = async () => {
                 const offset = page * DOWNLOAD_BATCH_SIZE; // Calculate offset using the new batch size
                 setMonitoringStatus({ message: `Descargando lote ${page + 1} de ${totalPagesToFetch}...`, type: 'info' });
 
+             const timeColumn = TIME_COLUMN_MAP[table];
+                if (!timeColumn) {
+                    setError(`No se encontró una columna de tiempo para la tabla: ${table}`);
+                    setLoading(false);
+                    return;
+                }
                 const { endpoint, payload } = QUERY_TEMPLATES.cdrReport(
-                    server, database, table, startDate, endDate, DOWNLOAD_BATCH_SIZE, offset 
+                    server, database, table, timeColumn, startDate, endDate, DOWNLOAD_BATCH_SIZE, offset
                 );
 
                 const response = await sharpenAPI.post<responseData>('dashboards/proxy/generic/', {

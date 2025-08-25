@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { 
+import {
   ReactFlow,
   MiniMap,
   Controls,
@@ -21,7 +21,7 @@ import CustomAttribution from './CustomAttribution';
 import { useNotes } from '../utils/NotesContext';
 import API from '../utils/API';
 import { SearchBar } from './searchBar/SearchBar';
-import { 
+import {
   CustomResizableNode,
   NotesNode,
   NonResizableNode,
@@ -29,21 +29,22 @@ import {
   TooltipNode,
   QuestionNode,
   TemplateNode,
-} from '../components/nodes'; 
+} from '../components/nodes';
 import ColorPicker from './ColorPicker';
 import { Slide } from '../components/Slides';
 import { BasePayload, FAQ } from '../types/nodes';
 import getCombinedNodeStyle, { getNodeStyleByType, getGroupDimensionsByType } from '../utils/nodeStyles';
+import { getLayoutedElements } from '../utils/dagreLayout';
 
-const INITIAL_X = 50; // Posición X inicial para el primer nodo
-const INITIAL_Y = 50; // Posición Y inicial para el primer nodo
-const COLUMNS = 5; // Número de grupos (pregunta + respuestas) por fila. Ajústalo a 8 si quieres 8 columnas.
-const QUESTION_NODE_HEIGHT = 40; // Altura estimada de tu QuestionNode. Ajusta si tu QuestionNode es más alto/bajo.
-const ANSWER_NODE_WIDTH_ESTIMATED = 600; // Ancho estimado de tus nodos de respuesta (TemplateNode, NotesNode, etc.)
-const ANSWER_NODE_HEIGHT_ESTIMATED = 500; // Alto estimado de tus nodos de respuesta. ¡Este es CRÍTICO para evitar solapamientos verticales!
-const HORIZONTAL_GROUP_SPACING = 100; // Espacio horizontal entre grupos de preguntas/respuestas
-const VERTICAL_GROUP_SPACING = 100; // Espacio vertical entre filas de grupos de preguntas/respuestas
-const ANSWERS_PER_ROW = 10; // Cuántas respuestas quieres apilar horizontalmente bajo una pregunta.
+// const INITIAL_X = 50; // Posición X inicial para el primer nodo
+// const INITIAL_Y = 50; // Posición Y inicial para el primer nodo
+// const COLUMNS = 5; // Número de grupos (pregunta + respuestas) por fila. Ajústalo a 8 si quieres 8 columnas.
+// const QUESTION_NODE_HEIGHT = 40; // Altura estimada de tu QuestionNode. Ajusta si tu QuestionNode es más alto/bajo.
+// const ANSWER_NODE_WIDTH_ESTIMATED = 600; // Ancho estimado de tus nodos de respuesta (TemplateNode, NotesNode, etc.)
+// const ANSWER_NODE_HEIGHT_ESTIMATED = 500; // Alto estimado de tus nodos de respuesta. ¡Este es CRÍTICO para evitar solapamientos verticales!
+// const HORIZONTAL_GROUP_SPACING = 100; // Espacio horizontal entre grupos de preguntas/respuestas
+// const VERTICAL_GROUP_SPACING = 100; // Espacio vertical entre filas de grupos de preguntas/respuestas
+// const ANSWERS_PER_ROW = 10; // Cuántas respuestas quieres apilar horizontalmente bajo una pregunta.
 
 
 type PinnedNodeInfo = { id: string; data?: { pinned?: boolean } /* o lo que sea que guardes */ };
@@ -71,6 +72,31 @@ export const ReactFlowComponent: React.FC = () => {
   const { fitView, toObject, setViewport } = useReactFlow();
   const [backgroundColor, setBackgroundColor] = useState<string>("#000");
 
+  const getGroupDimensions = (groupNodes: Node[]) => {
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    groupNodes.forEach(node => {
+        const estimatedDimensions = getGroupDimensionsByType(node.type);
+        const nodeWidth = node.width || estimatedDimensions.width;
+        const nodeHeight = node.height || estimatedDimensions.height;
+
+        minX = Math.min(minX, node.position.x);
+        minY = Math.min(minY, node.position.y);
+        maxX = Math.max(maxX, node.position.x + nodeWidth);
+        maxY = Math.max(maxY, node.position.y + nodeHeight);
+    });
+
+    return {
+        width: maxX - minX,
+        height: maxY - minY,
+        minX: minX,
+        minY: minY
+    };
+};
+
   const handleNoteChange = useCallback((nodeId: string, newNote: string) => {
     updateNote(nodeId, newNote); // Guardar nota en el contexto y localStorage
   },[updateNote]);
@@ -89,7 +115,7 @@ export const ReactFlowComponent: React.FC = () => {
     )
   }, [setNodes]);
 
-  
+
   const togglePinNode = useCallback((nodeId: string) => {
     setNodes((currentNodes) => {
       let newPinnedState = false;
@@ -121,7 +147,7 @@ export const ReactFlowComponent: React.FC = () => {
       return updatedNodes;
     });
   }, [setNodes, toObject]);
-  
+
 
   const fetchNodes = useCallback(async (searchQuery = '') => {
     const storedPinnedNodes = localStorage.getItem('pinnedNodes');
@@ -129,7 +155,7 @@ export const ReactFlowComponent: React.FC = () => {
     const url = searchQuery ? `/api/search/?query=${searchQuery}` : '/api/faqs/';
     const pinnedNodesInfo: PinnedNodeInfo[] = storedPinnedNodes ? JSON.parse(storedPinnedNodes) : [];
     const agentNotes = storedAgentNotes ? JSON.parse(storedAgentNotes) : {};
-  
+
     try {
       const response = await API.get<{results: FAQ[]}>(url);
       // console.log('Response:', response);
@@ -137,120 +163,126 @@ export const ReactFlowComponent: React.FC = () => {
       // console.log('ResponseData:', data);
       const apiNodes: Node<BasePayload>[] = [];
       const apiEdges: Edge[] = [];
-
-      let currentX = INITIAL_X;
-      let currentY = INITIAL_Y;
-      let rowMaxHeight = 0; // Altura máxima de los grupos en la fila actual
+      const COLUMNS = 5; // Número de columnas deseado
+      const HORIZONTAL_SPACING = 1000; // Espacio horizontal entre grupos
+      const VERTICAL_SPACING = 800; // Espacio vertical entre grupos
+      let currentX = 0;
+      let currentY = 0;
+      let rowHeight = 500;
+      let columnIndex = 0;
 
       data.forEach((faq: FAQ ) => {
+        const groupNodes: Node<BasePayload>[] = [];
+        const groupEdges: Edge[] = [];
         const questionNodeId = `faq-question-${faq.id}`;
+        const isQuestionPinned = pinnedNodesInfo.some((pn) => pn.id === questionNodeId);
 
-      const numAnswers = faq.answers.length;
-                const numAnswerRows = Math.ceil(numAnswers / ANSWERS_PER_ROW);
-
-                // Altura total de las respuestas debajo de la pregunta
-                const answersTotalHeight = numAnswerRows * (ANSWER_NODE_HEIGHT_ESTIMATED + (VERTICAL_GROUP_SPACING / 2));
-                // Altura total del grupo: altura de la pregunta + un margen + altura total de las respuestas
-                const groupActualHeight = QUESTION_NODE_HEIGHT + VERTICAL_GROUP_SPACING + answersTotalHeight;
-
-                // Ancho total del grupo: ANSWERS_PER_ROW * ANSWER_NODE_WIDTH_ESTIMATED + (ANSWERS_PER_ROW-1) * un margen
-                // O un ancho estimado de la pregunta si es más ancha, tomaremos la más ancha
-                const groupActualWidth = Math.max(
-                    ANSWER_NODE_WIDTH_ESTIMATED * ANSWERS_PER_ROW + (ANSWERS_PER_ROW > 1 ? (ANSWERS_PER_ROW - 1) * 30 : 0), // Ancho de las respuestas apiladas
-                    ANSWER_NODE_WIDTH_ESTIMATED // O el ancho de la pregunta si es que la pregunta se extiende mucho
-                );
-
-
-                // 2. Lógica para el salto de fila si no hay suficiente espacio horizontal
-                // Esto comprueba si el próximo grupo excedería el ancho máximo de la "columna virtual"
-                if (currentX + groupActualWidth > (INITIAL_X + COLUMNS * (ANSWER_NODE_WIDTH_ESTIMATED + HORIZONTAL_GROUP_SPACING))) {
-                    currentX = INITIAL_X; // Reinicia X al principio de la fila
-                    currentY += rowMaxHeight + VERTICAL_GROUP_SPACING; // Baja a la siguiente fila, usando la altura máxima de la fila anterior
-                    rowMaxHeight = 0; // Reinicia la altura máxima para la nueva fila
-                }
-
-                // 3. Actualizar la altura máxima de la fila actual
-                rowMaxHeight = Math.max(rowMaxHeight, groupActualHeight);
+        const { width: qWidth, height: qHeight } = getGroupDimensionsByType('QuestionNode');
 
         const questionNodeData = {
             id: questionNodeId,
             title: faq.question || 'No Question Title',
             groupId: questionNodeId,
-            NodeType: faq.response_type, 
+            NodeType: faq.response_type,
             questionText: faq.question,
             setPanOnDrag: setPanOnDrag,
             onPinToggle: togglePinNode,
-            pinned: pinnedNodesInfo.some((pn) => pn.id === questionNodeId) // Verificar si la pregunta también está anclada
+            pinned: isQuestionPinned, // Verificar si la pregunta también está anclada
             };
 
             // 2. CREA EL NODO COMPLETO usando el payload anterior
-            apiNodes.push({
+            groupNodes.push({
               id: questionNodeId,
               type: 'QuestionNode',
               // position: { x: (faqIndex % 5) * 800, y: Math.floor(faqIndex / 5) * 600 },
-              position: { x: currentX, y: currentY },
-              draggable: true,
+              position: { x: 0, y: 0 },
+              draggable: !isQuestionPinned,
               data: questionNodeData, // ✅ El payload va aquí
+              style: { width: qWidth, height: qHeight }, 
             });
 
-                faq.answers.forEach((answer, answerIndex) => {
-                  const answerNodeId = `faq-${faq.id}-answer-${answer.id}`;
-                  const nodeType = answer.node_type; // Default type
-                  const isAnswerNodePinned = pinnedNodesInfo.some((pn) => pn.id === answerNodeId);
-                  const col = answerIndex % ANSWERS_PER_ROW;
-                  const row = Math.floor(answerIndex / ANSWERS_PER_ROW);
-                  const answerX = currentX + (col * (ANSWER_NODE_WIDTH_ESTIMATED + HORIZONTAL_GROUP_SPACING));
-                  const answerY = currentY + QUESTION_NODE_HEIGHT + (VERTICAL_GROUP_SPACING / 2) + (row * (ANSWER_NODE_HEIGHT_ESTIMATED + (VERTICAL_GROUP_SPACING / 2)));
+            const answersPerRow = 6; // Nodos de respuesta por fila debajo de la pregunta
+            const answerSpacing = 600; // Espacio entre nodos de respuesta
 
-                  // 1. Construye el objeto de datos (payload) directamente
-                  const answerNodeData = {
-                      id: answerNodeId,
-                      title: answer.title || 'No Title',
-                      groupId: questionNodeId,
-                      NodeType: faq.response_type,
-                      response_data: nodeType,
-                      questionText: faq.question || 'No Title',
-                      answerText: answer.answer_text || '',
-                      template: answer.template,
-                      imageUrl: answer.image_url,
-                      keywords: faq.keywords,
-                      steps: answer.steps,
-                      excel_file: answer.excel_file,
-                      note: agentNotes[answerNodeId] || '',
-                      pinned: isAnswerNodePinned,
-                      draggable: !isAnswerNodePinned,
-                      onChange: handleNoteChange,
-                      onPinToggle: togglePinNode, // <-- Corregí el nombre aquí también, de tu pregunta anterior
-                      onTemplateChange: handleTemplateUpdate,
-                      setPanOnDrag: setPanOnDrag, // Pass
-                      // Add setPanOnDrag if your nodes need it
-                  };
-                  // 2. Crea el nodo con la estructura correcta
-                  apiNodes.push({
-                      id: answerNodeId,
-                      type: nodeType, // El tipo de componente a renderizar     
-                      style: { width: 400, height: 450 },       
-                      position: { x: answerX, y: answerY }, // <-- Posición ajustada
-                      draggable: !isAnswerNodePinned,
-                      data: answerNodeData, // 👈 Pasa el payload directamente aquí
-                  });
+            faq.answers.forEach((answer, answerIndex) => {
+              const answerNodeId = `faq-${faq.id}-answer-${answer.id}`;
+              const nodeType = answer.node_type; // Default type
+              const isAnswerNodePinned = pinnedNodesInfo.some((pn) => pn.id === answerNodeId);
+              const { width: aWidth, height: aHeight } = getGroupDimensionsByType(nodeType);
 
-                  apiEdges.push({
-                      id: `${questionNodeId}->${answerNodeId}`,
-                      source: questionNodeId,
-                      target: answerNodeId,
-                      type: 'smoothstep',
-                      animated: true,
-                  });
+              const row = Math.floor(answerIndex / answersPerRow);
+              const col = answerIndex % answersPerRow;
+              const answerX = col * (aWidth + answerSpacing);
+              const answerY = row * (aHeight + answerSpacing) + qHeight + answerSpacing;
+                // 1. Construye el objeto de datos (payload) directamente
+              const answerNodeData = {
+                  id: answerNodeId,
+                  title: answer.title || 'No Title',
+                  groupId: questionNodeId,
+                  NodeType: faq.response_type,
+                  response_data: nodeType,
+                  questionText: faq.question || 'No Title',
+                  answerText: answer.answer_text || '',
+                  template: answer.template,
+                  imageUrl: answer.image_url,
+                  keywords: faq.keywords,
+                  steps: answer.steps,
+                  excel_file: answer.excel_file,
+                  note: agentNotes[answerNodeId] || '',
+                  pinned: isAnswerNodePinned,
+                  draggable: !isAnswerNodePinned,
+                  onChange: handleNoteChange,
+                  onPinToggle: togglePinNode, // <-- Corregí el nombre aquí también, de tu pregunta anterior
+                  onTemplateChange: handleTemplateUpdate,
+                  setPanOnDrag: setPanOnDrag, // Pass
+                  // Add setPanOnDrag if your nodes need it
+              };
+              // 2. Crea el nodo con la estructura correcta
+              groupNodes.push({
+                  id: answerNodeId,
+                  type: nodeType, // El tipo de componente a renderizar
+                  style: { width: aWidth, height: aHeight },
+                  position: { x: answerX, y: answerY }, // Usa la posición calculada
+                  draggable: !isAnswerNodePinned,
+                  data: answerNodeData, // 👈 Pasa el payload directamente aquí
               });
-                currentX += groupActualWidth + HORIZONTAL_GROUP_SPACING;
+
+              groupEdges.push({
+                  id: `${questionNodeId}->${answerNodeId}`,
+                  source: questionNodeId,
+                  target: answerNodeId,
+                  type: 'smoothstep',
+                  animated: true,
+              });
             });
+                // currentX += groupActualWidth + HORIZONTAL_GROUP_SPACING;
+            const { width: groupWidth, height: groupHeight} = getGroupDimensions(groupNodes);
+            if (columnIndex >= COLUMNS) {
+                  columnIndex = 0;
+                  currentX = 0;
+                  currentY += rowHeight + VERTICAL_SPACING;
+                  rowHeight = 0;
+              }
+            
+           groupNodes.forEach((node) => {
+               node.position.x += currentX;
+               node.position.y += currentY;
+               apiNodes.push(node);
+             });
+              
+            apiEdges.push(...groupEdges);
+
+            currentX += groupWidth + HORIZONTAL_SPACING;
+            rowHeight = Math.max(rowHeight, groupHeight);
+            columnIndex++;
+          });
 
             setNodes(apiNodes);
             setEdges(apiEdges);
             // setTimeout(() => {
             //     fitView({ padding: 0.1 });
-            // }, 50); 
+            // }, 50);
+            // return apiNodes;
             return apiNodes;
 
         } catch (error) {
@@ -263,7 +295,7 @@ export const ReactFlowComponent: React.FC = () => {
           const lastColor = localStorage.getItem('preferedColor')
           if (lastColor) {
               setBackgroundColor(lastColor)
-          } 
+          }
       }, [])
 
   useEffect(() => {
@@ -278,7 +310,7 @@ export const ReactFlowComponent: React.FC = () => {
   const handleSave = () => {
     const flow = toObject();
     localStorage.setItem('teamleaderFlow', JSON.stringify(flow));
-  };  
+  };
 
   const handleRestore = () => {
     const savedFlow = localStorage.getItem('teamleaderFlow');
@@ -291,8 +323,8 @@ export const ReactFlowComponent: React.FC = () => {
     }} else {
       alert('No hay un flujo guardado');
     }
-  };  
-  
+  };
+
 
 return (
 <>
@@ -301,7 +333,7 @@ return (
       style={{ height: 'calc(100vh - 120px)' }}
       >
   <div className='flex flex-row justify-around mx-5 items-center'>
-      <div className='flex flex-row justify-between items-center px-5 mb-8 relative z-10'> 
+      <div className='flex flex-row justify-between items-center px-5 mb-8 relative z-10'>
     <ColorPicker
             onChangeColor={setBackgroundColor}/>
     </div>
@@ -341,7 +373,7 @@ return (
                 const typeStyle = getCombinedNodeStyle(node.data?.response_data);
                 return typeStyle.borderColor;
                 }}
-        />        
+        />
       <Background color={backgroundColor} variant={BackgroundVariant.Cross} gap={12} />
       </ReactFlow>
       {/* <div className="save-restore">

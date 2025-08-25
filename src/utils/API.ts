@@ -2,8 +2,8 @@ import axios from 'axios';
 
 const baseURL = import.meta.env.DEV
   ? 'http://localhost:8000/' // URL de tu backend en desarrollo (Django local)
-  : 'https://gvhc-backend-fsqa.onrender.com/'; // URL de tu backend en producción (Render)
-
+//   : 'https://gvhc-backend-fsqa.onrender.com/'; // URL de tu backend en producción (Render)
+  : 'http://5.78.159.214:8000/'
 
 const API = axios.create({
     baseURL: baseURL,
@@ -21,7 +21,7 @@ API.interceptors.request.use(
         }
         return config;
     },
-    (error ) => Promise.reject(error)
+    (error) => Promise.reject(error)
 );
 
 // Interceptor para manejar errores de autenticación
