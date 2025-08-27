@@ -287,7 +287,7 @@ useEffect(() => {
     return (
         <div
             ref={dashboardRef}
-            className="bg-gray-900 min-h-screen px-4 sm:p-6 lg:py-2 font-sans text-white mt-[120px] animate-fade-in-down"
+            className="bg-gray-900 min-h-screen px-4 sm:p-6 lg:py-2 font-sans text-white mt-[8px] animate-fade-in-down"
         >
             <div className="max-w-full mx-auto">
                 {/* --- Cabecera --- */}

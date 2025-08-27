@@ -81,7 +81,7 @@ const TabsComponent = () => {
     };
 
     return (
-        <div className="overflow-visible mx-auto">
+        <div className="overflow-visible mx-auto text-center">
         {/* Barra de pestañas */}
          {isLoading ? (
                     <div className="px-2 text-gray-500">Cargando...</div>
@@ -96,7 +96,7 @@ const TabsComponent = () => {
                     </button>
                 ) : (
                     // For all other roles, show standard buttons with existing conditions
-                    <div className="relative top-20 ml-5 border border-gray-400 rounded-lg inline-flex items-center"> 
+                    <div className="relative ml-5 border border-gray-400 rounded-lg inline-flex items-center"> 
                         <button
                             onClick={() => handleTabChange('reactflow')}
                             className={activeTab === 'reactflow' ? 'active px-2 bg-slate-200 border border-gray-400 cursor-pointer mr-5 rounded-md' : 'mr-5 text-white px-2'}

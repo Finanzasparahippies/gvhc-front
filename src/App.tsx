@@ -12,15 +12,15 @@ import AuthContent from './AuthContext';
 
 const App = (): JSX.Element => {
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetch('https://gvhc-backend.top/')
-          .then(response => console.log('Manteniendo activo:', response))
-          .catch(error => console.error('Error manteniendo activo:', error));
-    }, 600_000); // 10 minutos
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     fetch('https://gvhc-backend.top/')
+  //         .then(response => console.log('Manteniendo activo:', response))
+  //         .catch(error => console.error('Error manteniendo activo:', error));
+  //   }, 600_000); // 10 minutos
 
-    return () => clearInterval(interval)
-  }, []);
+  //   return () => clearInterval(interval)
+  // }, []);
 
   return (
     <NotesProvider>

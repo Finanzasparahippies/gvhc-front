@@ -96,6 +96,7 @@ interface SearchBarProps {
     query: string;
     setQuery: React.Dispatch<React.SetStateAction<string>>;
     fetchNodes: (query: string) => Promise<Node<BasePayload>[]>;
+    className?: string;
 }
 
 type PinnedNodeInfo = {
