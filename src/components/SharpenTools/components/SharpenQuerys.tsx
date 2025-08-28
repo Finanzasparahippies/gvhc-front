@@ -36,14 +36,14 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
 
         const options = [
             { id: 'agentStatus', name: 'Agent Individial Status' },
-            { id: 'cdrReport', name: 'Queues Reports' },
+            { id: 'queueReport', name: 'Queues Reports' },
             { id: 'liveStatus', name: 'Live Queue' },
             { id: 'getAgents', name: 'Real Time Agents Disposition' },
             ];
 
         export const TIME_COLUMN_MAP: { [key: string]: string } = {
-            'queueCDR': 'answerTime',
-            'queueCDRLegs': 'startTime',
+            'queueCDR': 'startTime',
+            'queueCDRLegs': 'answerTime',
             'sipLatency': 'endTime', // Según tu ejemplo original
             'sipLatencyTotals': 'startTime',
             'queueADR': 'startTime',
@@ -90,14 +90,27 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
 
             }
         }),
-            cdrReport: (server: string, database: string, table: string, timeColumn: string, startDate: string, endDate: string, limit: number, offset:number) => ({
+            cdrLegReport: (server: string, database: string, table: string, timeColumn: string, startDate: string, endDate: string, limit: number, offset:number) => ({
                 endpoint: "V2/query/", // Sigue usando el endpoint genérico para consultas SQL
                 payload: {
                     method: "query", // Asegúrate de que el método sea 'query' para las consultas SQL
                     q: `
                         SELECT
                         queueCallManagerID, ${timeColumn}, endTime, agentName, waitTime, agentTalkTime, agentHoldTime, wrapup, segmentNumber, queueName, username, transferToData, commType
-                        FROM ${server}.${database}.${table}
+                        FROM ${server}.${database}.queueCDRLegs
+                        WHERE endTime BETWEEN '${startDate}' AND '${endDate}'
+                        LIMIT ${limit} OFFSET ${offset}
+                    `,
+                }
+            }),
+            cdrReport: (server: string, database: string, table: string, timeColumn: string, startDate: string, endDate: string, limit: number, offset:number) => ({
+                endpoint: "V2/query/", // Sigue usando el endpoint genérico para consultas SQL
+                payload: {
+                    method: "query", // Asegúrate de que el método sea 'query' para las consultas SQL
+                    q: `
+                        SELECT
+                        queueCallManagerID, ${timeColumn}, endTime, agentName, queueName, cidNumber, cidName, talkTime, holdTime, queueCallback, hangupCause, username, inboundNumber, inboundName, queueSkills
+                        FROM ${server}.${database}.queueCDR
                         WHERE endTime BETWEEN '${startDate}' AND '${endDate}'
                         LIMIT ${limit} OFFSET ${offset}
                     `,
@@ -136,8 +149,29 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
     }),
 }
 
-const DOWNLOAD_BATCH_SIZE = 10000; 
+function isBulkTemplate(
+    template: keyof typeof QUERY_TEMPLATES
+): template is keyof typeof TEMPLATE_DISPATCHER {
+    return template === 'cdrReport' || template === 'cdrLegReport';
+}
 
+const TEMPLATE_DISPATCHER: {
+    [key in 'cdrReport' | 'cdrLegReport']: (
+        server: string,
+        database: string,
+        table: string,
+        timeColumn: string,
+        startDate: string,
+        endDate: string,
+        limit: number,
+        offset: number
+    ) => { endpoint: string; payload: any };
+} = {
+    cdrReport: QUERY_TEMPLATES.cdrReport,
+    cdrLegReport: QUERY_TEMPLATES.cdrLegReport
+};
+
+const DOWNLOAD_BATCH_SIZE = 10000; 
 
     const SharpenQueryReport: React.FC = () => {
         //estados para seleccionar datos
@@ -173,97 +207,12 @@ const DOWNLOAD_BATCH_SIZE = 10000;
         const [currentPage, setCurrentPage] = useState(1);
         const itemsPerPage = 100;
         const [selectedLanguage, setSelectedLanguage] = useState<'es' | 'en'>('es'); // New state for language selection
-
-        const totalPages = useMemo(() => Math.ceil(totalResults / itemsPerPage), [totalResults, itemsPerPage]);
-        const MESSAGE_DISPLAY_TIME = 5000; // 5 segundos
-
-
-
-        const getLocalDatetimeString = (date: Date): string => {
-            const year = date.getFullYear();
-            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-            const day = date.getDate().toString().padStart(2, '0');
-            const hours = date.getHours().toString().padStart(2, '0');
-            const minutes = date.getMinutes().toString().padStart(2, '0');
-            // No incluimos segundos o milisegundos si el input es solo hasta minutos
-            // Si tu input es 'datetime-local' y no 'datetime-local-seconds', entonces no necesitas segundos.
-            // Si lo necesitas, añade: const seconds = date.getSeconds().toString().padStart(2, '0');
-            // Y concaténalos: `${hours}:${minutes}:${seconds}`
-            return `${year}-${month}-${day}T${hours}:${minutes}`;
-    };
-
-        const handleNextPage = () => {
-            startTransition(() => {
-                if (currentPage < totalPages) {
-                    setCurrentPage(prevPage => prevPage + 1);
-                }
-            });
-        };
-
-        const handlePreviousPage = () => {
-            startTransition(() => {
-                if (currentPage > 1) {
-                    setCurrentPage(prevPage => prevPage - 1);
-                }
-            });
-        };
-
-    const handleGoToPage = (event: React.ChangeEvent<HTMLSelectElement>) => {
-        const pageNumber = Number(event.target.value); // Extraer el valor y convertirlo a número
-        startTransition(() => {
-            if (pageNumber >= 1 && pageNumber <= totalPages) {
-                setCurrentPage(pageNumber);
-            }
-        });
-    };
-
-    useEffect(() => {
-        if (currentPage > 0) {
-            fetchData();
-        }
-    }, [currentPage]);
-
-    useEffect(() => {
-        let timer: ReturnType<typeof setTimeout> | undefined;
-        if (monitoringStatus && monitoringStatus.message) {
-            // Si hay un mensaje, establece un temporizador para borrarlo
-            timer = setTimeout(() => {
-                setMonitoringStatus({ message: '', type: '' });
-            }, MESSAGE_DISPLAY_TIME);
-        }
-
-        // Función de limpieza: se ejecuta cuando el componente se desmonta
-        // o antes de que el efecto se vuelva a ejecutar (si las dependencias cambian)
-        return () => {
-            if (timer) {
-                clearTimeout(timer);
-            }
-        };
-    }, [monitoringStatus?.message]);
-
-        useEffect(() => {
-            setDataBase(DATABASES[server]?.[0]?.value);
-        }, [server]);
-
-        useEffect(() => {
-            setTable(TABLES[database]?.[0]?.value);
-        }, [database]);
-
-        useEffect(() => {
-        if (useCurrentEndDate) {
-                const now = new Date()
-                setEndDate(getLocalDatetimeString(now));
-            }
-        }, [useCurrentEndDate]);
-
         const isValidRange = () => {
             return startDate && endDate && new Date(startDate) <= new Date(endDate);
         };
 
-        const closeAudioModal = () => {
-        setIsModalOpen(false);
-        setCurrentAudioUrl(null); // Limpia la URL cuando se cierra
-        };
+        const totalPages = useMemo(() => Math.ceil(totalResults / itemsPerPage), [totalResults, itemsPerPage]);
+        const MESSAGE_DISPLAY_TIME = 5000; // 5 segundos
 
         const fetchData = useCallback(async () => {
             setLoading(true);
@@ -273,46 +222,54 @@ const DOWNLOAD_BATCH_SIZE = 10000;
             
             const currentOffset = (currentPage - 1) * itemsPerPage; // Calculate offset based on current page
 
-            let apiEndpoint: string;
-            let apiPayload: { [key: string]: any; }; // Definimos el tipo del payload
+            let apiEndpoint: string = ''; 
+            let apiPayload: { [key: string]: any; } = {}; 
 
-        if (selectedQueryTemplate === 'liveStatus') { // Creamos una nueva plantilla para la consulta directa
-            const { endpoint, payload } = QUERY_TEMPLATES.liveStatus();
+        if (selectedQueryTemplate === 'agentStatus') {
+            const { endpoint, payload } = QUERY_TEMPLATES.agentStatus(agentUsername);
             apiEndpoint = endpoint;
             apiPayload = payload;
-        } else if (selectedQueryTemplate === 'cdrReport') {
+        } else if (selectedQueryTemplate === 'cdrReport') { // Usar 'queueReport'
             if (!isValidRange()) {
-                setLoading(false);
-                return;
-            }
-             const timeColumn = TIME_COLUMN_MAP[table];
+            setLoading(false);
+            return;
+        }
+
+        const timeColumn = TIME_COLUMN_MAP[table];
         if (!timeColumn) {
             setError(`No se encontró una columna de tiempo para la tabla: ${table}`);
             setLoading(false);
             return;
         }
-            const { endpoint, payload } = QUERY_TEMPLATES.cdrReport(server, database, table, timeColumn, startDate, endDate, itemsPerPage, currentOffset);
-                apiEndpoint = endpoint;
-                apiPayload = payload;
-        }
 
-        else if (selectedQueryTemplate === 'agentStatus') {
-            const { endpoint, payload } = QUERY_TEMPLATES.agentStatus(agentUsername);
+        // Aquí se usa el valor de 'table' para decidir qué plantilla de query usar
+        if (table === 'queueCDR') {
+            const { endpoint, payload } = QUERY_TEMPLATES.cdrReport(server, database, table, timeColumn, startDate, endDate, itemsPerPage, currentOffset);
             apiEndpoint = endpoint;
             apiPayload = payload;
-        }
-        
-        else if (selectedQueryTemplate === 'getAgents') { // --- NUEVO: Manejar la plantilla getAgents ---
-            const { endpoint, payload } = QUERY_TEMPLATES.getAgents(getAgentsParams);
+        } else if (table === 'queueCDRLegs') {
+            const { endpoint, payload } = QUERY_TEMPLATES.cdrLegReport(server, database, table, timeColumn, startDate, endDate, itemsPerPage, currentOffset);
             apiEndpoint = endpoint;
             apiPayload = payload;
-        } 
-        else {
-            alert('Selecciona una plantilla de consulta válida.');
+        } else {
+            // Manejar otras tablas si es necesario en el futuro
+            setError(`Reporte para la tabla ${table} no implementado.`);
             setLoading(false);
             return;
         }
-
+    } else if (selectedQueryTemplate === 'liveStatus') {
+        const { endpoint, payload } = QUERY_TEMPLATES.liveStatus();
+        apiEndpoint = endpoint;
+        apiPayload = payload;
+    } else if (selectedQueryTemplate === 'getAgents') {
+        const { endpoint, payload } = QUERY_TEMPLATES.getAgents(getAgentsParams);
+        apiEndpoint = endpoint;
+        apiPayload = payload;
+    } else {
+        alert('Selecciona una plantilla de consulta válida.');
+        setLoading(false);
+        return;
+    }
 
     try {
         const apiResponse = await sharpenAPI.post<responseData>('dashboards/proxy/generic/', {
@@ -388,6 +345,86 @@ const DOWNLOAD_BATCH_SIZE = 10000;
                 setMonitoringStatus({ message: 'Error during data loading.', type: 'error' });
             }
         }, [selectedQueryTemplate, isValidRange, startDate, endDate, server, database, table, agentUsername, itemsPerPage, currentPage, getAgentsParams]); // Add currentPage to dependencies
+
+        const getLocalDatetimeString = (date: Date): string => {
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            // No incluimos segundos o milisegundos si el input es solo hasta minutos
+            // Si tu input es 'datetime-local' y no 'datetime-local-seconds', entonces no necesitas segundos.
+            // Si lo necesitas, añade: const seconds = date.getSeconds().toString().padStart(2, '0');
+            // Y concaténalos: `${hours}:${minutes}:${seconds}`
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
+
+        const handleNextPage = () => {
+            startTransition(() => {
+                if (currentPage < totalPages) {
+                    setCurrentPage(prevPage => prevPage + 1);
+                }
+            });
+        };
+
+        const handlePreviousPage = () => {
+            startTransition(() => {
+                if (currentPage > 1) {
+                    setCurrentPage(prevPage => prevPage - 1);
+                }
+            });
+        };
+
+    const handleGoToPage = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        const pageNumber = Number(event.target.value); // Extraer el valor y convertirlo a número
+        startTransition(() => {
+            if (pageNumber >= 1 && pageNumber <= totalPages) {
+                setCurrentPage(pageNumber);
+            }
+        });
+    };
+
+    useEffect(() => {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        if (monitoringStatus && monitoringStatus.message) {
+            // Si hay un mensaje, establece un temporizador para borrarlo
+            timer = setTimeout(() => {
+                setMonitoringStatus({ message: '', type: '' });
+            }, MESSAGE_DISPLAY_TIME);
+        }
+
+        // Función de limpieza: se ejecuta cuando el componente se desmonta
+        return () => {
+            if (timer) {
+                clearTimeout(timer);
+            }
+        };
+    }, [monitoringStatus?.message]);
+
+        useEffect(() => {
+            setDataBase(DATABASES[server]?.[0]?.value);
+        }, [server]);
+
+        useEffect(() => {
+            setTable(TABLES[database]?.[0]?.value);
+        }, [database]);
+
+        useEffect(() => {
+        if (useCurrentEndDate) {
+            const now = new Date();
+            const formatted = getLocalDatetimeString(now);
+
+            // Solo actualiza si ha cambiado
+            if (endDate !== formatted) {
+            setEndDate(formatted);
+            }
+        }
+        }, [useCurrentEndDate, endDate]);
+
+    const closeAudioModal = () => {
+        setIsModalOpen(false);
+        setCurrentAudioUrl(null); // Limpia la URL cuando se cierra
+    };
 
     const startFetchingReport = () => { // Rename for clarity
         setCurrentPage(1); // Always start from the first page
@@ -494,6 +531,39 @@ const DOWNLOAD_BATCH_SIZE = 10000;
     }
 };
 
+const handleTemplateChange = useCallback((template: keyof typeof QUERY_TEMPLATES) => {
+    setSelectedQueryTemplate(template);
+
+    // Lógica para sincronizar la base de datos y la tabla según el template seleccionado
+    switch (template) {
+        case 'cdrReport':
+            // Sincronizar para los reportes de Queues
+            setServer('fathomvoice');
+            setDataBase('fathomQueues');
+            setTable('queueCDR'); // O la tabla por defecto que desees
+            break;
+        case 'liveStatus':
+            // Sincronizar para el estado en vivo
+            setServer('fathomvoice');
+            setDataBase('fathomQueues'); // O la base de datos que corresponda
+            setTable('queueCDRLegs'); // O la tabla que corresponda
+            break;
+        case 'getAgents':
+            // Sincronizar para los agentes en tiempo real
+            setServer('fathomvoice');
+            setDataBase('fathomQueues'); // O la base de datos que corresponda
+            setTable('queueAgents'); // O la tabla que corresponda
+            break;
+        case 'agentStatus':
+            // No es necesario sincronizar aquí, el componente hijo se encarga.
+            // setAgentUsername(''); // Puedes resetear el username aquí si quieres
+            break;
+        default:
+            // Lógica para cualquier otra opción si es necesario
+            break;
+    }
+}, []);
+
 const downloadFullCSV = async () => {
         if (!isValidRange()) {
             alert("Selecciona un rango válido de fechas.");
@@ -521,8 +591,29 @@ const downloadFullCSV = async () => {
                     setLoading(false);
                     return;
                 }
-                const { endpoint, payload } = QUERY_TEMPLATES.cdrReport(
-                    server, database, table, timeColumn, startDate, endDate, DOWNLOAD_BATCH_SIZE, offset
+                if (!isBulkTemplate(selectedQueryTemplate)) {
+                    setError(`La plantilla "${selectedQueryTemplate}" no soporta descarga completa.`);
+                    setLoading(false);
+                    return;
+                }
+
+                const templateFn = TEMPLATE_DISPATCHER[selectedQueryTemplate];
+
+                if (!templateFn) {
+                    setError(`La plantilla "${selectedQueryTemplate}" no soporta descarga completa.`);
+                    setLoading(false);
+                    return;
+                }
+
+                const { endpoint, payload } = templateFn(
+                    server,
+                    database,
+                    table,
+                    timeColumn,
+                    startDate,
+                    endDate,
+                    DOWNLOAD_BATCH_SIZE,
+                    offset
                 );
 
                 const response = await sharpenAPI.post<responseData>('dashboards/proxy/generic/', {
@@ -732,7 +823,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                 <label htmlFor="queryTemplateSelect" className="text-lg font-bold text-white mb-4 block text-center drop-shadow-md">
                     Select Report
                 </label>
-                <Listbox value={selectedQueryTemplate} onChange={setSelectedQueryTemplate}>
+                <Listbox value={selectedQueryTemplate} onChange={handleTemplateChange}> {/* Usar la nueva función de cambio */}
                     <div className="relative mt-1">
                     <ListboxButton 
                         className="relative w-full cursor-pointer rounded-md bg-gray-700 py-2 px-4 text-center shadow-md transition duration-200 ease-in-out text-white hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
@@ -799,7 +890,7 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
 
             {/* --- SECCIÓN DE SELECCIÓN DE DATOS (CONDICIONAL SEGÚN PLANTILLA/CUSTOM QUERY) --- */}
 
-                    {selectedQueryTemplate === 'agentStatus' && (
+                    {selectedQueryTemplate === 'agentStatus' ? (
                         <div 
                             className='animate-fade-in-down flex flex-col max-w-[350px] mb-5'
                             >
@@ -818,371 +909,370 @@ const fetchCallAudio = async (row: RowData, rowIndex: number) => {
                                 className='p-1 text-center max-w-[350px] items-center rounded-lg border border-gray-200'
                             />
                         </div>
-                    )}
-                    {selectedQueryTemplate === 'cdrReport' && (
-    // Contenedor principal con animación de entrada
-    <div className="animate-fade-in-down p-6 bg-gray-800 border border-gray-700 rounded-lg shadow-lg">
-        <h3 className="text-xl font-semibold text-white mb-6 border-b border-gray-700 pb-3">
-            ⚙️ Sharpen Queues Report Configuration
-        </h3>
+                    ) : (
+                        // Contenedor principal con animación de entrada
+                        <div className="animate-fade-in-down p-6 bg-gray-800 border border-gray-700 rounded-lg shadow-lg">
+                            <h3 className="text-xl font-semibold text-white mb-6 border-b border-gray-700 pb-3">
+                                ⚙️ Sharpen Queues Report Configuration
+                            </h3>
 
-        {/* Grid responsivo para los campos del formulario */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-6">
+            {/* Grid responsivo para los campos del formulario */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-6">
 
-            {/* --- Campo Servidor --- */}
-            <div>
-                <label htmlFor="server-select" className="block text-sm font-medium text-gray-300 mb-1">Server</label>
-                <div className="relative">
-                    <select
-                        id="server-select"
-                        value={server}
-                        onChange={(e) => setServer(e.target.value)}
-                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-150 ease-in-out"
-                    >
-                        {SERVERS.map((s) => (
-                            <option key={s.value} value={s.value}>{s.label}</option>
-                        ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
-                        <ChevronDownIcon />
+                {/* --- Campo Servidor --- */}
+                <div>
+                    <label htmlFor="server-select" className="block text-sm font-medium text-gray-300 mb-1">Server</label>
+                    <div className="relative">
+                        <select
+                            id="server-select"
+                            value={server}
+                            onChange={(e) => setServer(e.target.value)}
+                            className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-150 ease-in-out"
+                        >
+                            {SERVERS.map((s) => (
+                                <option key={s.value} value={s.value}>{s.label}</option>
+                            ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
+                            <ChevronDownIcon />
+                        </div>
+                    </div>
+                        <div className="flex flex-col">
+                            <label htmlFor="language-select" className="text-gray-300 text-sm font-medium mb-1">Idioma de Análisis:</label>
+                            <Listbox value={selectedLanguage} onChange={setSelectedLanguage}>
+                                <div className="relative mt-1">
+                                    <ListboxButton className="relative w-full cursor-default rounded-md bg-gray-700 py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm text-gray-300">
+                                        <span className="block truncate">{selectedLanguage === 'es' ? 'Español' : 'English'}</span>
+                                        <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                                            <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M10 3a.75.75 0 01.55.25l3.5 3.5a.75.75 0 01-1.06 1.06L10 4.81 7.01 7.82a.75.75 0 01-1.06-1.06l3.5-3.5A.75.75 0 0110 3zm-3.5 9a.75.75 0 011.06 1.06L10 15.19l2.99-3.01a.75.75 0 111.06 1.06l-3.5 3.5a.75.75 0 01-1.06 0l-3.5-3.5A.75.75 0 016.5 12z" clipRule="evenodd" /></svg>
+                                        </span>
+                                    </ListboxButton>
+                                    <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-gray-700 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                                        <ListboxOption className="relative cursor-default select-none py-2 pl-3 pr-9 text-gray-300 hover:bg-indigo-600" value="es">
+                                            Español
+                                        </ListboxOption>
+                                        <ListboxOption className="relative cursor-default select-none py-2 pl-3 pr-9 text-gray-300 hover:bg-indigo-600" value="en">
+                                            English
+                                        </ListboxOption>
+                                    </ListboxOptions>
+                                </div>
+                            </Listbox>
+                        </div>
+                </div>
+
+                {/* --- Campo Base de Datos --- */}
+                <div>
+                    <label htmlFor="database-select" className="block text-sm font-medium text-gray-300 mb-1">Data Base</label>
+                    <div className="relative">
+                        <select
+                            id="database-select"
+                            value={database}
+                            onChange={(e) => setDataBase(e.target.value)}
+                            disabled={!TABLES[database]} // Deshabilitar si no hay opciones
+                            className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {DATABASES[server]?.map((db) => (
+                                <option key={db.value} value={db.value}>{db.label}</option>
+                            ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
+                            <ChevronDownIcon />
+                        </div>
                     </div>
                 </div>
-                    <div className="flex flex-col">
-                        <label htmlFor="language-select" className="text-gray-300 text-sm font-medium mb-1">Idioma de Análisis:</label>
-                        <Listbox value={selectedLanguage} onChange={setSelectedLanguage}>
-                            <div className="relative mt-1">
-                                <ListboxButton className="relative w-full cursor-default rounded-md bg-gray-700 py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm text-gray-300">
-                                    <span className="block truncate">{selectedLanguage === 'es' ? 'Español' : 'English'}</span>
-                                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                                        <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M10 3a.75.75 0 01.55.25l3.5 3.5a.75.75 0 01-1.06 1.06L10 4.81 7.01 7.82a.75.75 0 01-1.06-1.06l3.5-3.5A.75.75 0 0110 3zm-3.5 9a.75.75 0 011.06 1.06L10 15.19l2.99-3.01a.75.75 0 111.06 1.06l-3.5 3.5a.75.75 0 01-1.06 0l-3.5-3.5A.75.75 0 016.5 12z" clipRule="evenodd" /></svg>
-                                    </span>
-                                </ListboxButton>
-                                <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-gray-700 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-                                    <ListboxOption className="relative cursor-default select-none py-2 pl-3 pr-9 text-gray-300 hover:bg-indigo-600" value="es">
-                                        Español
-                                    </ListboxOption>
-                                    <ListboxOption className="relative cursor-default select-none py-2 pl-3 pr-9 text-gray-300 hover:bg-indigo-600" value="en">
-                                        English
-                                    </ListboxOption>
-                                </ListboxOptions>
-                            </div>
-                        </Listbox>
-                    </div>
-            </div>
-
-            {/* --- Campo Base de Datos --- */}
-            <div>
-                <label htmlFor="database-select" className="block text-sm font-medium text-gray-300 mb-1">Data Base</label>
-                <div className="relative">
-                    <select
-                        id="database-select"
-                        value={database}
-                        onChange={(e) => setDataBase(e.target.value)}
-                        disabled={!DATABASES[server]} // Deshabilitar si no hay opciones
-                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {DATABASES[server]?.map((db) => (
-                            <option key={db.value} value={db.value}>{db.label}</option>
-                        ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
-                        <ChevronDownIcon />
+                
+                {/* --- Campo Tabla --- */}
+                <div>
+                    <label htmlFor="table-select" className="block text-sm font-medium text-gray-300 mb-1">Table</label>
+                    <div className="relative">
+                        <select
+                            id="table-select"
+                            value={table}
+                            onChange={(e) => setTable(e.target.value)}
+                            disabled={!TABLES[database]} // Deshabilitar si no hay opciones
+                            className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {TABLES[database]?.map((tbl) => (
+                                <option key={tbl.value} value={tbl.value}>{tbl.label}</option>
+                            ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
+                            <ChevronDownIcon />
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            {/* --- Campo Tabla --- */}
-            <div>
-                <label htmlFor="table-select" className="block text-sm font-medium text-gray-300 mb-1">Table</label>
-                <div className="relative">
-                    <select
-                        id="table-select"
-                        value={table}
-                        onChange={(e) => setTable(e.target.value)}
-                        disabled={!TABLES[database]} // Deshabilitar si no hay opciones
-                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {TABLES[database]?.map((tbl) => (
-                            <option key={tbl.value} value={tbl.value}>{tbl.label}</option>
-                        ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
-                        <ChevronDownIcon />
+
+                {/* --- Campo Fecha de Inicio --- */}
+                <div>
+                    <label htmlFor="startDate" className="block text-sm font-medium text-gray-300 mb-1">Initial Date Time</label>
+                    <div className="relative">
+                        <input
+                            type="datetime-local"
+                            id="startDate"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 [color-scheme:dark]"
+                        />
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
+                            <CalendarIcon />
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* --- Campo Fecha de Inicio --- */}
-            <div>
-                <label htmlFor="startDate" className="block text-sm font-medium text-gray-300 mb-1">Initial Date Time</label>
-                <div className="relative">
-                    <input
-                        type="datetime-local"
-                        id="startDate"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 [color-scheme:dark]"
-                    />
-                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
-                        <CalendarIcon />
+                {/* --- Campo Fecha Final --- */}
+                <div>
+                    <label htmlFor="endDate" className="block text-sm font-medium text-gray-300 mb-1">Final Date Time</label>
+                    <div className="relative">
+                        <input
+                            type="datetime-local"
+                            id="endDate"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            disabled={useCurrentEndDate}
+                            className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed [color-scheme:dark]"
+                        />
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
+                            <CalendarIcon />
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* --- Campo Fecha Final --- */}
-            <div>
-                <label htmlFor="endDate" className="block text-sm font-medium text-gray-300 mb-1">Final Date Time</label>
-                <div className="relative">
-                    <input
-                        type="datetime-local"
-                        id="endDate"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        disabled={useCurrentEndDate}
-                        className="appearance-none block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed [color-scheme:dark]"
-                    />
-                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
-                        <CalendarIcon />
-                    </div>
+                {/* --- Checkbox para Usar Fecha Actual --- */}
+                <div className="flex items-end pb-2"> {/* Alineado para que el checkbox quede bien */}
+                    <label htmlFor="useCurrentEndDate" className="flex items-center cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            id="useCurrentEndDate"
+                            checked={useCurrentEndDate}
+                            onChange={(e) => setUseCurrentEndDate(e.target.checked)}
+                            className="sr-only" // Ocultamos el checkbox por defecto
+                        />
+                        {/* Checkbox personalizado */}
+                        <span className={`h-5 w-5 rounded border-2 flex-shrink-0 mr-2 transition duration-150 ease-in-out ${useCurrentEndDate ? 'bg-purple-600 border-purple-500' : 'bg-gray-700 border-gray-600'}`}>
+                            {useCurrentEndDate && (
+                                <svg className="w-full h-full text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                            )}
+                        </span>
+                        <span className="text-sm font-medium text-gray-300">Until Now</span>
+                    </label>
                 </div>
-            </div>
-
-            {/* --- Checkbox para Usar Fecha Actual --- */}
-            <div className="flex items-end pb-2"> {/* Alineado para que el checkbox quede bien */}
-                <label htmlFor="useCurrentEndDate" className="flex items-center cursor-pointer select-none">
-                    <input
-                        type="checkbox"
-                        id="useCurrentEndDate"
-                        checked={useCurrentEndDate}
-                        onChange={(e) => setUseCurrentEndDate(e.target.checked)}
-                        className="sr-only" // Ocultamos el checkbox por defecto
-                    />
-                    {/* Checkbox personalizado */}
-                    <span className={`h-5 w-5 rounded border-2 flex-shrink-0 mr-2 transition duration-150 ease-in-out ${useCurrentEndDate ? 'bg-purple-600 border-purple-500' : 'bg-gray-700 border-gray-600'}`}>
-                        {useCurrentEndDate && (
-                            <svg className="w-full h-full text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                        )}
-                    </span>
-                    <span className="text-sm font-medium text-gray-300">Until Now</span>
-                </label>
             </div>
         </div>
-    </div>
-)}
+    )}
 
-            {/* --- BOTONES DE ACCIÓN --- */}
-            <div className='animate-fade-in-down flex flex-wrap items-center gap-4 mb-6 p-4 bg-gray-800 rounded-lg shadow-md'>
-                <button
-                    onClick={startFetchingReport}                    
-                    disabled={loading || (selectedQueryTemplate === 'cdrReport' && !customQuery && !isValidRange())} // Disable if CDR and dates are invalid
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-5 py-2 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[150px]"
-                >
-                    {loading ? (
-                        <svg className="animate-spin h-5 w-5 text-white mr-2" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    ) : 'Send Query'}
-                </button>
-                <button
-                    onClick={downloadCSV}
-                    disabled={data.length === 0 || loading}
-                    className="bg-green-600 hover:bg-green-700 text-white font-bold px-5 py-2 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-w-[150px]"
-                >
-                    Download Actual Page ({data.length.toLocaleString()} registers)
-                </button>
-                <button 
-                    onClick={downloadFullCSV}
-                    disabled={data.length === 0 || loading}
-                    className="bg-green-600 hover:bg-green-700 text-white font-bold px-5 py-2 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-w-[150px]"
-
-                >
-                        Descargar todos los datos
-                </button>
-            </div>
-
-            {/* --- ESTADO DE MONITOREO Y MENSAJES --- */}
-            {monitoringStatus && (
-                <div className={`animate-fade-in-down p-4 flex items-center max-w-[300px] my-4 rounded-lg text-white font-medium shadow-md ${
-                    monitoringStatus.type === 'error' ? 'bg-red-600' :
-                    monitoringStatus.type === 'success' ? 'bg-green-600' :
-                    'bg-purple-600 hidden'
-                }`}>
-                    {monitoringStatus.message}
-                    {monitoringStatus.type === 'error' ? (
-                        <GrStatusCritical className='ml-2 text-xl animate-pulse' /> // Icono de error (ajusta el tamaño si es necesario)
-                    ) : monitoringStatus.type === 'success' ? (
-                        <GrStatusGood className='ml-2 text-xl animate-pulse' /> // Icono de éxito
-                    ) : (
-                        // Aquí puedes poner un icono para 'info', 'loading', o simplemente dejarlo vacío si no quieres uno por defecto
-                        // Por ejemplo, <FaInfoCircle className='ml-2' /> o un spinner para carga
-                        <span className='ml-2 hidden'>💡</span> 
-                    )}
-                </div>
-            )}
-
-            {error && (
-                <div className="animate-fade-in-down bg-red-800 text-white p-4 rounded-lg mb-6 shadow-md border border-red-700">
-                    <p className="font-bold mb-2">¡Consult Error!</p>
-                    <p>{error}</p>
-                    <p className="text-sm text-gray-300 mt-2">Please, review your query or the selected parámeters and try again.</p>
-                </div>
-            )}
-            {loading && (
-                <p className="animate-fade-in-down text-white text-lg font-medium text-center my-8">
-                    <span className="animate-pulse">Loading data...</span> This maybe take a moment. Remember to stop and smell the flowers🌷
-                </p>
-            )}
-              {selectedQueryTemplate !== 'agentStatus' && ( // Don't show filter if we're querying a single agent
-                <div className="mb-4 bg-gray-800 p-4 rounded-lg shadow-md">
-                    <label htmlFor="usernameFilter" className="block text-gray-300 text-sm font-bold mb-2">
-                        Filtrar por Username:
-                    </label>
-                    <input
-                        type="text"
-                        id="usernameFilter"
-                        value={usernameFilter}
-                        onChange={(e) => startTransition(() => setUsernameFilter(e.target.value))}
-                        placeholder="Escribe un username para filtrar..."
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-gray-300"
-                    />
-                </div>
-            )}
-
-            {/* --- SECCIÓN DE RESULTADOS DE LA TABLA --- */}
-            {data.length > 0 ? (
-                <div
-                    className='text-yellow-400 font-medium animate-fade-in-down mt-5' 
+                {/* --- BOTONES DE ACCIÓN --- */}
+                <div className='animate-fade-in-down flex flex-wrap items-center gap-4 mb-6 p-4 bg-gray-800 rounded-lg shadow-md'>
+                    <button
+                        onClick={startFetchingReport}                    
+                        // disabled={loading || (!customQuery && !isValidRange())} // Disable if CDR and dates are invalid
+                        className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-5 py-2 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[150px]"
                     >
-                    <h2>Resulted ({fetchedCount} rows)</h2>
-                    <div className="overflow-x-auto relative shadow-md rounded-lg border border-gray-700">
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead className="text-gray-100 uppercase bg-gray-700 sticky top-0 z-10">
-                            <tr className="">
-                                {/* COLUMNA DE ACCIONES - ¡AQUÍ ESTÁ EL CAMBIO! */}
-                                <th scope="col" className="px-6 py-3 font-semibold text-center text-gray-300 uppercase tracking-wider">
-                                    Accions
-                                </th>
-                                {/* FIN DE COLUMNA DE ACCIONES */}
+                        {loading ? (
+                            <svg className="animate-spin h-5 w-5 text-white mr-2" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        ) : 'Send Query'}
+                    </button>
+                    <button
+                        onClick={downloadCSV}
+                        disabled={data.length === 0 || loading}
+                        className="bg-green-600 hover:bg-green-700 text-white font-bold px-5 py-2 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-w-[150px]"
+                    >
+                        Download Actual Page ({data.length.toLocaleString()} registers)
+                    </button>
+                    <button 
+                        onClick={downloadFullCSV}
+                        disabled={data.length === 0 || loading}
+                        className="bg-green-600 hover:bg-green-700 text-white font-bold px-5 py-2 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-w-[150px]"
 
-                                {/* Cabeceras generadas dinámicamente */}
-                                {Object.keys(data[0]).map(key => (
-                                    <th key={key} scope="col" className="px-6 py-3 font-semibold text-center text-gray-300 uppercase tracking-wider">
-                                        {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                    >
+                            Descargar todos los datos
+                    </button>
+                </div>
+
+                {/* --- ESTADO DE MONITOREO Y MENSAJES --- */}
+                {monitoringStatus && (
+                    <div className={`animate-fade-in-down p-4 flex items-center max-w-[300px] my-4 rounded-lg text-white font-medium shadow-md ${
+                        monitoringStatus.type === 'error' ? 'bg-red-600' :
+                        monitoringStatus.type === 'success' ? 'bg-green-600' :
+                        'bg-purple-600 hidden'
+                    }`}>
+                        {monitoringStatus.message}
+                        {monitoringStatus.type === 'error' ? (
+                            <GrStatusCritical className='ml-2 text-xl animate-pulse' /> // Icono de error (ajusta el tamaño si es necesario)
+                        ) : monitoringStatus.type === 'success' ? (
+                            <GrStatusGood className='ml-2 text-xl animate-pulse' /> // Icono de éxito
+                        ) : (
+                            // Aquí puedes poner un icono para 'info', 'loading', o simplemente dejarlo vacío si no quieres uno por defecto
+                            // Por ejemplo, <FaInfoCircle className='ml-2' /> o un spinner para carga
+                            <span className='ml-2 hidden'>💡</span> 
+                        )}
+                    </div>
+                )}
+
+                {error && (
+                    <div className="animate-fade-in-down bg-red-800 text-white p-4 rounded-lg mb-6 shadow-md border border-red-700">
+                        <p className="font-bold mb-2">¡Consult Error!</p>
+                        <p>{error}</p>
+                        <p className="text-sm text-gray-300 mt-2">Please, review your query or the selected parámeters and try again.</p>
+                    </div>
+                )}
+                {loading && (
+                    <p className="animate-fade-in-down text-white text-lg font-medium text-center my-8">
+                        <span className="animate-pulse">Loading data...</span> This maybe take a moment. Remember to stop and smell the flowers🌷
+                    </p>
+                )}
+                {selectedQueryTemplate !== 'agentStatus' && ( // Don't show filter if we're querying a single agent
+                    <div className="mb-4 bg-gray-800 p-4 rounded-lg shadow-md">
+                        <label htmlFor="usernameFilter" className="block text-gray-300 text-sm font-bold mb-2">
+                            Filtrar por Username:
+                        </label>
+                        <input
+                            type="text"
+                            id="usernameFilter"
+                            value={usernameFilter}
+                            onChange={(e) => startTransition(() => setUsernameFilter(e.target.value))}
+                            placeholder="Escribe un username para filtrar..."
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-gray-300"
+                        />
+                    </div>
+                )}
+
+                {/* --- SECCIÓN DE RESULTADOS DE LA TABLA --- */}
+                {data.length > 0 ? (
+                    <div
+                        className='text-yellow-400 font-medium animate-fade-in-down mt-5' 
+                        >
+                        <h2>Resulted ({fetchedCount} rows)</h2>
+                        <div className="overflow-x-auto relative shadow-md rounded-lg border border-gray-700">
+                            <table className="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead className="text-gray-100 uppercase bg-gray-700 sticky top-0 z-10">
+                                <tr className="">
+                                    {/* COLUMNA DE ACCIONES - ¡AQUÍ ESTÁ EL CAMBIO! */}
+                                    <th scope="col" className="px-6 py-3 font-semibold text-center text-gray-300 uppercase tracking-wider">
+                                        Accions
                                     </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="bg-gray-900 divide-y divide-gray-700">
-                            {currentItems
-                                .filter(row => {
-                                    if (selectedQueryTemplate === 'cdrReport' || selectedQueryTemplate === 'liveStatus') {
-                                        return row.queueCallManagerID !== null && row.queueCallManagerID !== undefined;
-                                    }
-                                    return true;
-                                })
-                                .map((row, rowIndex) => (
-                                <tr key={rowIndex} className="bg-gray-800 border-b text-gray-200 hover:bg-gray-700 transition-colors duration-150 ease-in-out">
-                                    <td className="px-6 py-4 text-center whitespace-nowrap">
-                                        {selectedQueryTemplate === 'cdrReport' && (
-                                            <div className="flex flex-col space-y-1 items-center"> {/* Usa flexbox para alinear botones */}
-                                                {row.queueCallManagerID && !row.recordingUrl && (
-                                                    <button
-                                                        onClick={() => fetchCallAudio(row, rowIndex)}
-                                                        className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 mr-2"
-                                                        title="Obtener Grabación"
-                                                    >
-                                                        Get Record
-                                                    </button>
-                                                
-                                                )}
-                                                {row.recordingUrl && (
-                                                    <>
-                                                    <a
-                                                        href={String(row.recordingUrl)}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="px-3 py-1 bg-indigo-500 text-white text-xs rounded hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
-                                                        title="Reproducir Grabación"
-                                                    >
-                                                    🎧 Play Audio
-                                                    </a>
-                                                    <button
-                                                        onClick={() => sendAudioForAnalysisToBackend(row.queueCallManagerID as string, row.recordingUrl as string, selectedLanguage)} 
-                                                        disabled={loading} // Deshabilita mientras se carga algo
-                                                        className="text-yellow-400 hover:text-yellow-600 ml-2"
-                                                        >
-                                                        Analizar
-                                                    </button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        )}
-                                        {selectedQueryTemplate === 'liveStatus' && row.queueCallManagerID && row.username && (
-                                            <button
-                                                onClick={() => startMonitoringCall(String(row.queueCallManagerID), String(row.username))}
-                                                className="px-3 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50"
-                                                title="Monitorear Llamada"
-                                            >
-                                                📞 Monitor
-                                            </button>
-                                        )}
-                                    </td>
-                                    {Object.entries(row).map(([key, value], colIndex) => (
-                                        <td key={`${rowIndex}-${colIndex}`} className="px-6 py-4 text-center whitespace-nowrap text-ellipsis max-w-[300px] text-sm text-white overflow-hidden">
-                                            {Array.isArray(value)
-                                                ? value.map(item => item.queueName || JSON.stringify(item)).join(', ')
-                                                : value !== null && value !== undefined
-                                                ? String(value)
-                                                : 'N/A'}
-                                        </td>
+                                    {/* FIN DE COLUMNA DE ACCIONES */}
+
+                                    {/* Cabeceras generadas dinámicamente */}
+                                    {Object.keys(data[0]).map(key => (
+                                        <th key={key} scope="col" className="px-6 py-3 font-semibold text-center text-gray-300 uppercase tracking-wider">
+                                            {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                                        </th>
                                     ))}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    </div>
+                            </thead>
+                            <tbody className="bg-gray-900 divide-y divide-gray-700">
+                                {currentItems
+                                    .filter(row => {
+                                        if (selectedQueryTemplate === 'cdrReport' || selectedQueryTemplate === 'cdrLegReport' || selectedQueryTemplate === 'liveStatus') {
+                                            return row.queueCallManagerID !== null && row.queueCallManagerID !== undefined;
+                                        }
+                                        return true;
+                                    })
+                                    .map((row, rowIndex) => (
+                                    <tr key={rowIndex} className="bg-gray-800 border-b text-gray-200 hover:bg-gray-700 transition-colors duration-150 ease-in-out">
+                                        <td className="px-6 py-4 text-center whitespace-nowrap">
+                                            {selectedQueryTemplate === 'cdrReport' || selectedQueryTemplate === 'cdrLegReport' && (
+                                                <div className="flex flex-col space-y-1 items-center"> {/* Usa flexbox para alinear botones */}
+                                                    {row.queueCallManagerID && !row.recordingUrl && (
+                                                        <button
+                                                            onClick={() => fetchCallAudio(row, rowIndex)}
+                                                            className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 mr-2"
+                                                            title="Obtener Grabación"
+                                                        >
+                                                            Get Record
+                                                        </button>
+                                                    
+                                                    )}
+                                                    {row.recordingUrl && (
+                                                        <>
+                                                        <a
+                                                            href={String(row.recordingUrl)}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="px-3 py-1 bg-indigo-500 text-white text-xs rounded hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
+                                                            title="Reproducir Grabación"
+                                                        >
+                                                        🎧 Play Audio
+                                                        </a>
+                                                        <button
+                                                            onClick={() => sendAudioForAnalysisToBackend(row.queueCallManagerID as string, row.recordingUrl as string, selectedLanguage)} 
+                                                            disabled={loading} // Deshabilita mientras se carga algo
+                                                            className="text-yellow-400 hover:text-yellow-600 ml-2"
+                                                            >
+                                                            Analizar
+                                                        </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {selectedQueryTemplate === 'liveStatus' && row.queueCallManagerID && row.username && (
+                                                <button
+                                                    onClick={() => startMonitoringCall(String(row.queueCallManagerID), String(row.username))}
+                                                    className="px-3 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50"
+                                                    title="Monitorear Llamada"
+                                                >
+                                                    📞 Monitor
+                                                </button>
+                                            )}
+                                        </td>
+                                        {Object.entries(row).map(([key, value], colIndex) => (
+                                            <td key={`${rowIndex}-${colIndex}`} className="px-6 py-4 text-center whitespace-nowrap text-ellipsis max-w-[300px] text-sm text-white overflow-hidden">
+                                                {Array.isArray(value)
+                                                    ? value.map(item => item.queueName || JSON.stringify(item)).join(', ')
+                                                    : value !== null && value !== undefined
+                                                    ? String(value)
+                                                    : 'N/A'}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        </div>
 
-                    
+                        
 
-                    {/* Controles de paginación */}
-                    <div className="flex justify-center items-center gap-6 mt-6 p-4 bg-gray-800 rounded-lg shadow-md">
-                        <button
-                            onClick={handlePreviousPage}
-                            disabled={currentPage === 1}
-                            className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            ← Before
-                        </button>
-                        <span className="text-white text-base font-medium">
-                            Page 
-                                <select
-                                    value={currentPage}
-                                    onChange={handleGoToPage}
-                                    className="bg-gray-700 mr-2 ml-2 hover:bg-gray-600 text-white rounded-md focus:ring-purple-500 focus:border-purple-500 text-base appearance-none cursor-pointer"
-                                    style={{ minWidth: '60px', textAlign: 'center' }} // Estilo inline para asegurar tamaño mínimo y centrado
-                                >
-                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                                        <option key={page} value={page}>
-                                            {page}
-                                        </option>
-                                    ))}
-                                </select>                            
-                            of <span className="font-bold">{totalPages}</span>
-                            <span className="ml-3 text-gray-400">({data.length.toLocaleString()} total registers)</span>
-                        </span>
-                        <button
-                            onClick={handleNextPage}
-                            disabled={currentPage === totalPages || loading}
-                            className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            Next →
-                        </button>
+                        {/* Controles de paginación */}
+                        <div className="flex justify-center items-center gap-6 mt-6 p-4 bg-gray-800 rounded-lg shadow-md">
+                            <button
+                                onClick={handlePreviousPage}
+                                disabled={currentPage === 1}
+                                className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                ← Before
+                            </button>
+                            <span className="text-white text-base font-medium">
+                                Page 
+                                    <select
+                                        value={currentPage}
+                                        onChange={handleGoToPage}
+                                        className="bg-gray-700 mr-2 ml-2 hover:bg-gray-600 text-white rounded-md focus:ring-purple-500 focus:border-purple-500 text-base appearance-none cursor-pointer"
+                                        style={{ minWidth: '60px', textAlign: 'center' }} // Estilo inline para asegurar tamaño mínimo y centrado
+                                    >
+                                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                            <option key={page} value={page}>
+                                                {page}
+                                            </option>
+                                        ))}
+                                    </select>                            
+                                of <span className="font-bold">{totalPages}</span>
+                                <span className="ml-3 text-gray-400">({data.length.toLocaleString()} total registers)</span>
+                            </span>
+                            <button
+                                onClick={handleNextPage}
+                                disabled={currentPage === totalPages || loading}
+                                className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Next →
+                            </button>
+                        </div>
                     </div>
-                </div>
-            ) : (
+                ) : (
                 !loading && !error && (
                     <div className="animate-fade-in-down p-6 bg-gray-800 rounded-lg text-white text-center text-lg shadow-md">
                         <p>No data to Show. ¡Send a query to saw the results!</p>
