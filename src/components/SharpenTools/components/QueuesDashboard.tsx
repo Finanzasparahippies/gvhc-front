@@ -79,6 +79,7 @@ const QueueDashboard: React.FC = () => {
     const [author, setAuthor] = useState<string | null>(null);
     const { user } = useAuth();  // Dentro de tu componente `QueueDashboard`
     const [isSidebarOpen, setIsSidebarOpen] = useState(true); // <--- CAMBIO: Estado para la barra lateral
+    const [isAgentTickerVisible, setIsAgentTickerVisible] = useState(true);
     const [isFullscreen, setIsFullscreen] = useState(false); // <--- AÑADE ESTE ESTADO
     const dashboardRef = useRef<HTMLDivElement>(null); // <--- AÑADE ESTA REFERENCIA
     // const [sidebarError, setSidebarError] = useState<string | null>(null); // <--- AÑADE ESTO
@@ -301,6 +302,14 @@ useEffect(() => {
                     <div className="flex items-center gap-4 mt-4 sm:mt-0">
                         {/* <--- CAMBIO: Botón para controlar la barra lateral ---> */}
                         <button
+                            onClick={() => setIsAgentTickerVisible((prev) => !prev)}
+                            className="flex items-center px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+                            title={isAgentTickerVisible ? 'Hide Agent Ticker' : 'Show Agent Ticker'}
+                        >
+                            <MdSpatialAudioOff className="mr-2" />
+                            <span>{isAgentTickerVisible ? 'Hide Ticker' : 'Show Ticker'}</span>
+                        </button>
+                        <button
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                             className="flex items-center px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
                             title={isSidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}
@@ -395,9 +404,9 @@ useEffect(() => {
                                         `}
                                     >
                                         <div>
-                                            <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center justify-center mb-3 text-center">
                                                 {/* Usa el título del grupo */}
-                                                <h2 className="text-gray-300 text-5xl font-semibold">{queue.title}</h2>
+                                                <h2 className="text-gray-300 text-7xl font-semibold">{queue.title}</h2>
                                                 <FcDepartment className="text-blue-400" size={60} />
                                             </div>
 
@@ -407,21 +416,21 @@ useEffect(() => {
                                                         <FiPhoneIncoming className="text-purple-400 mr-2" size={30} />
                                                         <span className="text-gray-300 text-2xl font-semibold">Calls in Queue:</span>
                                                 </div>
-                                                    <p className={`text-[8rem] font-extrabold leading-none transition-colors duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
+                                                    <p className={`text-9xl font-semibold leading-none transition-colors duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
                                                         {isLoading && countValue === 0 ? <FiLoader className="animate-spin text-purple-400" /> : countValue}
                                                     </p>
                                             </div>
 
                                             {/* Sección para el LCW (esto no cambia, ya que usa lcwValue) */}
                                             <div className="mt-4">
-                                            <div className="flex items-center mb-2">
+                                            <div className="flex items-center mb-2 justify-center">
                                                 <FiClock className="text-orange-400 mr-2" size={26} />
                                                 <span className="text-gray-300 text-xl font-semibold select-none">Longest Wait:</span>
                                             </div>
                                             <div className="grid grid-cols-2 gap-4 items-center justify-items-center">
                                                 <div className="flex items-center gap-2">
-                                                <span className="text-2xl select-none" role="img" aria-label="US Flag">🇺🇸</span>
-                                                <span className={`text-4xl font-bold ${isLoading ? 'text-white/60' : 'text-white'}`}>
+                                                <span className="text-5xl select-none" role="img" aria-label="US Flag">🇺🇸</span>
+                                                <span className={`text-7xl font-semibold ${isLoading ? 'text-white/60' : 'text-white'}`}>
                                                     {isLoading && lcwEnValue === '00:00:00' ? (
                                                     <FiLoader className="animate-spin text-purple-400" />
                                                     ) : (
@@ -430,8 +439,8 @@ useEffect(() => {
                                                 </span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                <span className="text-2xl select-none" role="img" aria-label="Mexico Flag">🇲🇽</span>
-                                                <span className={`text-4xl font-bold ${isLoading ? 'text-white/60' : 'text-white'}`}>
+                                                <span className="text-5xl select-none" role="img" aria-label="Mexico Flag">🇲🇽</span>
+                                                <span className={`text-7xl font-semibold ${isLoading ? 'text-white/60' : 'text-white'}`}>
                                                     {isLoading && lcwEsValue === '00:00:00' ? (
                                                     <FiLoader className="animate-spin text-purple-400" />
                                                     ) : (
@@ -452,7 +461,9 @@ useEffect(() => {
                                 <p className="mt-2 text-lg text-purple-400">— {author}</p>
                             </div>
                         )}
-                        <AgentTicker agents={agentLiveStatus} error={agentError} loading={agentLoading}/>
+                        {isAgentTickerVisible && (
+                            <AgentTicker agents={agentLiveStatus} error={agentError} loading={agentLoading}/>
+                        )}
                     </main>
                 </div>
             </div>
