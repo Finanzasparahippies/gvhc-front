@@ -158,9 +158,9 @@ export const ReactFlowComponent: React.FC = () => {
 
     try {
       const response = await API.get<{results: FAQ[]}>(url);
-      // console.log('Response:', response);
+      console.log('Response:', response);
       const data: FAQ[] = response.data.results || [];
-      // console.log('ResponseData:', data);
+      console.log('ResponseData:', data);
       const apiNodes: Node<BasePayload>[] = [];
       const apiEdges: Edge[] = [];
       let currentX = 0;
@@ -217,7 +217,7 @@ export const ReactFlowComponent: React.FC = () => {
           response_data: nodeType,
           questionText: faq.question || 'No Title',
           answerText: answer.answer_text || '',
-          template: answer.template,
+          template: answer.template || '',
           imageUrl: answer.image_url,
           keywords: faq.keywords,
           steps: answer.steps,
