@@ -86,15 +86,17 @@ const TabsComponent = () => {
          {isLoading ? (
                     <div className="px-2 text-gray-500">Cargando...</div>
                 
-                ) : user?.role === 'egs' ? (
-                    // If user is 'egs', only show Food Station button
-                    <button
-                        onClick={() => handleTabChange('Food Station')}
-                        className={activeTab === 'Food Station' ? 'active px-2 bg-slate-200 border border-gray-400 cursor-pointer rounded-md' : 'text-white px-2'}
-                    >
-                        Food Station
-                    </button>
-                ) : (
+                ) 
+                // : user?.role === 'egs' ? (
+                //     // If user is 'egs', only show Food Station button
+                //     <button
+                //         onClick={() => handleTabChange('Food Station')}
+                //         className={activeTab === 'Food Station' ? 'active px-2 bg-slate-200 border border-gray-400 cursor-pointer rounded-md' : 'text-white px-2'}
+                //     >
+                //         Food Station
+                //     </button>
+                // ) 
+                : (
                     // For all other roles, show standard buttons with existing conditions
                     <div className="relative ml-5 border border-gray-400 rounded-lg inline-flex items-center"> 
                         <button
