@@ -159,7 +159,7 @@ export const ReactFlowComponent: React.FC = () => {
     try {
       const response = await API.get<{results: FAQ[]}>(url);
       console.log('Response:', response);
-      const data: FAQ[] = response.data.results || [];
+      const data: FAQ[] = response.data.results || response.data || [];
       console.log('ResponseData:', data);
       const apiNodes: Node<BasePayload>[] = [];
       const apiEdges: Edge[] = [];
