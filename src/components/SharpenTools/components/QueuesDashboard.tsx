@@ -462,7 +462,7 @@ useEffect(() => {
                                 <p className="mt-2 text-lg text-purple-400">— {author}</p>
                             </div>
                         )} */}
-                        <NewsTicker sourceUrl='https://gvhc-backend.top/api/dashboards/news/'/>
+                        <NewsTicker sourceUrl='api/dashboards/news/'/>
                         {isAgentTickerVisible && (
                             <AgentTicker agents={agentLiveStatus} error={agentError} loading={agentLoading}/>
                         )}
