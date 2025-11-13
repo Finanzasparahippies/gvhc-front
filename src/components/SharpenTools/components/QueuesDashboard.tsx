@@ -13,6 +13,7 @@ import { QUERY_TEMPLATES } from "./SharpenQuerys"; // o como lo importes
 import sharpenAPI from '../../../utils/APISharpen';
 import AgentTicker from './AgentTicker'; // Creamos este archivo en el paso 2
 import { QuoteResponse } from '../../../types/declarations';
+import NewsTicker from "./NewsTicker";
 
 interface QueueConfig {
     id: string; // Un ID único para la tarjeta
@@ -455,12 +456,13 @@ useEffect(() => {
                                 );
                             })}
                         </div>
-                        {quote && (
+                        {/* {quote && (
                             <div className="animate-fade-in-down mt-4 text-center max-w-3xl mx-auto px-4 py-4 bg-gray-800 rounded-lg shadow-md min-h-[150px] max-h-full">
                                 <p className="text-5xl italic text-white">"{quote}"</p>
                                 <p className="mt-2 text-lg text-purple-400">— {author}</p>
                             </div>
-                        )}
+                        )} */}
+                        <NewsTicker sourceUrl='http://localhost:8000/api/dashboards/news/'/>
                         {isAgentTickerVisible && (
                             <AgentTicker agents={agentLiveStatus} error={agentError} loading={agentLoading}/>
                         )}
