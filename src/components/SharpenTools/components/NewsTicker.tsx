@@ -75,7 +75,7 @@ const NewsTicker: React.FC<NewsTickerProps> = ({ sourceUrl }) => {
                   : "text-purple-300"
               }`}
             >
-              🔹 {item.title}: <span className="text-gray-200">{item.summary}</span>
+              🔹 <span className="text-gray-200">{item.summary}</span>
             </span>
           ))}
         </div>
