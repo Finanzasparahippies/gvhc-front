@@ -289,9 +289,9 @@ useEffect(() => {
     return (
         <div
             ref={dashboardRef}
-            className="bg-gray-900 min-h-screen px-4 sm:p-6 lg:py-2 font-sans text-white mt-[8px] animate-fade-in-down"
+            className="max-w-full bg-gray-900 min-h-screen px-4 sm:p-6 lg:py-2 font-sans text-white mt-[8px] animate-fade-in-down overflow-hidden"
         >
-            <div className="max-w-full mx-auto">
+            <div className="mx-auto">
                 {/* --- Cabecera --- */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2">
                     <div>
@@ -342,10 +342,10 @@ useEffect(() => {
                 </div>
 
                 {/* <--- CAMBIO: Contenedor principal con Flexbox ---> */}
-                <div className="flex flex-col lg:flex-row gap-8">
+                <div className="flex flex-col lg:flex-row gap-8 w-full">
 
                     {/* <--- CAMBIO: Barra lateral ---> */}
-                    <aside className={`bg-gray-800 rounded-lg shadow-lg p-4 flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-full max-h-screen lg:w-[280px]' : 'w-0 p-0 overflow-hidden'}`}>
+                    <aside className={`bg-gray-800 rounded-lg shadow-lg p-4 flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-full max-h-screen lg:w-[280px]' : 'w-0 p-0 overflow-hidden'} min-w-0`}>
                         <h2 className={`text-2xl font-bold mb-4 border-b border-gray-700 pb-2 transition-opacity ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>Patients on Hold</h2>
                         <div className={`flex-grow overflow-y-auto transition-opacity ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
                             {
@@ -385,88 +385,92 @@ useEffect(() => {
                     </aside>
 
                     {/* <--- CAMBIO: Contenido principal que se expande ---> */}
-                    <main className="flex-1">
+                    <main className="flex-1 min-w-0 flex flex-col transition-all duration-300 min-h-0">
                         {/* --- Grid de Métricas --- */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3 gap-3">
-                            {dashboardQueues.map((queue) => {
-                                // const data = metricsData[metric.id];
-                                const countValue = counts[queue.id] ?? 0;
-                                const lcwEnValue = formatTime(lcw_en[queue.id] ?? 0);
-                                const lcwEsValue = formatTime(lcw_es[queue.id] ?? 0);
-                                const isRelevant = isUserMetric(queue);
-                                const isActiveQueue = countValue > 0 || lcwEnValue || lcwEsValue !== '00:00:00';
+                            <div className="flex-1 overflow-auto p-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3 gap-3">
+                                {dashboardQueues.map((queue) => {
+                                    // const data = metricsData[metric.id];
+                                    const countValue = counts[queue.id] ?? 0;
+                                    const lcwEnValue = formatTime(lcw_en[queue.id] ?? 0);
+                                    const lcwEsValue = formatTime(lcw_es[queue.id] ?? 0);
+                                    const isRelevant = isUserMetric(queue);
+                                    const isActiveQueue = countValue > 0 || lcwEnValue || lcwEsValue !== '00:00:00';
 
-                            return (
-                                    <div
-                                        key={queue.id} // Usa el ID del grupo como key
-                                          className={`rounded-xl shadow-lg py-5 px-6 flex flex-col justify-between transform hover:-translate-y-1 transition-transform duration-200
-                                            ${isRelevant ? 'border-2 border-purple-400' : ''}
-                                            ${isActiveQueue ? 'bg-gradient-to-br from-purple-800 to-purple-600 border border-purple-400' : 'bg-gray-800'}
-                                        `}
-                                    >
-                                        <div>
-                                            <div className="flex items-center justify-center mb-3 text-center">
-                                                {/* Usa el título del grupo */}
-                                                <h2 className="text-gray-300 text-7xl font-semibold">{queue.title}</h2>
-                                                <FcDepartment className="text-blue-400" size={60} />
-                                            </div>
+                                return (
+                                        <div
+                                            key={queue.id} // Usa el ID del grupo como key
+                                            className={`rounded-xl shadow-lg py-5 px-6 flex flex-col justify-between transform hover:-translate-y-1 transition-transform duration-200
+                                                ${isRelevant ? 'border-2 border-purple-400' : ''}
+                                                ${isActiveQueue ? 'bg-gradient-to-br from-purple-800 to-purple-600 border border-purple-400' : 'bg-gray-800'}
+                                            `}
+                                        >
+                                            <div>
+                                                <div className="flex items-center justify-center mb-3 text-center">
+                                                    {/* Usa el título del grupo */}
+                                                    <h2 className="text-gray-300 text-7xl font-semibold">{queue.title}</h2>
+                                                    <FcDepartment className="text-blue-400" size={60} />
+                                                </div>
 
-                                            {/* Sección para el COUNT (esto no cambia, ya que usa countValue) */}
-                                            <div className="flex flex-col items-center justify-center mb-6">
-                                                <div className="flex items-center space-x-3 mb-1">
-                                                        <FiPhoneIncoming className="text-purple-400 mr-2" size={30} />
-                                                        <span className="text-gray-300 text-2xl font-semibold">Calls in Queue:</span>
+                                                {/* Sección para el COUNT (esto no cambia, ya que usa countValue) */}
+                                                <div className="flex flex-col items-center justify-center mb-6">
+                                                    <div className="flex items-center space-x-3 mb-1">
+                                                            <FiPhoneIncoming className="text-purple-400 mr-2" size={30} />
+                                                            <span className="text-gray-300 text-2xl font-semibold">Calls in Queue:</span>
+                                                    </div>
+                                                        <p className={`text-9xl font-semibold leading-none transition-colors duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
+                                                            {isLoading && countValue === 0 ? <FiLoader className="animate-spin text-purple-400" /> : countValue}
+                                                        </p>
                                                 </div>
-                                                    <p className={`text-9xl font-semibold leading-none transition-colors duration-200 ${isLoading ? 'text-white/60' : 'text-white'}`}>
-                                                        {isLoading && countValue === 0 ? <FiLoader className="animate-spin text-purple-400" /> : countValue}
-                                                    </p>
-                                            </div>
 
-                                            {/* Sección para el LCW (esto no cambia, ya que usa lcwValue) */}
-                                            <div className="mt-4">
-                                            <div className="flex items-center mb-2 justify-center">
-                                                <FiClock className="text-orange-400 mr-2" size={26} />
-                                                <span className="text-gray-300 text-xl font-semibold select-none">Longest Wait:</span>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4 items-center justify-items-center">
-                                                <div className="flex items-center gap-2">
-                                                <span className="text-5xl select-none" role="img" aria-label="US Flag">🇺🇸</span>
-                                                <span className={`text-7xl font-semibold ${isLoading ? 'text-white/60' : 'text-white'}`}>
-                                                    {isLoading && lcwEnValue === '00:00:00' ? (
-                                                    <FiLoader className="animate-spin text-purple-400" />
-                                                    ) : (
-                                                    lcwEnValue
-                                                    )}
-                                                </span>
+                                                {/* Sección para el LCW*/}
+                                                <div className="mt-4">
+                                                <div className="flex items-center mb-2 justify-center">
+                                                    <FiClock className="text-orange-400 mr-2" size={26} />
+                                                    <span className="text-gray-300 text-xl font-semibold select-none">Longest Wait:</span>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                <span className="text-5xl select-none" role="img" aria-label="Mexico Flag">🇲🇽</span>
-                                                <span className={`text-7xl font-semibold ${isLoading ? 'text-white/60' : 'text-white'}`}>
-                                                    {isLoading && lcwEsValue === '00:00:00' ? (
-                                                    <FiLoader className="animate-spin text-purple-400" />
-                                                    ) : (
-                                                    lcwEsValue
-                                                    )}
-                                                </span>
+                                                    <div className="grid grid-cols-2 gap-4 items-center justify-items-center">
+                                                        <div className="flex items-center gap-2">
+                                                        <span className="text-5xl select-none" role="img" aria-label="US Flag">🇺🇸</span>
+                                                        <span className={`text-7xl font-semibold ${isLoading ? 'text-white/60' : 'text-white'}`}>
+                                                            {isLoading && lcwEnValue === '00:00:00' ? (
+                                                            <FiLoader className="animate-spin text-purple-400" />
+                                                            ) : (
+                                                            lcwEnValue
+                                                            )}
+                                                        </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                        <span className="text-5xl select-none" role="img" aria-label="Mexico Flag">🇲🇽</span>
+                                                        <span className={`text-7xl font-semibold ${isLoading ? 'text-white/60' : 'text-white'}`}>
+                                                            {isLoading && lcwEsValue === '00:00:00' ? (
+                                                            <FiLoader className="animate-spin text-purple-400" />
+                                                            ) : (
+                                                            lcwEsValue
+                                                            )}
+                                                        </span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
                                             </div>
                                         </div>
+                                    );
+                                })}
+                                {/* {quote && (
+                                    <div className="animate-fade-in-down mt-4 text-center max-w-3xl mx-auto px-4 py-4 bg-gray-800 rounded-lg shadow-md min-h-[150px] max-h-full">
+                                        <p className="text-5xl italic text-white">"{quote}"</p>
+                                        <p className="mt-2 text-lg text-purple-400">— {author}</p>
                                     </div>
-                                );
-                            })}
-                        </div>
-                        {/* {quote && (
-                            <div className="animate-fade-in-down mt-4 text-center max-w-3xl mx-auto px-4 py-4 bg-gray-800 rounded-lg shadow-md min-h-[150px] max-h-full">
-                                <p className="text-5xl italic text-white">"{quote}"</p>
-                                <p className="mt-2 text-lg text-purple-400">— {author}</p>
+                                )} */}
                             </div>
-                        )} */}
-                        <NewsTicker sourceUrl='api/dashboards/news/'/>
-                        {isAgentTickerVisible && (
-                            <AgentTicker agents={agentLiveStatus} error={agentError} loading={agentLoading}/>
-                        )}
-                    </main>
+                                <NewsTicker sourceUrl='api/dashboards/news/'/>
+                            </div>
+                        <div className={`transition-all duration-300 overflow-hidden ${isAgentTickerVisible ? 'max-h-96 mt-4' : 'max-h-0 mt-0'}`}>
+                                {isAgentTickerVisible && (
+                                    <AgentTicker agents={agentLiveStatus} error={agentError} loading={agentLoading}/>
+                                )}
+                        </div>
+                        </main>
                 </div>
             </div>
         </div>

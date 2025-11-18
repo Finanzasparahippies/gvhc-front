@@ -58,7 +58,7 @@ const NewsTicker: React.FC<NewsTickerProps> = ({ sourceUrl }) => {
   if (news.length === 0) return null;
 
   return (
-    <div className="animate-fade-in-down mt-4 text-center w-full mx-auto px-4 py-4 bg-gray-800 rounded-lg shadow-md border border-purple-500">
+    <div className="animate-fade-in-down mt-4 text-center px-4 py-4 bg-gray-800 rounded-lg shadow-md border border-purple-500 overflow-hidden">
       {/* <h2 className="text-3xl font-bold text-purple-400 mb-2 flex items-center justify-center gap-2">
         <FiAlertTriangle className="text-yellow-400" /> News & Alerts
       </h2> */}
@@ -67,7 +67,7 @@ const NewsTicker: React.FC<NewsTickerProps> = ({ sourceUrl }) => {
           {news.map((item) => (
             <span
               key={item.id}
-              className={`mx-8 text-4xl font-semibold ${
+              className={`mx-8 text-8xl font-semibold ${
                 item.level === "critical"
                   ? "text-red-500"
                   : item.level === "warning"
