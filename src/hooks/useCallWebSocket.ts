@@ -93,7 +93,7 @@ export const useCallsWebSocket = () => {
     const handleMessage = useCallback((event: MessageEvent) => {
         try {
             const message = JSON.parse(event.data);
-            console.log('✅ WebSocket message received:', message);
+            // console.log('✅ WebSocket message received:', message);
 
             if (message.type === 'dataUpdate' && message.payload) {
                 const { getCallsOnHoldData, getLiveQueueStatusData } = message.payload;
@@ -113,20 +113,20 @@ export const useCallsWebSocket = () => {
                 setIsLoading(false);
                 setWsError(null);
             } else if (message.type === 'connected') {
-                console.log("🔗 Conexión confirmada, esperando datos...");
+                // console.log("🔗 Conexión confirmada, esperando datos...");
                 startPinging();
                 setWsError(null);
             } else if (message.type === 'ping') {
-                console.log('🔄 Ping recibido');
+                // console.log('🔄 Ping recibido');
             } else if (message.type === 'pong') {
                 console.log('Pong recibido');
             } else if (message.type === 'heartbeat') {
-                console.log('💓 Heartbeat recibido desde el backend');
+                // console.log('💓 Heartbeat recibido desde el backend');
             } else {
-                console.warn('Ignoring unknown or non-expected WebSocket message:', message);
+                // console.warn('Ignoring unknown or non-expected WebSocket message:', message);
             }
         } catch (error) {
-            console.error('❌ Error parsing WebSocket message:', error);
+            // console.error('❌ Error parsing WebSocket message:', error);
             setWsError('Error processing incoming data from server.');
             setIsLoading(false);
         }
@@ -150,7 +150,7 @@ export const useCallsWebSocket = () => {
         ws.current = socket; // Immediately assign to ref to manage it
 
         socket.onopen = () => {
-            console.log('🔗 WebSocket connected:', getWebSocketUrl());
+            // console.log('🔗 WebSocket connected:', getWebSocketUrl());
             setWsError(null);
             reconnectAttempts.current = 0; // Resetear intentos al conectar con éxito
         };
@@ -165,7 +165,7 @@ export const useCallsWebSocket = () => {
         };
 
         socket.onclose = (event) => {
-            console.log('WebSocket disconnected with code:', event.code, 'reason:', event.reason);  
+            // console.log('WebSocket disconnected with code:', event.code, 'reason:', event.reason);  
             setIsLoading(false); // Stop loading if max attempts reached
             stopPinging(); // Stop pinging on close
 
@@ -179,7 +179,7 @@ export const useCallsWebSocket = () => {
                 }, delay);
             } else {
                 setWsError('No se pudo reconectar al WebSocket después de varios intentos.');
-                console.error('🚨 Máximos intentos de reconexión alcanzados. Rindiéndome.');
+                // console.error('🚨 Máximos intentos de reconexión alcanzados. Rindiéndome.');
             }
             // If visibilityState is hidden, onclose will log, but won't re-trigger connectWebSocket
             // until visibilityState becomes 'visible' again, handled by the event listener.

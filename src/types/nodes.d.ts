@@ -88,7 +88,7 @@ export interface BasePayload { // Renamed from the original "BasePayload" conten
     setPanOnDrag?: (enabled: boolean) => void;
     onPinToggle?: (id: string) => void;
     position?:{
-        x:number, y:numer
+        x:number, y:number
     }
     [key: string]: any; // Important for flexibility if you add more properties dynamically
 }
@@ -128,13 +128,25 @@ export interface LiveQueueStatusApiResponse {
     getLiveQueueStatusData: LiveQueueStatusData[];
 }
 
+export interface CallsUpdateMessagePayload {
+    getCallsOnHoldData?: { getCallsOnHoldData: CallOnHold[] };
+    liveQueueStatus?: LiveQueueStatusData[];
+}
+
 export interface CallsUpdateMessage {
     type: 'callsUpdate';
-    payload: {
-        getCallsOnHoldData?: CallOnHold[]; // Para tus llamadas en espera existentes
-        liveQueueStatus?: LiveQueueStatusData[]; // Para la nueva consulta de Live Queue Status
-    };
+    payload: CallsUpdateMessagePayload;
 }
+
+export interface CallOnHold {
+    queueCallManagerID: string; // id de la llamada
+    callerName: string; // Nombre del paciente
+    queueName: string; // Nombre de la cola
+    startTime: string; // ISO string de cuándo entró a la cola
+    phoneNumber?: string;
+    [key: string]: any; // Para cualquier propiedad extra que envíe el backend
+}
+
 
 interface HeartbeatMessage {
   type: 'heartbeat';

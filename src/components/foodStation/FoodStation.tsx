@@ -11,7 +11,7 @@ const FoodStation = () => {
     API.get<DishResponse>('api/foodstation/dishes/')
       .then(res => {
         setDishes(res.data.results);
-        console.log('✅ Platos obtenidos:', res.data.results);
+        // console.log('✅ Platos obtenidos:', res.data.results);
       })
       .catch(err => console.error('❌ Error al obtener platos:', err));
   }, []);

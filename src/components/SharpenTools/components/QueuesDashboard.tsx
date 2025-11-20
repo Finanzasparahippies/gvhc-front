@@ -14,6 +14,7 @@ import sharpenAPI from '../../../utils/APISharpen';
 import AgentTicker from './AgentTicker'; // Creamos este archivo en el paso 2
 import { QuoteResponse } from '../../../types/declarations';
 import NewsTicker from "./NewsTicker";
+import { useCallsSSE } from "../../../hooks/useCallsSSE";
 
 interface QueueConfig {
     id: string; // Un ID único para la tarjeta
@@ -84,7 +85,9 @@ const QueueDashboard: React.FC = () => {
     const [isFullscreen, setIsFullscreen] = useState(false); // <--- AÑADE ESTE ESTADO
     const dashboardRef = useRef<HTMLDivElement>(null); // <--- AÑADE ESTA REFERENCIA
     // const [sidebarError, setSidebarError] = useState<string | null>(null); // <--- AÑADE ESTO
-    const { calls: callsOnHold, isLoading, wsError } = useCallsWebSocket();
+    // const { calls: callsOnHold, isLoading, wsError } = useCallsWebSocket();
+    const { callsOnHold, liveQueueStatus, isLoading, error } = useCallsSSE();
+    const callsArray = callsOnHold || []; //
     const userQueueNames = user?.queues.map((q) => q.name) || [];
     const [agentLiveStatus, setAgentLiveStatus] = useState<LiveStatusAgent[]>([]);
     const [agentError, setAgentError] = useState<string | null>(null);
@@ -107,7 +110,7 @@ const QueueDashboard: React.FC = () => {
                             endpoint: endpoint, // El endpoint real de Sharpen
                             payload: payload,   // El payload real para Sharpen
             });
-            console.log("respuesta del getAgents (fetchLiveStatus):", response.data);
+            // console.log("respuesta del getAgents (fetchLiveStatus):", response.data);
 
             // La respuesta de la API de Sharpen para getAgents viene en `getAgentsData`
             if (response.data && response.data.getAgentsStatus === "Complete" && response.data.getAgentsData) {
@@ -159,48 +162,30 @@ const queueIdMap = useMemo(() => {
 
 // Agregación de datos usando los IDs unificados
 const { counts, lcw_en, lcw_es } = useMemo(() => {
-  console.log('🔁 Recalculando counts y LCW desde callsOnHold:', callsOnHold);
-    if (callsOnHold.length === 0) {
-        return {
-            counts: {},
-            lcw_en: {},
-            lcw_es: {},
-        };
-    }
+  const result: { counts: Record<string, number>, lcw_en: Record<string, number>, lcw_es: Record<string, number> } = {
+    counts: {},
+    lcw_en: {},
+    lcw_es: {},
+  };
 
-    const result: { counts: Record<string, number>, 
-                    lcw_en: Record<string, number>,
-                    lcw_es: Record<string, number>
-                } = {
-        counts: {},
-        lcw_en: {},
-        lcw_es: {}
-        };
+  if (!callsArray.length) return result;
 
-    for (const call of callsOnHold) {
-        // Encuentra el ID del grupo unificado al que pertenece la llamada
-        const normalizedCallQueueName = call.queueName.trim().toLowerCase();
-        const unifiedId = queueIdMap[normalizedCallQueueName];
-        const isSpanish = call.queueName.trim().toLowerCase().startsWith('es-');
+  callsArray.forEach(call => {
+      const normalized = call.queueName.trim().toLowerCase();
+      const unifiedId = queueIdMap[normalized];
+      if (!unifiedId) return console.warn(`Queue not mapped: ${call.queueName}`);
+      
+      const elapsed = Number.isFinite(getElapsedSeconds(call.startTime)) ? getElapsedSeconds(call.startTime) : 0;
+      const isSpanish = normalized.startsWith("es-");
+      
+      result.counts[unifiedId] = (result.counts[unifiedId] || 0) + 1;
+      if (isSpanish) result.lcw_es[unifiedId] = Math.max(result.lcw_es[unifiedId] || 0, elapsed);
+    else result.lcw_en[unifiedId] = Math.max(result.lcw_en[unifiedId] || 0, elapsed);
+  });
 
-        if (unifiedId) {
-            const elapsed = Number.isFinite(getElapsedSeconds(call.startTime))
-            ? getElapsedSeconds(call.startTime)
-            : 0;
-            // Agrega el conteo al grupo correcto
-            result.counts[unifiedId] = (result.counts[unifiedId] || 0) + 1;
-            // Actualiza el LCW para el grupo correcto
-            if (isSpanish) {
-                result.lcw_es[unifiedId] = Math.max(result.lcw_es[unifiedId] || 0, elapsed);
-            } else {
-                result.lcw_en[unifiedId] = Math.max(result.lcw_en[unifiedId] || 0, elapsed);
-            }
-        } else {
-            console.warn(`⚠️ Nombre de cola no mapeado desde WebSocket: "${call.queueName}"`);
-        }
-    }
-    return result;
-}, [callsOnHold, queueIdMap]);
+  return result;
+}, [callsArray, queueIdMap]);
+
 
     const isUserMetric = (queueConfig: QueueConfig): boolean => {
         // Revisa si alguna de las colas de origen del grupo coincide con las del usuario
@@ -217,7 +202,7 @@ const { counts, lcw_en, lcw_es } = useMemo(() => {
         if (!isLoading) {
             setLastUpdated(new Date());
         }
-    }, [callsOnHold, isLoading]); // Añade isLoading como dependencia
+    }, [callsArray, isLoading]); // Añade isLoading como dependencia
 
 
     useEffect(() => {
@@ -272,8 +257,9 @@ const { counts, lcw_en, lcw_es } = useMemo(() => {
     }, []); // El array vacío asegura que esto solo se ejecute al montar y desmontar
 
 useEffect(() => {
-    console.log("callsOnHold updated from WebSocket:", callsOnHold);
-}, [callsOnHold]);
+  console.log("Calls on Hold SSE:", callsArray);
+  console.log("Live Queue Status SSE:", liveQueueStatus);
+}, [callsArray, liveQueueStatus]);
 
         const handleRefreshClick = useCallback(() => {
             // In a WebSocket-driven app, "refresh" often means re-establishing connection
@@ -283,7 +269,7 @@ useEffect(() => {
             setLastUpdated(new Date());
             // If you had other non-WebSocket data, you would call their fetch functions here.
             // For example: fetchOtherDataViaAPI();
-            console.log("Refresh button clicked. Displaying latest WebSocket data.");
+            // console.log("Refresh button clicked. Displaying latest WebSocket data.");
         }, []);
 
     return (
@@ -316,7 +302,7 @@ useEffect(() => {
                             title={isSidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}
                         >
                             <FiSidebar className="mr-2" />
-                            <span>On Hold ({callsOnHold.length})</span>
+                            <span>On Hold ({callsArray.length})</span>
                         </button>
                         <button
                             onClick={toggleFullscreen}
@@ -356,31 +342,32 @@ useEffect(() => {
                             //     </div>
                             // )
                             }
-                            {callsOnHold.length === 0 ? (
-                                <p className="text-gray-400">No patients on hold.</p>
-                            ) : (
-                                callsOnHold
-                                .sort((a, b) => getElapsedSeconds(b.startTime) - getElapsedSeconds(a.startTime)) // Sort by elapsed time (descending)
-                                .map((call) => {
-                                    return (
-                                        <div
-                                            key={call.queueCallManagerID}
-                                            className={`mb-4 p-4 bg-gradient-to-br from-gray-800 to-gray-700 rounded-lg shadow-md border-l-4 border-purple-500 transition-all duration-300 ease-in-out animate-fade-in-down`}
-                                            >
-                                            {/* <p className="text-lg font-bold text-white flex items-center gap-2">
-                                                <MdSpatialAudioOff className='mr-2'/> {call.cidName || "Paciente desconocido"}
-                                            </p> */}
-                                            {/* <p className="text-sm text-gray-300 flex items-center gap-2">
-                                                <SlCallIn className='mr-2'/> {call.callbackNumber}
-                                            </p> */}
-                                            <p className="text-sm text-gray-300 flex items-center gap-2">
-                                                <FcDepartment className='mr-2' /> {call.queueName}
-                                            </p>
-                                            <ElapsedTime startTime={call.startTime} />
-                                        </div>
-                                    );
-                                })
-                            )}
+                           {
+                            (() => {
+                                const sortedCalls = Array.isArray(callsArray)
+                                    ? [...callsArray].sort(
+                                        (a, b) => getElapsedSeconds(b.startTime) - getElapsedSeconds(a.startTime)
+                                    )
+                                    : [];
+
+                                if (sortedCalls.length === 0) {
+                                    return <p className="text-gray-400">No patients on hold.</p>;
+                                }
+
+                                return sortedCalls.map((call) => (
+                                    <div
+                                        key={call.queueCallManagerID}
+                                        className="mb-4 p-4 bg-gradient-to-br from-gray-800 to-gray-700 rounded-lg shadow-md border-l-4 border-purple-500 transition-all duration-300 ease-in-out animate-fade-in-down"
+                                    >
+                                        <p className="text-sm text-gray-300 flex items-center gap-2">
+                                            <FcDepartment className="mr-2" /> {call.queueName}
+                                        </p>
+                                        <ElapsedTime startTime={call.startTime} />
+                                    </div>
+                                ));
+                            })()
+                        }
+
                         </div>
                     </aside>
 

@@ -23,8 +23,15 @@ const NewsTicker: React.FC<NewsTickerProps> = ({ sourceUrl }) => {
     try {
       if (sourceUrl) {
         const response = await API.get<NewsItem[]>(sourceUrl);  // Usamos Axios
-        console.log("response from news:", response.data)
-        setNews(response.data);
+        const isDifferent =
+          JSON.stringify(response.data) !== JSON.stringify(news);
+
+        if (isDifferent) {
+          // console.log("🔄 Cambios detectados en las noticias");
+          setNews(response.data);
+      } else {
+        // console.log("✔️ Noticias iguales, no se actualiza");
+      }
       } else {
         setNews([
           {
@@ -42,7 +49,7 @@ const NewsTicker: React.FC<NewsTickerProps> = ({ sourceUrl }) => {
         ]);
       }
     } catch (error) {
-      console.error("Error fetching news:", error);
+      // console.error("Error fetching news:", error);
     } finally {
       setLoading(false);
     }

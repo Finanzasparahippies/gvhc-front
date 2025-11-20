@@ -82,7 +82,7 @@ export const getCombinedNodeStyle = (dataType?: string, isPinned?: boolean): Rea
 // Considera si realmente necesitas que estas dimensiones globales cambien dinámicamente así.
 // Generalmente, GROUP_WIDTH y GROUP_HEIGHT deberían ser constantes o calculadas una vez.
 export const getGroupDimensionsByType = (dataType?: string): NodeDimensions => {
-    console.log('group dimensions:', dataType)
+    // console.log('group dimensions:', dataType)
     return NODE_GROUP_DIMENSIONS[dataType || 'default'] || NODE_GROUP_DIMENSIONS['default'];
 };
 

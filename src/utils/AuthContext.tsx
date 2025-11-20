@@ -38,7 +38,7 @@ import { AuthContextType, User, UserData } from '../types/declarations';
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user');
         setUser(null);
-        console.log("Would redirect to login here");
+        // console.log("Would redirect to login here");
         window.location.pathname = '/login'
         // navigate('/login')
     },[]);
@@ -50,37 +50,37 @@ import { AuthContextType, User, UserData } from '../types/declarations';
             if (!accessToken) {
                 setUser(null);
                 setIsLoading(false);
-                console.log('Auth: No access token found. Not authenticated.');
+                // console.log('Auth: No access token found. Not authenticated.');
                 return;
             }
 
             try {
                 // Primero, intenta validar el token de acceso actual con el backend.
-                console.log("Auth: Attempting to validate access token with /api/protected/...");
+                // console.log("Auth: Attempting to validate access token with /api/protected/...");
                 const response = await API.get<UserData>('api/users/protected/'); // O tu endpoint de perfil
                 setUser(response.data);
                 // Si la validación es exitosa, establece el usuario y termina la carga.
                 localStorage.setItem('user', JSON.stringify(response.data));
-                console.log('Auth: Validated user from access token.');
+                // console.log('Auth: Validated user from access token.');
 
             } catch (error: any) {
                 // Si la validación falla (ej. token expirado), intenta refrescarlo.
-                console.warn("La validación del token de acceso falló. Intentando refrescar...");
+                // console.warn("La validación del token de acceso falló. Intentando refrescar...");
 
                 if (refreshToken) {
                     try {
                         const refreshResponse = await API.post<{ access: string }>('/api/token/refresh/', { refresh: refreshToken });
                         const newAccessToken = refreshResponse.data.access;
                         localStorage.setItem('access_token', newAccessToken);
-                        console.log("Auth: Token refreshed successfully. Fetching user profile with new token...");
+                        // console.log("Auth: Token refreshed successfully. Fetching user profile with new token...");
 
                         // ✨ Después de refrescar, vuelve a pedir los datos del usuario con el nuevo token.
                         const profileResponse = await API.get<UserData>('api/user/protected/');
                         setUser(profileResponse.data);
                         localStorage.setItem('user', JSON.stringify(profileResponse.data));
-                        console.log('Auth: Token refreshed successfully and user profile fetched.');
+                        // console.log('Auth: Token refreshed successfully and user profile fetched.');
                     } catch (refreshError) {
-                        console.error("Auth: Failed to refresh token. Logging out.", refreshError);
+                        // console.error("Auth: Failed to refresh token. Logging out.", refreshError);
                         setUser(null);
                         localStorage.removeItem('access_token');
                         localStorage.removeItem('refresh_token');
@@ -88,7 +88,7 @@ import { AuthContextType, User, UserData } from '../types/declarations';
                     }
                 } else {
                      // 5. No hay refresh token, cierro sesión
-                    console.log("Auth: No refresh token available. Logging out.");
+                    // console.log("Auth: No refresh token available. Logging out.");
                     setUser(null);
                     localStorage.removeItem('access_token');
                     localStorage.removeItem('refresh_token');
@@ -96,7 +96,7 @@ import { AuthContextType, User, UserData } from '../types/declarations';
                 }
             } finally {
                 setIsLoading(false);
-                console.log('Auth: Initialization complete.');
+                // console.log('Auth: Initialization complete.');
             }
         };
 

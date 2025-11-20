@@ -30,7 +30,7 @@ export const TemplateNode: React.FC<NodeProps<Node<BasePayload>>> = (props) => {
     const onPinToggle = data.onPinToggle;
     const nodeStyle = getCombinedNodeStyle(data.response_data, data.pinned);
 
-    console.log('Rendering TemplateNode:', { id, data, dragging, isConnectable, positionAbsoluteX, positionAbsoluteY, type });
+    // console.log('Rendering TemplateNode:', { id, data, dragging, isConnectable, positionAbsoluteX, positionAbsoluteY, type });
 
 
         const handleMouseEnter = (): void => {

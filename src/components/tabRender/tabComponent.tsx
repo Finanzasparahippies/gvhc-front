@@ -18,9 +18,9 @@ const TabsComponent = () => {
     // console.log('TabsComponent RENDER - isLoading:', isLoading, 'user:', user?.username);
 
     useEffect(() => {
-        console.log('TabsComponent: MOUNTED');
+        // console.log('TabsComponent: MOUNTED');
         return () => {
-        console.log('TabsComponent: UNMOUNTED');
+        // console.log('TabsComponent: UNMOUNTED');
         };
     }, []); // Empty dependency array means this runs once on mount/unmount
 

@@ -54,7 +54,7 @@ const PrivateRoute:React.FC<PrivateRouteProps> = ({ children, requiredRoles }) =
 
   if (!isAuthenticated) {
     // Si no está autenticado, redirige al login
-    console.log("No autenticado, redirigiendo al login.");
+    // console.log("No autenticado, redirigiendo al login.");
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
