@@ -129,7 +129,7 @@ export interface LiveQueueStatusApiResponse {
 }
 
 export interface CallsUpdateMessagePayload {
-    getCallsOnHoldData?: { getCallsOnHoldData: CallOnHold[] };
+    getCallsOnHoldData?:  CallOnHold[];
     liveQueueStatus?: LiveQueueStatusData[];
 }
 

@@ -41,8 +41,8 @@ export const useCallsSSE = () => {
         const msg: SSEMessage = JSON.parse(event.data);
         if (msg.type === "dataUpdate") {
    
-          const callsArray = msg.payload.getCallsOnHoldData.getCallsOnHoldData || [];          
-          const liveQueueArray = msg.payload.getLiveQueueStatusData.liveQueueStatus || []; // Asumiendo que LiveStatus es similarmente anidado
+          const callsArray = msg.payload.getCallsOnHoldData?.getCallsOnHoldData || [];          
+          const liveQueueArray = msg.payload.getLiveQueueStatusData?.liveQueueStatus || []; // Asumiendo que LiveStatus es similarmente anidado
 
           console.log("🔹 Calls on hold data (Parsed):", callsArray);
           console.log("🔹 Live queue status data (Parsed):", liveQueueArray);
